@@ -236,9 +236,19 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 			Effects.shake(1.2, 0.6)
 		end
 	end,
-	NightStart = function()
+	NightStart = function(data)
 		Effects.sound("NightStart")
-		Effects.shake(0.8, 0.8)
+		if data.Theme == "Super" then
+			Effects.shake(1.6, 1.2)
+		else
+			Effects.shake(0.8, 0.8)
+		end
+	end,
+	CoinPickup = function(data)
+		if data.Position then
+			Effects.coins(data.Position)
+		end
+		Effects.sound("Sell")
 	end,
 	NightEnd = function()
 		Effects.sound("NightEnd")

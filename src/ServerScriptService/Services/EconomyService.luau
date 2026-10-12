@@ -27,6 +27,16 @@ local friendCache: { [string]: boolean } = {}
 
 ---------------------------------------------------------------- Calculs
 
+-- Week-end x2 : du vendredi 17h UTC au dimanche 23h UTC
+function EconomyService.isWeekendBoost(t: number?): boolean
+	if not Config.WeekendBoost.Enabled then
+		return false
+	end
+	local date = os.date("!*t", t or os.time())
+	-- wday : 1 = dimanche, 6 = vendredi, 7 = samedi
+	return (date.wday == 6 and date.hour >= 17) or date.wday == 7 or (date.wday == 1 and date.hour < 23)
+end
+
 -- Multiplicateur de rebirth seul (x1, x1.5, x2...)
 function EconomyService.rebirthMultiplier(rebirths: number): number
 	return 1 + rebirths * Config.RebirthIncomeBonus
@@ -44,6 +54,9 @@ function EconomyService.multiplier(player: Player): number
 	m *= 1 + (friendBonus[player] or 0)
 	if data.IndexComplete then
 		m *= 1 + Config.IndexCompleteBonus
+	end
+	if ReplicatedStorage:GetAttribute("WeekendBoost") then
+		m *= Config.WeekendBoost.Mult
 	end
 	return m
 end
@@ -290,6 +303,10 @@ function EconomyService.start()
 	task.spawn(function()
 		while true do
 			task.wait(1)
+			local boost = EconomyService.isWeekendBoost()
+			if ReplicatedStorage:GetAttribute("WeekendBoost") ~= boost then
+				ReplicatedStorage:SetAttribute("WeekendBoost", boost)
+			end
 			for _, player in Players:GetPlayers() do
 				if DataService.get(player) and BaseService.getBase(player) then
 					EconomyService.add(player, EconomyService.incomePerSecond(player), true)

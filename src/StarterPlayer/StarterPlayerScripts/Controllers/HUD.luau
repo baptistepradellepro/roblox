@@ -378,6 +378,16 @@ function HUD.start()
 	buildTopBar()
 	buildColumns()
 
+	-- Pastille "Week-end x2"
+	local weekendPill = HUD.pill(UI.Colors.Gold, 3)
+	local weekendText = weekendPill:FindFirstChild("Text") :: TextLabel
+	weekendText.Text = "🎉 " .. Lang.t("WeekendBoost")
+	local function updateWeekend()
+		weekendPill.Visible = ReplicatedStorage:GetAttribute("WeekendBoost") == true
+	end
+	ReplicatedStorage:GetAttributeChangedSignal("WeekendBoost"):Connect(updateWeekend)
+	updateWeekend()
+
 	player:GetAttributeChangedSignal("Coins"):Connect(updateCoins)
 	player:GetAttributeChangedSignal("Income"):Connect(updateCoins)
 	player:GetAttributeChangedSignal("FriendBonus"):Connect(updateCoins)

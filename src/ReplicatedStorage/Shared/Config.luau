@@ -61,6 +61,20 @@ Config.MonsterCatchRange = 5
 Config.MonsterCoinPenalty = 0.05 -- perd 5 % de ses pièces si attrapé
 Config.MonsterStunTime = 2
 
+-- Thèmes de nuit, tirés au hasard (plus le nombre est grand, plus c'est fréquent)
+Config.NightThemes = { Classic = 50, Fog = 25, Candy = 25 }
+Config.FogMonsterSpeed = 15 -- Nuit du Brouillard : Gloutrouille va plus vite
+Config.CandyCoinCount = 24 -- Nuit des Bonbons : pièces bonus posées en même temps
+Config.CandyCoinSeconds = 8 -- chaque pièce vaut 8 s de revenus (minimum 25 pièces)
+-- Super Nuit : chaque samedi de 17h à 18h UTC (= 18h-19h à Paris en hiver)
+-- Gloutrouille géant, un Mythique garanti et 3 fois plus de variantes
+Config.SuperNight = { WeekDay = 7, StartHour = 17, EndHour = 18 } -- WeekDay : 1 = dimanche ... 7 = samedi
+Config.SuperMonsterScale = 1.6
+Config.SuperMutationBoost = 3
+
+-- Week-end x2 : revenus doublés du vendredi 17h UTC au dimanche 23h UTC
+Config.WeekendBoost = { Enabled = true, Mult = 2 }
+
 -- ===== Rebirth =====
 Config.RebirthBaseCost = 1000000
 Config.RebirthCostGrowth = 3.5

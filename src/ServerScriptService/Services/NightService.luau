@@ -4,6 +4,9 @@
 	  - la nuit : plus de fantômes rares sur le chemin, un fantôme spécial garanti,
 	    et Gloutrouille (le monstre) poursuit les joueurs qui sont HORS de leur base
 	  - attrapé : "BOUH !", retour à la base, -5 % de pièces, et on lâche le fantôme volé
+	  - chaque nuit a un thème : Classique, Brouillard (monstre plus rapide), Bonbons (des
+	    pièces à ramasser sur le chemin), et le samedi soir la Super Nuit (monstre géant,
+	    Mythique garanti, plus de variantes Dorées et Arc-en-ciel)
 
 	Le serveur calcule la position du monstre (anti-triche) et la publie sur une pièce
 	invisible "GloutrouilleAnchor". Chaque joueur dessine le vrai monstre et le fait glisser
@@ -34,6 +37,11 @@ local CATCH_IMMUNITY = 6 -- secondes de répit après avoir été attrapé
 local anchor: BasePart? = nil
 local immuneUntil: { [Player]: number } = {}
 local patrolDir = 1
+local theme = "Classic"
+local monsterSpeed = Config.MonsterSpeed
+local catchRange = Config.MonsterCatchRange
+local candyFolder: Folder? = nil
+local rng = Random.new()
 
 local function now(): number
 	return workspace:GetServerTimeNow()
@@ -95,6 +103,108 @@ local function catch(player: Player, root: BasePart)
 	BaseService.teleportHome(player)
 end
 
+-- Est-ce l'heure de la Super Nuit ? (samedi 17h-18h UTC par défaut)
+function NightService.isSuperTime(t: number?): boolean
+	local date = os.date("!*t", t or os.time())
+	local super = Config.SuperNight
+	return date.wday == super.WeekDay and date.hour >= super.StartHour and date.hour < super.EndHour
+end
+
+local function pickTheme(): string
+	if NightService.isSuperTime() then
+		return "Super"
+	end
+	local total = 0
+	for _, weight in Config.NightThemes do
+		total += weight
+	end
+	local roll = rng:NextNumber() * total
+	for _, name in { "Classic", "Fog", "Candy" } do
+		roll -= Config.NightThemes[name] or 0
+		if roll < 0 then
+			return name
+		end
+	end
+	return "Classic"
+end
+
+---------------------------------------------------------------- Nuit des Bonbons
+
+local function coinReward(player: Player): number
+	return math.max(25, math.floor(EconomyService.incomePerSecond(player) * Config.CandyCoinSeconds))
+end
+
+local function spawnCoin()
+	local folder = candyFolder
+	if not folder then
+		return
+	end
+	-- sur le chemin ou les allées, jamais dans une base
+	local position
+	for _ = 1, 10 do
+		local x = rng:NextNumber(Config.PathStartX + 10, Config.PathEndX - 10)
+		local side = if rng:NextNumber() < 0.5 then -1 else 1
+		local z = if rng:NextNumber() < 0.6 then rng:NextNumber(-6, 6) else side * rng:NextNumber(9, 13)
+		local candidate = Vector3.new(x, 2, Config.PathZ + z)
+		if not BaseService.baseAt(candidate) then
+			position = candidate
+			break
+		end
+	end
+	if not position then
+		return
+	end
+	local coin = Instance.new("Part")
+	coin.Name = "CandyCoin"
+	coin.Shape = Enum.PartType.Cylinder
+	coin.Size = Vector3.new(0.4, 2.2, 2.2)
+	coin.CFrame = CFrame.new(position) * CFrame.Angles(0, math.rad(90), 0)
+	coin.Anchored = true
+	coin.CanCollide = false
+	coin.CanQuery = false
+	coin.CanTouch = true
+	coin.CastShadow = false
+	coin.Color = Color3.fromRGB(255, 205, 50)
+	coin.Material = Enum.Material.Neon
+	coin:SetAttribute("Base", coin.CFrame)
+	local taken = false
+	coin.Touched:Connect(function(hit)
+		if taken then
+			return
+		end
+		local player = Players:GetPlayerFromCharacter(hit.Parent)
+		if not player or not Guard.root(player) then
+			return
+		end
+		taken = true
+		local amount = coinReward(player)
+		EconomyService.add(player, amount, true)
+		AnnounceService.effect("CoinPickup", { Position = coin.Position, Amount = amount }, player)
+		coin:Destroy()
+		task.delay(3, spawnCoin) -- une nouvelle pièce apparaît ailleurs
+	end)
+	coin.Parent = folder
+end
+
+local function startCandy()
+	local folder = Instance.new("Folder")
+	folder.Name = "CandyCoins"
+	folder.Parent = workspace
+	candyFolder = folder
+	for _ = 1, Config.CandyCoinCount do
+		spawnCoin()
+	end
+end
+
+local function stopCandy()
+	if candyFolder then
+		candyFolder:Destroy()
+		candyFolder = nil
+	end
+end
+
+---------------------------------------------------------------- Monstre
+
 local function spawnMonster()
 	if anchor then
 		anchor:Destroy()
@@ -110,6 +220,7 @@ local function spawnMonster()
 	part.Size = Vector3.one
 	-- il sort du portail de départ
 	part.CFrame = CFrame.new(Config.PathStartX, HOVER, Config.PathZ)
+	part:SetAttribute("Scale", if theme == "Super" then Config.SuperMonsterScale else 1)
 	part.Parent = workspace
 	anchor = part
 end
@@ -147,7 +258,7 @@ local function stepMonster(dt: number)
 	local offset = flat(goal - pos)
 	local distance = offset.Magnitude
 	if distance > 0.1 then
-		local stepLength = math.min(distance, Config.MonsterSpeed * dt)
+		local stepLength = math.min(distance, monsterSpeed * dt)
 		local dir = offset.Unit
 		local candidate = pos + dir * stepLength
 		-- il ne rentre jamais dans les bases : il glisse le long des murs
@@ -171,17 +282,23 @@ local function stepMonster(dt: number)
 
 	if target and root then
 		local gap = (flat(root.Position) - flat(part.Position)).Magnitude
-		if gap <= Config.MonsterCatchRange + 3 then
+		if gap <= catchRange + 3 then
 			catch(target, root)
 		end
 	end
 end
 
+local START_KEYS = { Classic = "NightStart", Fog = "NightStartFog", Candy = "NightStartCandy", Super = "NightStartSuper" }
+
 local function runNight()
+	theme = pickTheme()
+	monsterSpeed = if theme == "Fog" then Config.FogMonsterSpeed else Config.MonsterSpeed
+	catchRange = if theme == "Super" then Config.MonsterCatchRange + 3 else Config.MonsterCatchRange
+	ReplicatedStorage:SetAttribute("NightTheme", theme)
 	local endsAt = now() + Config.NightDuration
 	setState(true, endsAt, endsAt + Config.DayDuration)
-	AnnounceService.announce("NightStart", nil, "night")
-	AnnounceService.effect("NightStart", {})
+	AnnounceService.announce(START_KEYS[theme], nil, "night")
+	AnnounceService.effect("NightStart", { Theme = theme })
 
 	-- un fantôme spécial garanti au début de chaque nuit
 	if GhostService.isEventActive() then
@@ -190,6 +307,13 @@ local function runNight()
 	else
 		local list = GhostData.ByRarity.Legendary
 		GhostService.spawn(list[math.random(1, #list)].Id)
+	end
+	if theme == "Super" then
+		local list = GhostData.ByRarity.Mythic
+		GhostService.spawn(list[math.random(1, #list)].Id)
+		GhostService.mutationBoost = Config.SuperMutationBoost
+	elseif theme == "Candy" then
+		startCandy()
 	end
 
 	spawnMonster()
@@ -201,6 +325,8 @@ local function runNight()
 		last = t
 	end
 	removeMonster()
+	stopCandy()
+	GhostService.mutationBoost = 1
 	immuneUntil = {}
 end
 

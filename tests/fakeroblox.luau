@@ -212,6 +212,7 @@ local SIGNALS = {
 	MouseLeave = true,
 	InputBegan = true,
 	Completed = true,
+	Touched = true,
 }
 
 local Methods = {}
@@ -662,6 +663,14 @@ ClassMethods.Players = {
 			end
 		end
 		return out
+	end,
+	GetPlayerFromCharacter = function(self, character)
+		for _, p in self:GetPlayers() do
+			if p.Character == character then
+				return p
+			end
+		end
+		return nil
 	end,
 	GetPlayerByUserId = function(self, userId)
 		for _, p in self:GetPlayers() do

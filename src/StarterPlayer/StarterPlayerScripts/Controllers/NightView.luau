@@ -33,6 +33,7 @@ local NIGHT_LIGHTING = {
 }
 local NIGHT_ATMOSPHERE = {
 	Density = 0.42,
+	Haze = 1.5,
 	Color = Color3.fromRGB(120, 80, 180),
 	Decay = Color3.fromRGB(60, 30, 100),
 }
@@ -41,6 +42,14 @@ local NIGHT_CC = {
 	Saturation = 0.25,
 	Contrast = 0.12,
 }
+
+-- Ce qui change selon le thème de la nuit
+local THEME_OVERRIDES = {
+	Fog = { Atmosphere = { Density = 0.78, Haze = 4 } },
+	Candy = { CC = { TintColor = Color3.fromRGB(255, 205, 235), Saturation = 0.45 } },
+	Super = { CC = { TintColor = Color3.fromRGB(255, 180, 180), Contrast = 0.22 } },
+}
+local THEME_ICONS = { Classic = "🌙", Fog = "🌫️", Candy = "🍬", Super = "🔥" }
 
 local dayLighting, dayAtmosphere, dayCC = {}, {}, {}
 local music: Sound? = nil
@@ -68,9 +77,18 @@ local function applyNight(active: boolean, duration: number)
 	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
 	local cc = Lighting:FindFirstChild("SAG_ColorCorrection")
 	if active then
+		local override = THEME_OVERRIDES[ReplicatedStorage:GetAttribute("NightTheme") or "Classic"] or {}
+		local atmosphereGoals = table.clone(NIGHT_ATMOSPHERE)
+		for key, value in override.Atmosphere or {} do
+			atmosphereGoals[key] = value
+		end
+		local ccGoals = table.clone(NIGHT_CC)
+		for key, value in override.CC or {} do
+			ccGoals[key] = value
+		end
 		tweenTo(Lighting, NIGHT_LIGHTING, duration)
-		tweenTo(atmosphere, NIGHT_ATMOSPHERE, duration)
-		tweenTo(cc, NIGHT_CC, duration)
+		tweenTo(atmosphere, atmosphereGoals, duration)
+		tweenTo(cc, ccGoals, duration)
 	else
 		tweenTo(Lighting, dayLighting, duration)
 		tweenTo(atmosphere, dayAtmosphere, duration)
@@ -178,6 +196,10 @@ local function onAnchorAdded(anchor: Instance)
 	end
 	monsterAnchor = anchor
 	local model = buildMonster()
+	local scale = anchor:GetAttribute("Scale") or 1
+	if scale ~= 1 then
+		model:ScaleTo(scale) -- Super Nuit : Gloutrouille géant
+	end
 	model:PivotTo(anchor.CFrame)
 	model.Parent = workspace
 	monster = model
@@ -260,9 +282,21 @@ function NightView.start()
 
 		-- minuteur
 		if ReplicatedStorage:GetAttribute("NightActive") then
-			timerLabel.Text = "🌙 " .. Lang.t("NightTimer", { time = Format.time((ReplicatedStorage:GetAttribute("NightEndsAt") or now) - now) })
+			local icon = THEME_ICONS[ReplicatedStorage:GetAttribute("NightTheme") or "Classic"] or "🌙"
+			timerLabel.Text = icon .. " " .. Lang.t("NightTimer", { time = Format.time((ReplicatedStorage:GetAttribute("NightEndsAt") or now) - now) })
 		else
 			timerLabel.Text = "🌙 " .. Lang.t("DayTimer", { time = Format.time((ReplicatedStorage:GetAttribute("NextNightAt") or now) - now) })
+		end
+
+		-- Nuit des Bonbons : les pièces tournent sur elles-mêmes
+		local coins = workspace:FindFirstChild("CandyCoins")
+		if coins then
+			for _, coin in coins:GetChildren() do
+				local base = coin:GetAttribute("Base")
+				if coin:IsA("BasePart") and typeof(base) == "CFrame" then
+					coin.CFrame = CFrame.new(base.Position + Vector3.new(0, math.sin(t * 3) * 0.3, 0)) * CFrame.Angles(0, t * 3, 0)
+				end
+			end
 		end
 
 		-- monstre : il glisse vers la position du serveur, rebondit et agite les bras

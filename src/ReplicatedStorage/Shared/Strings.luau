@@ -77,6 +77,10 @@ Strings.fr = {
 	-- Nuit Hantée
 	NightSoon = "La Nuit Hantée tombe dans {time} !",
 	NightStart = "NUIT HANTÉE ! Fantômes rares... et Gloutrouille !",
+	NightStartFog = "NUIT DU BROUILLARD ! On n'y voit rien... et Gloutrouille va plus vite !",
+	NightStartCandy = "NUIT DES BONBONS ! Des pièces sur le chemin... à tes risques !",
+	NightStartSuper = "SUPER NUIT ! Gloutrouille GÉANT et un Mythique garanti !",
+	WeekendBoost = "Week-end x2 !",
 	NightEnd = "Le jour se lève. Ouf !",
 	NightTimer = "Nuit : {time}",
 	DayTimer = "Nuit dans {time}",
@@ -219,6 +223,10 @@ Strings.en = {
 
 	NightSoon = "The Haunted Night falls in {time}!",
 	NightStart = "HAUNTED NIGHT! Rare ghosts... and Gloutrouille!",
+	NightStartFog = "FOG NIGHT! You can't see a thing... and Gloutrouille is faster!",
+	NightStartCandy = "CANDY NIGHT! Coins on the path... at your own risk!",
+	NightStartSuper = "SUPER NIGHT! GIANT Gloutrouille and a guaranteed Mythic!",
+	WeekendBoost = "Weekend x2!",
 	NightEnd = "The sun is rising. Phew!",
 	NightTimer = "Night: {time}",
 	DayTimer = "Night in {time}",

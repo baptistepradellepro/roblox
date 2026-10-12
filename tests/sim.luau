@@ -330,7 +330,8 @@ check(nextNight ~= nil, "prochaine nuit programmée")
 m = mark()
 Sched.advance(nextNight - workspace:GetServerTimeNow() + 1)
 check(RS:GetAttribute("NightActive") == true, "la nuit est tombée")
-check(announced("NightSoon", m) and announced("NightStart", m), "annonces de la nuit")
+local startAnnounced = announced("NightStart", m) or announced("NightStartFog", m) or announced("NightStartCandy", m) or announced("NightStartSuper", m)
+check(announced("NightSoon", m) and startAnnounced, "annonces de la nuit (" .. tostring(RS:GetAttribute("NightTheme")) .. ")")
 local anchor = workspace:FindFirstChild("GloutrouilleAnchor")
 check(anchor ~= nil, "Gloutrouille est là")
 -- les autres sont à l'abri chez eux
@@ -358,6 +359,83 @@ check(bob:GetAttribute("CarryGhost") == nil, "Gloutrouille fait lâcher le fant�
 Sched.advance(Config.NightDuration)
 check(RS:GetAttribute("NightActive") == false, "le jour revient")
 check(workspace:FindFirstChild("GloutrouilleAnchor") == nil, "Gloutrouille est parti")
+
+section("Calendrier : Super Nuit et week-end x2")
+local NightService = Fake.require("ServerScriptService.Services.NightService")
+-- samedi 3 octobre 2026
+local SATURDAY = 1790812800 + 2 * 86400
+check(NightService.isSuperTime(SATURDAY + 17.5 * 3600), "samedi 17h30 UTC = Super Nuit")
+check(not NightService.isSuperTime(SATURDAY + 18 * 3600), "samedi 18h UTC : c'est fini")
+check(not NightService.isSuperTime(SATURDAY - 86400 + 17.5 * 3600), "vendredi : pas de Super Nuit")
+local FRIDAY = SATURDAY - 86400
+check(EconomyService.isWeekendBoost(FRIDAY + 18 * 3600), "vendredi 18h UTC : week-end x2")
+check(not EconomyService.isWeekendBoost(FRIDAY + 16 * 3600), "vendredi 16h UTC : pas encore")
+check(EconomyService.isWeekendBoost(SATURDAY + 12 * 3600), "samedi : x2")
+check(EconomyService.isWeekendBoost(SATURDAY + 86400 + 22 * 3600), "dimanche 22h UTC : x2")
+check(not EconomyService.isWeekendBoost(SATURDAY + 86400 + 23.5 * 3600), "dimanche 23h30 UTC : fini")
+check(not EconomyService.isWeekendBoost(SATURDAY + 2 * 86400 + 12 * 3600), "lundi : normal")
+local realWeekend = EconomyService.isWeekendBoost
+local multNormal = alice:GetAttribute("Multiplier")
+EconomyService.isWeekendBoost = function()
+	return true
+end
+Sched.advance(1.1)
+check(RS:GetAttribute("WeekendBoost") == true, "le week-end x2 est annoncé aux joueurs")
+check(math.abs(alice:GetAttribute("Multiplier") - multNormal * 2) < 0.02, "revenus doublés le week-end")
+EconomyService.isWeekendBoost = realWeekend
+Sched.advance(1.1)
+check(RS:GetAttribute("WeekendBoost") == false, "retour à la normale")
+
+section("Nuit des Bonbons")
+local savedThemes = Config.NightThemes
+Config.NightThemes = { Classic = 0, Fog = 0, Candy = 1 }
+Sched.advance(RS:GetAttribute("NextNightAt") - workspace:GetServerTimeNow() + 1)
+check(RS:GetAttribute("NightTheme") == "Candy", "thème : Bonbons")
+local candy = workspace:FindFirstChild("CandyCoins")
+check(candy ~= nil and #candy:GetChildren() == Config.CandyCoinCount, "24 pièces posées sur le chemin")
+local inBase = false
+for _, coin in candy:GetChildren() do
+	if BaseService.baseAt(coin.Position) then
+		inBase = true
+	end
+end
+check(not inBase, "aucune pièce dans une base")
+Fake.moveTo(bob, baseCenter(bob))
+Fake.moveTo(alice, baseCenter(alice))
+local coin = candy:GetChildren()[1]
+local cBefore = cData.Coins
+Fake.moveTo(chloe, coin.Position)
+coin.Touched:Fire(chloe.Character.HumanoidRootPart)
+check(cData.Coins >= cBefore + 25, "Chloé ramasse une pièce")
+check(coin.Parent == nil, "la pièce disparaît")
+coin.Touched:Fire(chloe.Character.HumanoidRootPart)
+check(cData.Coins < cBefore + 25 * 2 + 50, "une pièce ne se ramasse qu'une fois")
+Sched.advance(3.5)
+check(#candy:GetChildren() == Config.CandyCoinCount, "une nouvelle pièce réapparaît")
+Fake.moveTo(chloe, baseCenter(chloe))
+Sched.advance(Config.NightDuration)
+check(workspace:FindFirstChild("CandyCoins") == nil, "les pièces disparaissent au matin")
+
+section("Super Nuit")
+local wday = os.date("!*t", Fake.os.time()).wday
+Config.SuperNight = { WeekDay = wday, StartHour = 0, EndHour = 24 }
+Sched.advance(RS:GetAttribute("NextNightAt") - workspace:GetServerTimeNow() + 1)
+check(RS:GetAttribute("NightTheme") == "Super", "thème : Super Nuit")
+local superAnchor = workspace:FindFirstChild("GloutrouilleAnchor")
+check(superAnchor and superAnchor:GetAttribute("Scale") == Config.SuperMonsterScale, "Gloutrouille géant")
+local mythicOnPath = false
+for _, h in RS.PathGhosts:GetChildren() do
+	local g = GhostData.get(h:GetAttribute("GhostId"))
+	if g and g.Rarity == "Mythic" then
+		mythicOnPath = true
+	end
+end
+check(mythicOnPath, "un Mythique garanti sur le chemin")
+check(GhostService.mutationBoost == Config.SuperMutationBoost, "variantes 3 fois plus fréquentes")
+Sched.advance(Config.NightDuration)
+check(GhostService.mutationBoost == 1, "chances normales après la Super Nuit")
+Config.SuperNight = { WeekDay = 7, StartHour = 17, EndHour = 18 }
+Config.NightThemes = savedThemes
 
 section("Rebirth")
 m = mark()
