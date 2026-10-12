@@ -60,6 +60,19 @@ local function isLocked(baseModel: Model): boolean
 	return workspace:GetServerTimeNow() < (baseModel:GetAttribute("LockedUntil") or 0)
 end
 
+-- Suis-je dans cette base, au même étage que ce socle ? (le serveur vérifie pareil pour voler)
+local function standingBy(baseModel: Model, ped: BasePart): boolean
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local origin = baseModel:GetAttribute("Origin")
+	local half = baseModel:GetAttribute("HalfSize")
+	if not root or typeof(origin) ~= "CFrame" or typeof(half) ~= "Vector3" then
+		return false
+	end
+	local localPos = origin:PointToObjectSpace(root.Position)
+	return math.abs(localPos.X) < half.X and math.abs(localPos.Z) < half.Z and math.abs(root.Position.Y - ped.Position.Y) < 8
+end
+
 ---------------------------------------------------------------- Panneau d'entrée
 
 local function setupSign(baseModel: Model)
@@ -101,20 +114,26 @@ local function setupSign(baseModel: Model)
 	refresh()
 
 	local label = lockTag:FindFirstChild("Text") :: TextLabel
+	local shown = ""
 	RunService.Heartbeat:Connect(function()
-		local remaining = (baseModel:GetAttribute("LockedUntil") or 0) - workspace:GetServerTimeNow()
+		local remaining = math.ceil((baseModel:GetAttribute("LockedUntil") or 0) - workspace:GetServerTimeNow())
+		local text = ""
 		if remaining > 0 and ownerOf(baseModel) ~= 0 then
 			local icon = if baseModel:GetAttribute("Shield") then "🛡️ " else "🔒 "
-			label.Text = icon .. Format.time(remaining)
-			lockTag.Enabled = true
-		else
-			lockTag.Enabled = false
+			text = icon .. Format.time(remaining)
 		end
+		if text == shown then
+			return -- rien à changer : on ne touche pas au texte à chaque image
+		end
+		shown = text
+		label.Text = text
+		lockTag.Enabled = text ~= ""
 	end)
 end
 
 ---------------------------------------------------------------- Barrière du verrou
 
+local ANIMATE_RANGE = 48 -- les fantômes des socles bougent seulement à moins de 48 studs de la caméra
 local OWNER_BARRIER_TRANSPARENCY = 0.85 -- chez moi, la barrière est presque invisible
 
 local function setupBarrier(baseModel: Model)
@@ -310,6 +329,14 @@ local function renderSlot(slot: Slot)
 	elseif currentId ~= ghostId then
 		destroyGhost(slot)
 		local model = GhostFactory.build(ghostId)
+		if not mine then
+			-- les lumières qui bougent coûtent cher sur téléphone : seulement dans ma base
+			for _, d in model:GetDescendants() do
+				if d:IsA("PointLight") then
+					d:Destroy()
+				end
+			end
+		end
 		local bottom = model:GetAttribute("Bottom") or 2
 		slot.Anchor = (ped:GetAttribute("GhostCFrame") :: CFrame) * CFrame.new(0, bottom + 0.4, 0)
 		slot.Spin = model:GetAttribute("Spin") or 1
@@ -354,7 +381,12 @@ local function updatePrompts()
 		local hasGhost = (ped:GetAttribute("GhostId") or "") ~= "" and ped:GetAttribute("Stolen") ~= true
 		local owner = ownerOf(slot.BaseModel)
 		local mine = owner == player.UserId
-		local stealOk = hasGhost and owner ~= 0 and not mine and not carrying and not isLocked(slot.BaseModel)
+		local stealOk = hasGhost
+			and owner ~= 0
+			and not mine
+			and not carrying
+			and not isLocked(slot.BaseModel)
+			and standingBy(slot.BaseModel, ped)
 		if slot.Steal.Enabled ~= stealOk then
 			slot.Steal.Enabled = stealOk
 		end
@@ -458,8 +490,15 @@ function BaseView.start()
 		task.spawn(setupBase, baseModel)
 	end
 
-	-- Animation douce des fantômes proches (les lointains restent immobiles : économie de batterie)
-	RunService.RenderStepped:Connect(function()
+	-- Animation douce des fantômes proches, 30 fois par seconde
+	-- (les lointains restent immobiles : économie de batterie sur téléphone)
+	local animClock = 0
+	RunService.Heartbeat:Connect(function(dt)
+		animClock += dt
+		if animClock < 1 / 30 then
+			return
+		end
+		animClock = 0
 		updateSirens()
 		local camera = workspace.CurrentCamera
 		if not camera then
@@ -469,7 +508,7 @@ function BaseView.start()
 		local t = os.clock()
 		for _, slot in slots do
 			local model = slot.Model
-			if model and (slot.Anchor.Position - camPos).Magnitude < 75 then
+			if model and (slot.Anchor.Position - camPos).Magnitude < ANIMATE_RANGE then
 				local bob = math.sin(t * 2 + slot.Phase) * 0.3
 				local turn = if slot.Spin > 1 then t * slot.Spin else math.sin(t * 0.8 + slot.Phase) * 0.35
 				model:PivotTo(slot.Anchor * CFrame.new(0, bob, 0) * CFrame.Angles(0, turn, 0))

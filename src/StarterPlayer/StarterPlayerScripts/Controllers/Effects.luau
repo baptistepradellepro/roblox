@@ -277,6 +277,16 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if root and typeof(data.Direction) == "Vector3" then
 			local power = math.clamp(tonumber(data.Power) or 40, 0, 120)
+			-- un court instant sans "jambes" : sinon le Humanoid annule la poussée tout de suite
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.PlatformStand = true
+				task.delay(0.35, function()
+					if humanoid.Parent then
+						humanoid.PlatformStand = false
+					end
+				end)
+			end
 			root.AssemblyLinearVelocity = data.Direction * power + Vector3.new(0, 28, 0)
 			Effects.shake(0.8, 0.3)
 		end

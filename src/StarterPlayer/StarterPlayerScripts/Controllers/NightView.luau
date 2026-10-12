@@ -115,16 +115,24 @@ function NightView.start()
 		applyNight(true, 0.1)
 	end
 
+	local timerKey = ""
 	RunService.RenderStepped:Connect(function()
 		local now = workspace:GetServerTimeNow()
 		local t = os.clock()
 
-		-- minuteur
-		if ReplicatedStorage:GetAttribute("NightActive") then
-			local icon = THEME_ICONS[ReplicatedStorage:GetAttribute("NightTheme") or "Classic"] or "🌙"
-			timerLabel.Text = icon .. " " .. Lang.t("NightTimer", { time = Format.time((ReplicatedStorage:GetAttribute("NightEndsAt") or now) - now) })
-		else
-			timerLabel.Text = "🌙 " .. Lang.t("DayTimer", { time = Format.time((ReplicatedStorage:GetAttribute("NextNightAt") or now) - now) })
+		-- minuteur (le texte n'est refait que quand la seconde affichée change)
+		local night = ReplicatedStorage:GetAttribute("NightActive") == true
+		local target = if night then ReplicatedStorage:GetAttribute("NightEndsAt") else ReplicatedStorage:GetAttribute("NextNightAt")
+		local left = math.max(0, math.ceil((target or now) - now))
+		local key = (if night then "N" else "D") .. left .. (ReplicatedStorage:GetAttribute("NightTheme") or "")
+		if key ~= timerKey then
+			timerKey = key
+			if night then
+				local icon = THEME_ICONS[ReplicatedStorage:GetAttribute("NightTheme") or "Classic"] or "🌙"
+				timerLabel.Text = icon .. " " .. Lang.t("NightTimer", { time = Format.time(left) })
+			else
+				timerLabel.Text = "🌙 " .. Lang.t("DayTimer", { time = Format.time(left) })
+			end
 		end
 
 		-- Nuit des Bonbons : les pièces tournent sur elles-mêmes

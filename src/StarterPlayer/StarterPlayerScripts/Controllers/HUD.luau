@@ -110,7 +110,7 @@ local shownCoins = 0
 function HUD.pill(color: Color3, order: number): Frame
 	local pill = UI.new("Frame", {
 		Name = "Pill",
-		Size = UDim2.fromOffset(190, 34),
+		Size = UDim2.fromOffset(180, 34),
 		BackgroundColor3 = UI.Colors.Panel,
 		BackgroundTransparency = 0.1,
 		LayoutOrder = order,
@@ -163,20 +163,21 @@ local function buildTopBar()
 		MaxTextSize = 24,
 		Parent = panel,
 	})
-	-- Ligne d'infos sous les pièces (minuteur de nuit, bonus amis)
+	-- Infos sous les pièces (minuteur de nuit, bonus amis...) : 3 pastilles par ligne au plus
 	HUD.infoRow = UI.new("Frame", {
 		Name = "InfoRow",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 94),
-		Size = UDim2.fromOffset(420, 34),
+		Size = UDim2.fromOffset(556, 76),
 		BackgroundTransparency = 1,
 		Parent = gui,
 	}, {
-		UI.new("UIListLayout", {
+		UI.new("UIGridLayout", {
+			CellSize = UDim2.fromOffset(180, 34),
+			CellPadding = UDim2.fromOffset(8, 8),
 			FillDirection = Enum.FillDirection.Horizontal,
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, 8),
 		}),
 	})
 	local friendPill = HUD.pill(UI.Colors.Info, 2)
@@ -185,7 +186,7 @@ local function buildTopBar()
 	toastList = UI.new("Frame", {
 		Name = "Toasts",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 136),
+		Position = UDim2.new(0.5, 0, 0, 178),
 		Size = UDim2.fromOffset(540, 160),
 		BackgroundTransparency = 1,
 		Parent = gui,
@@ -318,8 +319,13 @@ function HUD.start()
 	local boostPill = HUD.pill(UI.Colors.Info, 2)
 	boostPill.Name = "BoostPill"
 	local boostText = boostPill:FindFirstChild("Text") :: TextLabel
+	local boostShown = -1
 	RunService.Heartbeat:Connect(function()
-		local remaining = (player:GetAttribute("BoostUntil") or 0) - os.time()
+		local remaining = math.ceil((player:GetAttribute("BoostUntil") or 0) - workspace:GetServerTimeNow())
+		if remaining == boostShown then
+			return -- le texte ne change qu'une fois par seconde
+		end
+		boostShown = remaining
 		boostPill.Visible = remaining > 0
 		if remaining > 0 then
 			boostText.Text = "⚡ " .. Lang.t("BoostPill", { time = Format.time(remaining) })

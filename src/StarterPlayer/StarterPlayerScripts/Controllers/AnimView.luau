@@ -151,16 +151,37 @@ local function pose(motor: Motor6D?, rotation: CFrame?)
 	end
 end
 
+-- Les épaules de chaque personnage, cherchées une seule fois (pas à chaque image)
+type Shoulders = { Character: Model, Right: Motor6D?, Left: Motor6D? }
+local shoulders: { [Player]: Shoulders } = {}
+
+local function shouldersOf(other: Player, character: Model): Shoulders
+	local entry = shoulders[other]
+	if not entry or entry.Character ~= character or (entry.Right and not entry.Right.Parent) then
+		entry = {
+			Character = character,
+			Right = findMotor(character, { "RightShoulder", "Right Shoulder" }),
+			Left = findMotor(character, { "LeftShoulder", "Left Shoulder" }),
+		}
+		shoulders[other] = entry
+	end
+	return entry
+end
+
 function AnimView.start()
 	local raised: { [Player]: boolean } = {}
+	Players.PlayerRemoving:Connect(function(other)
+		shoulders[other] = nil
+		raised[other] = nil
+	end)
 	RunService.RenderStepped:Connect(function()
 		local now = os.clock()
 		for _, other in Players:GetPlayers() do
 			local character = other.Character
 			local carrying = other:GetAttribute("CarryGhost") ~= nil
 			if character and (carrying or raised[other]) then
-				local right = findMotor(character, { "RightShoulder", "Right Shoulder" })
-				local left = findMotor(character, { "LeftShoulder", "Left Shoulder" })
+				local entry = shouldersOf(other, character)
+				local right, left = entry.Right, entry.Left
 				if carrying then
 					local wave = math.sin(now * 6) * 5
 					pose(right, CFrame.Angles(rad(160 + wave), 0, rad(-10)))

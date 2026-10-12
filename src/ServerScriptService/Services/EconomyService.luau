@@ -122,7 +122,9 @@ function EconomyService.refresh(player: Player)
 	player:SetAttribute("Multiplier", math.floor(EconomyService.multiplier(player) * 100) / 100)
 	player:SetAttribute("Rebirths", data.Rebirths)
 	player:SetAttribute("FriendBonus", friendBonus[player] or 0)
-	player:SetAttribute("BoostUntil", data.BoostUntil or 0)
+	-- fin du bonus x2, en heure du serveur (l'horloge du téléphone peut être fausse)
+	local boostLeft = (data.BoostUntil or 0) - os.time()
+	player:SetAttribute("BoostUntil", if boostLeft > 0 then workspace:GetServerTimeNow() + boostLeft else 0)
 	if data.Stored then
 		updateStoredTotal(player, data)
 	end

@@ -190,11 +190,12 @@ function Builders.AspiraFantome(tool: Tool, handle: BasePart)
 	end
 end
 
--- Fabrique l'outil (Tool) à mettre dans le sac du joueur
-function Weapons.buildTool(id: string): Tool
+-- Fabrique l'outil (Tool) à mettre dans le sac du joueur.
+-- lang = "fr" ou "en" : le nom affiché dans la barre d'objets du joueur
+function Weapons.buildTool(id: string, lang: string?): Tool
 	local weapon = Weapons.ById[id] or Weapons.ById.Batte
 	local tool = Instance.new("Tool")
-	tool.Name = weapon.Name.fr
+	tool.Name = weapon.Name[lang or "fr"] or weapon.Name.fr
 	tool.ToolTip = weapon.Icon
 	tool.CanBeDropped = false
 	tool.RequiresHandle = true

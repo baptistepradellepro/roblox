@@ -44,6 +44,7 @@ type Carry = {
 	LeftBases: boolean, -- vu hors des deux bases (on ne livre pas à travers un mur)
 	MinTime: number, -- temps minimum pour rentrer chez soi en marchant
 	WindowSpeed: number?,
+	LastJump: number?,
 }
 
 local carries: { [Player]: Carry } = {}
@@ -325,11 +326,19 @@ local function check(carry: Carry, t: number)
 		-- le serveur vient de le déplacer (ascenseur...) : on repart de sa nouvelle place
 		carry.WindowStart, carry.WindowPos = t, pos
 	else
-		-- Anti-triche : un saut énorme d'un coup = téléportation
-		local dt = t - carry.LastTick
-		if (pos - carry.LastPos).Magnitude > Config.CarrierWalkSpeed * dt * 2 + 5 then
-			StealService.failCarry(thief, "Cheat")
-			return
+		-- Anti-triche : un saut énorme d'un coup = téléportation.
+		-- Sur mobile, la position arrive parfois par paquets après un petit gel du réseau :
+		-- on compare au temps écoulé depuis le dernier vrai mouvement, et il faut deux sauts
+		-- suspects rapprochés (ou un saut vraiment énorme) pour annuler le vol.
+		local moved = (pos - carry.LastPos).Magnitude
+		local allowance = Config.CarrierWalkSpeed * math.min(t - carry.LastTick, 1.5) * 1.5 + 8
+		if moved > allowance then
+			local recent = t - (carry.LastJump or -math.huge) < 3
+			carry.LastJump = t
+			if moved > allowance * 2 or recent then
+				StealService.failCarry(thief, "Cheat")
+				return
+			end
 		end
 		-- Anti-triche vitesse : la distance parcourue chaque seconde
 		if t - carry.WindowStart >= 1 then
@@ -339,7 +348,7 @@ local function check(carry: Carry, t: number)
 			if speed > allowed then
 				carry.Violations += 1
 			else
-				carry.Violations = math.max(0, carry.Violations - 0.5)
+				carry.Violations = math.max(0, carry.Violations - 1)
 			end
 			carry.WindowStart = t
 			carry.WindowPos = pos
@@ -350,7 +359,10 @@ local function check(carry: Carry, t: number)
 		end
 	end
 	carry.WindowSpeed = normalSpeedFor(thief)
-	carry.LastTick, carry.LastPos = t, pos
+	-- on ne note la position que quand elle a vraiment changé (voir plus haut)
+	if (pos - carry.LastPos).Magnitude > 0.05 or Guard.teleportedWithin(thief, 0.5) then
+		carry.LastTick, carry.LastPos = t, pos
+	end
 
 	local thiefBase = BaseService.getBase(thief)
 	local inThiefBase = thiefBase ~= nil and BaseService.isInside(thiefBase, root.Position)

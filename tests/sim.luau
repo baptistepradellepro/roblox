@@ -559,6 +559,14 @@ Sched.advance(1)
 check(bob:GetAttribute("CarryGhost") ~= nil and aData.Slots[tostring(slot)] == "Caquetome", "pas de livraison sans sortir de la base volée")
 StealService.failCarry(bob, "Timeout")
 Sched.advance(1)
+-- réseau mobile qui gèle 1 s puis rattrape d'un coup : ce n'est pas de la triche
+steal(bob, alice, slot)
+Sched.advance(1.2)
+Fake.moveTo(bob, Fake.position(bob) + Vector3.new(0, 0, -12))
+Sched.advance(0.3)
+check(bob:GetAttribute("CarryGhost") ~= nil, "petit gel du réseau : le vol continue")
+StealService.failCarry(bob, "Timeout")
+Sched.advance(1)
 -- à travers le mur : juste derrière le mur de côté, près d'un socle
 local MapBuilder = Fake.require("ServerScriptService.Services.MapBuilder")
 local aliceOrigin = BaseService.getBase(alice).Origin

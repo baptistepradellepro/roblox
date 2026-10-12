@@ -200,6 +200,35 @@ Fake.walk(bob, BaseService.getBase(bob).Origin.Position + Vector3.new(0, 3, 0), 
 Sched.advance(0.5)
 check(findText(gui.SAG_Announce, "Bob a volé") ~= nil, "bannière 'Bob a volé ... à Alice !'")
 
+section("Bouton Voler seulement dans la base")
+do
+	local bobBase = BaseService.getBase(bob)
+	local stealPed, stealPrompt
+	for _, ped in bobBase.Pedestals do
+		if (ped:GetAttribute("GhostId") or "") ~= "" and not ped:GetAttribute("Stolen") then
+			stealPed = ped
+			stealPrompt = find(ped, function(d)
+				return d.ClassName == "ProximityPrompt" and string.find(d.ActionText, "Voler", 1, true) ~= nil
+			end)
+			break
+		end
+	end
+	check(stealPed ~= nil and stealPrompt ~= nil, "un socle de Bob avec un bouton Voler")
+	if stealPed and stealPrompt then
+		local origin = bobBase.Origin
+		local localPed = origin:PointToObjectSpace(stealPed.Position)
+		Fake.moveTo(alice, origin:PointToWorldSpace(Vector3.new(localPed.X * 0.75, 3, localPed.Z)))
+		Sched.advance(0.5)
+		check(stealPrompt.Enabled == true, "dans la base de Bob : bouton Voler")
+		local side = if localPed.X > 0 then 1 else -1
+		Fake.moveTo(alice, origin:PointToWorldSpace(Vector3.new(side * 19.5, 3, localPed.Z)))
+		Sched.advance(0.5)
+		check(stealPrompt.Enabled == false, "derrière le mur : pas de bouton Voler")
+	end
+	Fake.moveTo(alice, aliceBase.Origin.Position + Vector3.new(0, 3, 0))
+	Sched.advance(0.3)
+end
+
 section("Étage 2 (ascenseur et achat)")
 local upPad = aliceBase.Model:FindFirstChild("UpPad")
 local floorTag = upPad:FindFirstChildOfClass("BillboardGui")

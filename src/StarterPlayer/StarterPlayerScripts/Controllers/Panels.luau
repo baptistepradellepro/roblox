@@ -693,6 +693,21 @@ local function buildIndex(): Frame
 		return indexInfo ~= nil and table.find(indexInfo.Discovered, ghostId) ~= nil
 	end
 
+	-- Les fantômes 3D des vignettes sont fabriqués quelques-uns par image
+	-- (les 43 d'un coup feraient ramer un téléphone à la première ouverture)
+	local pending: { { Viewport: ViewportFrame, Id: string } } = {}
+	local function fillViewport(viewport: ViewportFrame, ghostId: string)
+		local model = GhostFactory.build(ghostId)
+		model.Parent = viewport
+		local cf, size = model:GetBoundingBox()
+		local distance = math.max(size.X, size.Y) * 1.5 + 2
+		local camera = Instance.new("Camera")
+		camera.FieldOfView = 40
+		camera.CFrame = CFrame.lookAt(cf.Position + Vector3.new(distance * 0.3, size.Y * 0.1, -distance), cf.Position)
+		camera.Parent = viewport
+		viewport.CurrentCamera = camera
+	end
+
 	local function buildTiles()
 		for _, ghost in GhostData.List do
 			local tile = UI.new("TextButton", {
@@ -712,15 +727,7 @@ local function buildIndex(): Frame
 				LightDirection = Vector3.new(-1, -1, 1),
 				Parent = tile,
 			})
-			local model = GhostFactory.build(ghost.Id)
-			model.Parent = viewport
-			local cf, size = model:GetBoundingBox()
-			local distance = math.max(size.X, size.Y) * 1.5 + 2
-			local camera = Instance.new("Camera")
-			camera.FieldOfView = 40
-			camera.CFrame = CFrame.lookAt(cf.Position + Vector3.new(distance * 0.3, size.Y * 0.1, -distance), cf.Position)
-			camera.Parent = viewport
-			viewport.CurrentCamera = camera
+			table.insert(pending, { Viewport = viewport, Id = ghost.Id })
 			local name = UI.label({
 				Size = UDim2.new(1, -6, 0, 24),
 				Position = UDim2.new(0, 3, 1, -27),
@@ -746,6 +753,15 @@ local function buildIndex(): Frame
 			end)
 			tiles[ghost.Id] = { Viewport = viewport, Name = name, Mystery = mystery, Secret = ghost.Rarity == "Secret" }
 		end
+		task.spawn(function()
+			for i, item in pending do
+				fillViewport(item.Viewport, item.Id)
+				if i % 4 == 0 then
+					task.wait()
+				end
+			end
+			table.clear(pending)
+		end)
 	end
 
 	local function refresh()

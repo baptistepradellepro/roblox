@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Weapons = require(Shared:WaitForChild("Weapons"))
 
@@ -35,6 +36,20 @@ local function flat(v: Vector3): Vector3
 	return Vector3.new(v.X, 0, v.Z)
 end
 
+-- Langue du joueur (même règle que Lang côté joueur), pour le nom des armes
+local function languageOf(player: Player): string
+	if Config.ForceLanguage == "fr" or Config.ForceLanguage == "en" then
+		return Config.ForceLanguage
+	end
+	local ok, locale = pcall(function()
+		return player.LocaleId
+	end)
+	if ok and type(locale) == "string" and string.sub(string.lower(locale), 1, 2) == "fr" then
+		return "fr"
+	end
+	return "en"
+end
+
 -- Met les armes du joueur dans son sac (sans doublon)
 function WeaponService.giveTools(player: Player)
 	local backpack = player:FindFirstChildOfClass("Backpack") or player:WaitForChild("Backpack", 5)
@@ -55,7 +70,7 @@ function WeaponService.giveTools(player: Player)
 				end
 			end
 			if not has then
-				Weapons.buildTool(weapon.Id).Parent = backpack
+				Weapons.buildTool(weapon.Id, languageOf(player)).Parent = backpack
 			end
 		end
 	end

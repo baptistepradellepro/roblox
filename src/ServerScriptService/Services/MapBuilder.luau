@@ -390,6 +390,7 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 
 	model:SetAttribute("Index", index)
 	model:SetAttribute("Origin", origin)
+	model:SetAttribute("HalfSize", Vector3.new(MapBuilder.BASE_WIDTH / 2, 0, MapBuilder.BASE_DEPTH / 2))
 	model:SetAttribute("Color", color)
 	model:SetAttribute("OwnerUserId", 0)
 	model:SetAttribute("OwnerName", "")

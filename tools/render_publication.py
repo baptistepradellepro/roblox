@@ -71,6 +71,7 @@ class Scene:
     def __init__(self):
         self.prims = []
         self.next_group = 1
+        self.highlights = {}  # groupe -> (couleur de remplissage, opacité, couleur du contour)
 
     def group(self):
         g = self.next_group
@@ -438,6 +439,19 @@ def render(scene, cam, look, ss=2):
         color[grown] = color[grown] * (1 - k) + oc * k
         alpha[grown] = 1.0
 
+    # surlignage façon "Highlight" de Roblox (le voleur en rouge)
+    for g, (fill, opacity, line) in scene.highlights.items():
+        mask = gbuf == g
+        if not mask.any():
+            continue
+        color[mask] = color[mask] * (1 - opacity) + np.array(fill) * opacity
+        ring = mask.copy()
+        for _ in range(max(1, int(round(look.outline_px * ss * 1.2)))):
+            ring = ring | np.roll(ring, 1, 0) | np.roll(ring, -1, 0) | np.roll(ring, 1, 1) | np.roll(ring, -1, 1)
+        ring &= ~mask
+        color[ring] = np.array(line)
+        alpha[ring] = 1.0
+
     rgb = np.clip(color, 0, 1)
     if look.sky is not None:
         alpha[:] = 1
@@ -459,13 +473,29 @@ def render(scene, cam, look, ss=2):
 # ------------------------------------------------------------------ cadrage
 
 def corners(prims):
+    """Points sur la surface des pièces (pour cadrer au plus juste)."""
     pts = []
     for p in prims:
         h = p.size / 2
-        for sx in (-1, 1):
-            for sy in (-1, 1):
-                for sz in (-1, 1):
-                    pts.append(p.pos + p.R @ (h * [sx, sy, sz]))
+        if p.shape == "Ball":
+            r = p.size.min() / 2
+            for v in ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)):
+                pts.append(p.pos + np.array(v) * r)
+            for sx in (-1, 1):
+                for sy in (-1, 1):
+                    for sz in (-1, 1):
+                        pts.append(p.pos + np.array([sx, sy, sz]) * r * 0.577)
+        elif p.shape == "Cylinder":
+            r = min(p.size[1], p.size[2]) / 2
+            for x in (-h[0], h[0]):
+                for i in range(12):
+                    a = 2 * math.pi * i / 12
+                    pts.append(p.pos + p.R @ np.array([x, r * math.cos(a), r * math.sin(a)]))
+        else:
+            for sx in (-1, 1):
+                for sy in (-1, 1):
+                    for sz in (-1, 1):
+                        pts.append(p.pos + p.R @ (h * [sx, sy, sz]))
     return np.array(pts)
 
 
@@ -504,13 +534,212 @@ def fit_camera(prims, direction, w, h, fov=30.0, margin=0.08, lift=0.0, up=(0, 1
     return Camera(center + direction * hi, center, w, h, fov, up=up)
 
 
-# ------------------------------------------------------------------ essai rapide
-if __name__ == "__main__" and len(sys.argv) > 2 and sys.argv[2] == "--test":
-    data = json.load(open(sys.argv[1]))
+# ------------------------------------------------------------------ décor 2D (fonds, textes)
+
+FONT_DIR = "/usr/share/fonts/opentype/inter/"
+
+
+def font(size, italic=True):
+    name = "InterDisplay-BlackItalic.otf" if italic else "InterDisplay-Black.otf"
+    try:
+        return ImageFont.truetype(FONT_DIR + name, size)
+    except OSError:
+        return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size)
+
+
+def rgb(c):
+    return np.array(c, dtype=float) / 255
+
+
+def sunburst(w, h, c1, c2, glow, rays=20, center=None, twist=0.0):
+    cx, cy = center if center else (w / 2, h / 2)
+    y, x = np.mgrid[0:h, 0:w].astype(float)
+    ang = np.arctan2(y - cy, x - cx) + twist
+    band = (np.floor((ang + math.pi) / (2 * math.pi / rays)) % 2)[..., None]
+    base = rgb(c1) * band + rgb(c2) * (1 - band)
+    dist = np.hypot(x - cx, y - cy) / math.hypot(w, h) * 2
+    t = np.clip(dist, 0, 1)[..., None] ** 0.7
+    img = rgb(glow) * (1 - t) + base * t
+    vignette = np.clip(1 - (dist[..., None] - 0.6) * 0.6, 0.55, 1)
+    return np.clip(img * vignette, 0, 1)
+
+
+def night_sky(top=(22, 12, 48), mid=(70, 34, 110), horizon=(190, 95, 150), stars=160, seed=3):
+    def paint(w, h):
+        y = np.linspace(0, 1, h)[:, None, None]
+        a = np.clip(y / 0.55, 0, 1)
+        b = np.clip((y - 0.55) / 0.45, 0, 1)
+        img = rgb(top) * (1 - a) + rgb(mid) * a
+        img = img * (1 - b) + rgb(horizon) * b
+        img = np.broadcast_to(img, (h, w, 3)).copy()
+        rng = np.random.default_rng(seed)
+        for _ in range(stars):
+            sx, sy = rng.integers(0, w), rng.integers(0, int(h * 0.55))
+            r = max(1, int(w / 900 * rng.uniform(0.6, 1.6)))
+            img[max(0, sy - r):sy + r, max(0, sx - r):sx + r] = 0.95
+        return img
+    return paint
+
+
+def flat_sky(color_top, color_bottom):
+    def paint(w, h):
+        y = np.linspace(0, 1, h)[:, None, None]
+        img = rgb(color_top) * (1 - y) + rgb(color_bottom) * y
+        return np.broadcast_to(img, (h, w, 3)).copy()
+    return paint
+
+
+def to_image(arr):
+    return Image.fromarray((np.clip(arr, 0, 1) * 255).astype(np.uint8), "RGB").convert("RGBA")
+
+
+def moon(img, cx, cy, r):
+    glow = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(glow)
+    d.ellipse([cx - r * 2.2, cy - r * 2.2, cx + r * 2.2, cy + r * 2.2], fill=(255, 230, 200, 70))
+    glow = glow.filter(ImageFilter.GaussianBlur(r * 0.8))
+    img.alpha_composite(glow)
+    d = ImageDraw.Draw(img)
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(255, 244, 214, 255))
+    for ox, oy, rr in ((-0.35, -0.2, 0.18), (0.3, 0.25, 0.13), (0.1, -0.45, 0.09)):
+        d.ellipse([cx + ox * r - rr * r, cy + oy * r - rr * r, cx + ox * r + rr * r, cy + oy * r + rr * r], fill=(236, 222, 190, 255))
+
+
+def title(text, size, top=(255, 236, 90), bottom=(255, 150, 20), stroke=(40, 14, 60), stroke_w=None,
+          italic=True, angle=0.0, shadow=True):
+    """Gros texte façon jeu : dégradé, contour épais et ombre."""
+    f = font(size, italic)
+    stroke_w = stroke_w if stroke_w is not None else max(4, size // 9)
+    probe = ImageDraw.Draw(Image.new("L", (1, 1)))
+    x0, y0, x1, y1 = probe.textbbox((0, 0), text, font=f, stroke_width=stroke_w)
+    pad = stroke_w * 2 + 10
+    w, h = x1 - x0 + pad * 2, y1 - y0 + pad * 2
+    origin = (pad - x0, pad - y0)
+    out = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    if shadow:
+        sh = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        ImageDraw.Draw(sh).text((origin[0] + size * 0.05, origin[1] + size * 0.07), text, font=f,
+                                fill=(20, 5, 30, 200), stroke_width=stroke_w, stroke_fill=(20, 5, 30, 200))
+        out.alpha_composite(sh.filter(ImageFilter.GaussianBlur(size * 0.03)))
+    ImageDraw.Draw(out).text(origin, text, font=f, fill=stroke + (255,), stroke_width=stroke_w, stroke_fill=stroke + (255,))
+    mask = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(mask).text(origin, text, font=f, fill=255)
+    grad = np.zeros((h, w, 4))
+    yy = np.clip((np.arange(h)[:, None] - origin[1] - (y0 + size * 0.15)) / (size * 0.75), 0, 1)
+    grad[..., :3] = (rgb(top) * (1 - yy[..., None]) + rgb(bottom) * yy[..., None])
+    grad[..., 3] = 1
+    gimg = Image.fromarray((grad * 255).astype(np.uint8), "RGBA")
+    out.paste(gimg, (0, 0), mask)
+    # petit reflet en haut des lettres
+    shine = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(shine).text((origin[0], origin[1] - size * 0.04), text, font=f, fill=90)
+    shine = Image.fromarray((np.asarray(shine) * (np.asarray(mask) > 0) * (yy < 0.35)).astype(np.uint8))
+    white = Image.new("RGBA", (w, h), (255, 255, 255, 255))
+    out.paste(white, (0, 0), shine)
+    if angle:
+        out = out.rotate(angle, resample=Image.BICUBIC, expand=True)
+    return out
+
+
+def paste_center(img, layer, cx, cy):
+    img.alpha_composite(layer, (int(cx - layer.width / 2), int(cy - layer.height / 2)))
+
+
+def sparkle(img, cx, cy, r, color=(255, 255, 220)):
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    pts = []
+    for i in range(8):
+        a = math.pi / 4 * i
+        rr = r if i % 2 == 0 else r * 0.28
+        pts.append((cx + rr * math.cos(a - math.pi / 2), cy + rr * math.sin(a - math.pi / 2)))
+    d.polygon(pts, fill=color + (255,))
+    glow = layer.filter(ImageFilter.GaussianBlur(r * 0.35))
+    img.alpha_composite(glow)
+    img.alpha_composite(layer)
+
+
+def drop_shadow(layer, blur=12, offset=(0, 10), opacity=150):
+    a = np.asarray(layer)[..., 3]
+    sh = Image.new("RGBA", layer.size, (15, 5, 25, 0))
+    sh.putalpha(Image.fromarray((a * (opacity / 255)).astype(np.uint8)))
+    sh = sh.filter(ImageFilter.GaussianBlur(blur))
+    out = Image.new("RGBA", (layer.width + abs(offset[0]) * 2, layer.height + abs(offset[1]) * 2), (0, 0, 0, 0))
+    out.alpha_composite(sh, (abs(offset[0]) + offset[0], abs(offset[1]) + offset[1]))
+    out.alpha_composite(layer, (abs(offset[0]), abs(offset[1])))
+    return out
+
+# ------------------------------------------------------------------ personnages et objets
+
+SKIN_YELLOW = (0.96, 0.80, 0.19)
+SKIN_LIGHT = (0.92, 0.72, 0.57)
+SKIN_BROWN = (0.62, 0.42, 0.28)
+
+
+def avatar(scene, place, shirt, pants, skin=SKIN_YELLOW, arm_l=0.0, arm_r=0.0, leg_l=0.0, leg_r=0.0,
+           hair=None, group=None, mouth="smile"):
+    """Personnage Roblox en blocs (R6). place = repère du torse ; il regarde vers -Z.
+    Angles en degrés : bras levé vers l'avant = positif."""
+    g = group if group is not None else scene.group()
+
+    def add(shape, local, size, color):
+        scene.prims.append(Prim(shape, mul(place, local), size, color, group=g))
+
+    add("Block", cf_new(), (2, 2, 1), shirt)
+    add("Cylinder", (np.array([0, 1.6, 0]), rot_z(math.pi / 2)), (1.2, 1.25, 1.25), skin)
+    eye_z = -math.sqrt(0.625 ** 2 - 0.22 ** 2) + 0.03
+    for x in (-0.22, 0.22):
+        add("Ball", cf_new(x, 1.74, eye_z), (0.2, 0.2, 0.2), (0.07, 0.06, 0.1))
+    if mouth == "smile":
+        for i in range(7):
+            a = math.radians(-60 + i * 20)
+            x = 0.27 * math.sin(a)
+            y = 1.5 - 0.13 * math.cos(a)
+            add("Ball", cf_new(x, y, -math.sqrt(max(0.0, 0.625 ** 2 - x * x)) + 0.03), (0.08, 0.08, 0.08), (0.07, 0.06, 0.1))
+    else:  # bouche ouverte (surpris, en colère)
+        add("Ball", cf_new(0, 1.42, -0.6), (0.26, 0.26, 0.26), (0.25, 0.05, 0.08))
+    if hair:
+        add("Cylinder", (np.array([0, 2.12, 0.05]), rot_z(math.pi / 2)), (0.3, 1.32, 1.32), hair)
+        add("Block", cf_new(0, 1.85, 0.42), (1.3, 0.75, 0.45), hair)
+    for side, angle in ((-1, arm_l), (1, arm_r)):
+        pivot = (np.array([side * 1.5, 0.5, 0]), rot_x(math.radians(angle)))
+        add("Block", mul(pivot, cf_new(0, -0.5, 0)), (1, 2, 1), skin)
+        add("Block", mul(pivot, cf_new(0, 0.1, 0)), (1.04, 0.85, 1.04), shirt)  # manche
+    for side, angle in ((-1, leg_l), (1, leg_r)):
+        pivot = (np.array([side * 0.5, -1, 0]), rot_x(math.radians(angle)))
+        add("Block", mul(pivot, cf_new(0, -1, 0)), (1, 2, 1), pants)
+    return g
+
+
+def hand(place, side, angle):
+    """Repère de la main d'un bras (pour y mettre un objet)."""
+    pivot = mul(place, (np.array([side * 1.5, 0.5, 0]), rot_x(math.radians(angle))))
+    return mul(pivot, cf_new(0, -1.5, 0))
+
+
+def coin(scene, place, size=2.0, group=None):
+    g = group if group is not None else scene.group()
+    gold, light = (1.0, 0.76, 0.12), (1.0, 0.9, 0.38)
+    face = mul(place, (np.zeros(3), rot_y(math.pi / 2)))
+    scene.prims.append(Prim("Cylinder", face, (size * 0.18, size, size), gold, group=g))
+    scene.prims.append(Prim("Cylinder", face, (size * 0.24, size * 0.72, size * 0.72), light, group=g))
+    return g
+
+
+def add_ghost(scene, data, key, place, **kw):
+    ghost = data["ghosts"][key]
+    return scene.add_parts(ghost["parts"], place, **kw)
+
+
+def ghost_on(data, key, at):
+    """Repère pour poser un fantôme debout sur un point (le bas du fantôme sur "at")."""
+    bottom = data["ghosts"][key]["bottom"]
+    return mul(at, cf_new(0, bottom, 0))
+
+
+def render_object(data_parts_list, size, direction=(0.35, 0.3, -1), look=None, margin=0.1, fov=26):
     scene = Scene()
-    ghost = data["ghosts"]["MegaBouhCosmique"]
-    scene.add_parts(ghost["parts"], cf_angles(0, math.radians(20), 0))
-    cam = fit_camera(scene.prims, (0, 0.25, -1), 512, 512)
-    img = render(scene, cam, Look(shadows=False))
-    img.save(sys.argv[3])
-    print("ok")
+    for parts, place in data_parts_list:
+        scene.add_parts(parts, place)
+    cam = fit_camera(scene.prims, direction, size, size, fov=fov, margin=margin)
+    return render(scene, cam, look or Look(shadows=False, outline_px=3))

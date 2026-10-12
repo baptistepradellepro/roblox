@@ -3381,11 +3381,12 @@ function Builders.AspiraFantome(tool: Tool, handle: BasePart)
 	end
 end
 
--- Fabrique l'outil (Tool) à mettre dans le sac du joueur
-function Weapons.buildTool(id: string): Tool
+-- Fabrique l'outil (Tool) à mettre dans le sac du joueur.
+-- lang = "fr" ou "en" : le nom affiché dans la barre d'objets du joueur
+function Weapons.buildTool(id: string, lang: string?): Tool
 	local weapon = Weapons.ById[id] or Weapons.ById.Batte
 	local tool = Instance.new("Tool")
-	tool.Name = weapon.Name.fr
+	tool.Name = weapon.Name[lang or "fr"] or weapon.Name.fr
 	tool.ToolTip = weapon.Icon
 	tool.CanBeDropped = false
 	tool.RequiresHandle = true
@@ -5073,7 +5074,9 @@ function EconomyService.refresh(player: Player)
 	player:SetAttribute("Multiplier", math.floor(EconomyService.multiplier(player) * 100) / 100)
 	player:SetAttribute("Rebirths", data.Rebirths)
 	player:SetAttribute("FriendBonus", friendBonus[player] or 0)
-	player:SetAttribute("BoostUntil", data.BoostUntil or 0)
+	-- fin du bonus x2, en heure du serveur (l'horloge du téléphone peut être fausse)
+	local boostLeft = (data.BoostUntil or 0) - os.time()
+	player:SetAttribute("BoostUntil", if boostLeft > 0 then workspace:GetServerTimeNow() + boostLeft else 0)
 	if data.Stored then
 		updateStoredTotal(player, data)
 	end
@@ -6447,6 +6450,7 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 
 	model:SetAttribute("Index", index)
 	model:SetAttribute("Origin", origin)
+	model:SetAttribute("HalfSize", Vector3.new(MapBuilder.BASE_WIDTH / 2, 0, MapBuilder.BASE_DEPTH / 2))
 	model:SetAttribute("Color", color)
 	model:SetAttribute("OwnerUserId", 0)
 	model:SetAttribute("OwnerName", "")
@@ -8182,6 +8186,7 @@ type Carry = {
 	LeftBases: boolean, -- vu hors des deux bases (on ne livre pas à travers un mur)
 	MinTime: number, -- temps minimum pour rentrer chez soi en marchant
 	WindowSpeed: number?,
+	LastJump: number?,
 }
 
 local carries: { [Player]: Carry } = {}
@@ -8463,11 +8468,19 @@ local function check(carry: Carry, t: number)
 		-- le serveur vient de le déplacer (ascenseur...) : on repart de sa nouvelle place
 		carry.WindowStart, carry.WindowPos = t, pos
 	else
-		-- Anti-triche : un saut énorme d'un coup = téléportation
-		local dt = t - carry.LastTick
-		if (pos - carry.LastPos).Magnitude > Config.CarrierWalkSpeed * dt * 2 + 5 then
-			StealService.failCarry(thief, "Cheat")
-			return
+		-- Anti-triche : un saut énorme d'un coup = téléportation.
+		-- Sur mobile, la position arrive parfois par paquets après un petit gel du réseau :
+		-- on compare au temps écoulé depuis le dernier vrai mouvement, et il faut deux sauts
+		-- suspects rapprochés (ou un saut vraiment énorme) pour annuler le vol.
+		local moved = (pos - carry.LastPos).Magnitude
+		local allowance = Config.CarrierWalkSpeed * math.min(t - carry.LastTick, 1.5) * 1.5 + 8
+		if moved > allowance then
+			local recent = t - (carry.LastJump or -math.huge) < 3
+			carry.LastJump = t
+			if moved > allowance * 2 or recent then
+				StealService.failCarry(thief, "Cheat")
+				return
+			end
 		end
 		-- Anti-triche vitesse : la distance parcourue chaque seconde
 		if t - carry.WindowStart >= 1 then
@@ -8477,7 +8490,7 @@ local function check(carry: Carry, t: number)
 			if speed > allowed then
 				carry.Violations += 1
 			else
-				carry.Violations = math.max(0, carry.Violations - 0.5)
+				carry.Violations = math.max(0, carry.Violations - 1)
 			end
 			carry.WindowStart = t
 			carry.WindowPos = pos
@@ -8488,7 +8501,10 @@ local function check(carry: Carry, t: number)
 		end
 	end
 	carry.WindowSpeed = normalSpeedFor(thief)
-	carry.LastTick, carry.LastPos = t, pos
+	-- on ne note la position que quand elle a vraiment changé (voir plus haut)
+	if (pos - carry.LastPos).Magnitude > 0.05 or Guard.teleportedWithin(thief, 0.5) then
+		carry.LastTick, carry.LastPos = t, pos
+	end
 
 	local thiefBase = BaseService.getBase(thief)
 	local inThiefBase = thiefBase ~= nil and BaseService.isInside(thiefBase, root.Position)
@@ -8844,6 +8860,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Weapons = require(Shared:WaitForChild("Weapons"))
 
@@ -8867,6 +8884,20 @@ local function flat(v: Vector3): Vector3
 	return Vector3.new(v.X, 0, v.Z)
 end
 
+-- Langue du joueur (même règle que Lang côté joueur), pour le nom des armes
+local function languageOf(player: Player): string
+	if Config.ForceLanguage == "fr" or Config.ForceLanguage == "en" then
+		return Config.ForceLanguage
+	end
+	local ok, locale = pcall(function()
+		return player.LocaleId
+	end)
+	if ok and type(locale) == "string" and string.sub(string.lower(locale), 1, 2) == "fr" then
+		return "fr"
+	end
+	return "en"
+end
+
 -- Met les armes du joueur dans son sac (sans doublon)
 function WeaponService.giveTools(player: Player)
 	local backpack = player:FindFirstChildOfClass("Backpack") or player:WaitForChild("Backpack", 5)
@@ -8887,7 +8918,7 @@ function WeaponService.giveTools(player: Player)
 				end
 			end
 			if not has then
-				Weapons.buildTool(weapon.Id).Parent = backpack
+				Weapons.buildTool(weapon.Id, languageOf(player)).Parent = backpack
 			end
 		end
 	end
@@ -9402,16 +9433,37 @@ local function pose(motor: Motor6D?, rotation: CFrame?)
 	end
 end
 
+-- Les épaules de chaque personnage, cherchées une seule fois (pas à chaque image)
+type Shoulders = { Character: Model, Right: Motor6D?, Left: Motor6D? }
+local shoulders: { [Player]: Shoulders } = {}
+
+local function shouldersOf(other: Player, character: Model): Shoulders
+	local entry = shoulders[other]
+	if not entry or entry.Character ~= character or (entry.Right and not entry.Right.Parent) then
+		entry = {
+			Character = character,
+			Right = findMotor(character, { "RightShoulder", "Right Shoulder" }),
+			Left = findMotor(character, { "LeftShoulder", "Left Shoulder" }),
+		}
+		shoulders[other] = entry
+	end
+	return entry
+end
+
 function AnimView.start()
 	local raised: { [Player]: boolean } = {}
+	Players.PlayerRemoving:Connect(function(other)
+		shoulders[other] = nil
+		raised[other] = nil
+	end)
 	RunService.RenderStepped:Connect(function()
 		local now = os.clock()
 		for _, other in Players:GetPlayers() do
 			local character = other.Character
 			local carrying = other:GetAttribute("CarryGhost") ~= nil
 			if character and (carrying or raised[other]) then
-				local right = findMotor(character, { "RightShoulder", "Right Shoulder" })
-				local left = findMotor(character, { "LeftShoulder", "Left Shoulder" })
+				local entry = shouldersOf(other, character)
+				local right, left = entry.Right, entry.Left
 				if carrying then
 					local wave = math.sin(now * 6) * 5
 					pose(right, CFrame.Angles(rad(160 + wave), 0, rad(-10)))
@@ -9639,6 +9691,19 @@ local function isLocked(baseModel: Model): boolean
 	return workspace:GetServerTimeNow() < (baseModel:GetAttribute("LockedUntil") or 0)
 end
 
+-- Suis-je dans cette base, au même étage que ce socle ? (le serveur vérifie pareil pour voler)
+local function standingBy(baseModel: Model, ped: BasePart): boolean
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local origin = baseModel:GetAttribute("Origin")
+	local half = baseModel:GetAttribute("HalfSize")
+	if not root or typeof(origin) ~= "CFrame" or typeof(half) ~= "Vector3" then
+		return false
+	end
+	local localPos = origin:PointToObjectSpace(root.Position)
+	return math.abs(localPos.X) < half.X and math.abs(localPos.Z) < half.Z and math.abs(root.Position.Y - ped.Position.Y) < 8
+end
+
 ---------------------------------------------------------------- Panneau d'entrée
 
 local function setupSign(baseModel: Model)
@@ -9680,20 +9745,26 @@ local function setupSign(baseModel: Model)
 	refresh()
 
 	local label = lockTag:FindFirstChild("Text") :: TextLabel
+	local shown = ""
 	RunService.Heartbeat:Connect(function()
-		local remaining = (baseModel:GetAttribute("LockedUntil") or 0) - workspace:GetServerTimeNow()
+		local remaining = math.ceil((baseModel:GetAttribute("LockedUntil") or 0) - workspace:GetServerTimeNow())
+		local text = ""
 		if remaining > 0 and ownerOf(baseModel) ~= 0 then
 			local icon = if baseModel:GetAttribute("Shield") then "🛡️ " else "🔒 "
-			label.Text = icon .. Format.time(remaining)
-			lockTag.Enabled = true
-		else
-			lockTag.Enabled = false
+			text = icon .. Format.time(remaining)
 		end
+		if text == shown then
+			return -- rien à changer : on ne touche pas au texte à chaque image
+		end
+		shown = text
+		label.Text = text
+		lockTag.Enabled = text ~= ""
 	end)
 end
 
 ---------------------------------------------------------------- Barrière du verrou
 
+local ANIMATE_RANGE = 48 -- les fantômes des socles bougent seulement à moins de 48 studs de la caméra
 local OWNER_BARRIER_TRANSPARENCY = 0.85 -- chez moi, la barrière est presque invisible
 
 local function setupBarrier(baseModel: Model)
@@ -9889,6 +9960,14 @@ local function renderSlot(slot: Slot)
 	elseif currentId ~= ghostId then
 		destroyGhost(slot)
 		local model = GhostFactory.build(ghostId)
+		if not mine then
+			-- les lumières qui bougent coûtent cher sur téléphone : seulement dans ma base
+			for _, d in model:GetDescendants() do
+				if d:IsA("PointLight") then
+					d:Destroy()
+				end
+			end
+		end
 		local bottom = model:GetAttribute("Bottom") or 2
 		slot.Anchor = (ped:GetAttribute("GhostCFrame") :: CFrame) * CFrame.new(0, bottom + 0.4, 0)
 		slot.Spin = model:GetAttribute("Spin") or 1
@@ -9933,7 +10012,12 @@ local function updatePrompts()
 		local hasGhost = (ped:GetAttribute("GhostId") or "") ~= "" and ped:GetAttribute("Stolen") ~= true
 		local owner = ownerOf(slot.BaseModel)
 		local mine = owner == player.UserId
-		local stealOk = hasGhost and owner ~= 0 and not mine and not carrying and not isLocked(slot.BaseModel)
+		local stealOk = hasGhost
+			and owner ~= 0
+			and not mine
+			and not carrying
+			and not isLocked(slot.BaseModel)
+			and standingBy(slot.BaseModel, ped)
 		if slot.Steal.Enabled ~= stealOk then
 			slot.Steal.Enabled = stealOk
 		end
@@ -10037,8 +10121,15 @@ function BaseView.start()
 		task.spawn(setupBase, baseModel)
 	end
 
-	-- Animation douce des fantômes proches (les lointains restent immobiles : économie de batterie)
-	RunService.RenderStepped:Connect(function()
+	-- Animation douce des fantômes proches, 30 fois par seconde
+	-- (les lointains restent immobiles : économie de batterie sur téléphone)
+	local animClock = 0
+	RunService.Heartbeat:Connect(function(dt)
+		animClock += dt
+		if animClock < 1 / 30 then
+			return
+		end
+		animClock = 0
 		updateSirens()
 		local camera = workspace.CurrentCamera
 		if not camera then
@@ -10048,7 +10139,7 @@ function BaseView.start()
 		local t = os.clock()
 		for _, slot in slots do
 			local model = slot.Model
-			if model and (slot.Anchor.Position - camPos).Magnitude < 75 then
+			if model and (slot.Anchor.Position - camPos).Magnitude < ANIMATE_RANGE then
 				local bob = math.sin(t * 2 + slot.Phase) * 0.3
 				local turn = if slot.Spin > 1 then t * slot.Spin else math.sin(t * 0.8 + slot.Phase) * 0.35
 				model:PivotTo(slot.Anchor * CFrame.new(0, bob, 0) * CFrame.Angles(0, turn, 0))
@@ -10748,6 +10839,16 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if root and typeof(data.Direction) == "Vector3" then
 			local power = math.clamp(tonumber(data.Power) or 40, 0, 120)
+			-- un court instant sans "jambes" : sinon le Humanoid annule la poussée tout de suite
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.PlatformStand = true
+				task.delay(0.35, function()
+					if humanoid.Parent then
+						humanoid.PlatformStand = false
+					end
+				end)
+			end
 			root.AssemblyLinearVelocity = data.Direction * power + Vector3.new(0, 28, 0)
 			Effects.shake(0.8, 0.3)
 		end
@@ -10960,7 +11061,7 @@ local shownCoins = 0
 function HUD.pill(color: Color3, order: number): Frame
 	local pill = UI.new("Frame", {
 		Name = "Pill",
-		Size = UDim2.fromOffset(190, 34),
+		Size = UDim2.fromOffset(180, 34),
 		BackgroundColor3 = UI.Colors.Panel,
 		BackgroundTransparency = 0.1,
 		LayoutOrder = order,
@@ -11013,20 +11114,21 @@ local function buildTopBar()
 		MaxTextSize = 24,
 		Parent = panel,
 	})
-	-- Ligne d'infos sous les pièces (minuteur de nuit, bonus amis)
+	-- Infos sous les pièces (minuteur de nuit, bonus amis...) : 3 pastilles par ligne au plus
 	HUD.infoRow = UI.new("Frame", {
 		Name = "InfoRow",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 94),
-		Size = UDim2.fromOffset(420, 34),
+		Size = UDim2.fromOffset(556, 76),
 		BackgroundTransparency = 1,
 		Parent = gui,
 	}, {
-		UI.new("UIListLayout", {
+		UI.new("UIGridLayout", {
+			CellSize = UDim2.fromOffset(180, 34),
+			CellPadding = UDim2.fromOffset(8, 8),
 			FillDirection = Enum.FillDirection.Horizontal,
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, 8),
 		}),
 	})
 	local friendPill = HUD.pill(UI.Colors.Info, 2)
@@ -11035,7 +11137,7 @@ local function buildTopBar()
 	toastList = UI.new("Frame", {
 		Name = "Toasts",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 136),
+		Position = UDim2.new(0.5, 0, 0, 178),
 		Size = UDim2.fromOffset(540, 160),
 		BackgroundTransparency = 1,
 		Parent = gui,
@@ -11168,8 +11270,13 @@ function HUD.start()
 	local boostPill = HUD.pill(UI.Colors.Info, 2)
 	boostPill.Name = "BoostPill"
 	local boostText = boostPill:FindFirstChild("Text") :: TextLabel
+	local boostShown = -1
 	RunService.Heartbeat:Connect(function()
-		local remaining = (player:GetAttribute("BoostUntil") or 0) - os.time()
+		local remaining = math.ceil((player:GetAttribute("BoostUntil") or 0) - workspace:GetServerTimeNow())
+		if remaining == boostShown then
+			return -- le texte ne change qu'une fois par seconde
+		end
+		boostShown = remaining
 		boostPill.Visible = remaining > 0
 		if remaining > 0 then
 			boostText.Text = "⚡ " .. Lang.t("BoostPill", { time = Format.time(remaining) })
@@ -11845,16 +11952,24 @@ function NightView.start()
 		applyNight(true, 0.1)
 	end
 
+	local timerKey = ""
 	RunService.RenderStepped:Connect(function()
 		local now = workspace:GetServerTimeNow()
 		local t = os.clock()
 
-		-- minuteur
-		if ReplicatedStorage:GetAttribute("NightActive") then
-			local icon = THEME_ICONS[ReplicatedStorage:GetAttribute("NightTheme") or "Classic"] or "🌙"
-			timerLabel.Text = icon .. " " .. Lang.t("NightTimer", { time = Format.time((ReplicatedStorage:GetAttribute("NightEndsAt") or now) - now) })
-		else
-			timerLabel.Text = "🌙 " .. Lang.t("DayTimer", { time = Format.time((ReplicatedStorage:GetAttribute("NextNightAt") or now) - now) })
+		-- minuteur (le texte n'est refait que quand la seconde affichée change)
+		local night = ReplicatedStorage:GetAttribute("NightActive") == true
+		local target = if night then ReplicatedStorage:GetAttribute("NightEndsAt") else ReplicatedStorage:GetAttribute("NextNightAt")
+		local left = math.max(0, math.ceil((target or now) - now))
+		local key = (if night then "N" else "D") .. left .. (ReplicatedStorage:GetAttribute("NightTheme") or "")
+		if key ~= timerKey then
+			timerKey = key
+			if night then
+				local icon = THEME_ICONS[ReplicatedStorage:GetAttribute("NightTheme") or "Classic"] or "🌙"
+				timerLabel.Text = icon .. " " .. Lang.t("NightTimer", { time = Format.time(left) })
+			else
+				timerLabel.Text = "🌙 " .. Lang.t("DayTimer", { time = Format.time(left) })
+			end
 		end
 
 		-- Nuit des Bonbons : les pièces tournent sur elles-mêmes
@@ -12572,6 +12687,21 @@ local function buildIndex(): Frame
 		return indexInfo ~= nil and table.find(indexInfo.Discovered, ghostId) ~= nil
 	end
 
+	-- Les fantômes 3D des vignettes sont fabriqués quelques-uns par image
+	-- (les 43 d'un coup feraient ramer un téléphone à la première ouverture)
+	local pending: { { Viewport: ViewportFrame, Id: string } } = {}
+	local function fillViewport(viewport: ViewportFrame, ghostId: string)
+		local model = GhostFactory.build(ghostId)
+		model.Parent = viewport
+		local cf, size = model:GetBoundingBox()
+		local distance = math.max(size.X, size.Y) * 1.5 + 2
+		local camera = Instance.new("Camera")
+		camera.FieldOfView = 40
+		camera.CFrame = CFrame.lookAt(cf.Position + Vector3.new(distance * 0.3, size.Y * 0.1, -distance), cf.Position)
+		camera.Parent = viewport
+		viewport.CurrentCamera = camera
+	end
+
 	local function buildTiles()
 		for _, ghost in GhostData.List do
 			local tile = UI.new("TextButton", {
@@ -12591,15 +12721,7 @@ local function buildIndex(): Frame
 				LightDirection = Vector3.new(-1, -1, 1),
 				Parent = tile,
 			})
-			local model = GhostFactory.build(ghost.Id)
-			model.Parent = viewport
-			local cf, size = model:GetBoundingBox()
-			local distance = math.max(size.X, size.Y) * 1.5 + 2
-			local camera = Instance.new("Camera")
-			camera.FieldOfView = 40
-			camera.CFrame = CFrame.lookAt(cf.Position + Vector3.new(distance * 0.3, size.Y * 0.1, -distance), cf.Position)
-			camera.Parent = viewport
-			viewport.CurrentCamera = camera
+			table.insert(pending, { Viewport = viewport, Id = ghost.Id })
 			local name = UI.label({
 				Size = UDim2.new(1, -6, 0, 24),
 				Position = UDim2.new(0, 3, 1, -27),
@@ -12625,6 +12747,15 @@ local function buildIndex(): Frame
 			end)
 			tiles[ghost.Id] = { Viewport = viewport, Name = name, Mystery = mystery, Secret = ghost.Rarity == "Secret" }
 		end
+		task.spawn(function()
+			for i, item in pending do
+				fillViewport(item.Viewport, item.Id)
+				if i % 4 == 0 then
+					task.wait()
+				end
+			end
+			table.clear(pending)
+		end)
 	end
 
 	local function refresh()
@@ -13458,20 +13589,27 @@ function UI.screen(name: string, displayOrder: number?): ScreenGui
 	})
 	local scale = UI.new("UIScale", { Parent = gui })
 	local function update()
-		local camera = workspace.CurrentCamera
-		if not camera then
-			return
+		-- la place vraiment libre (sans la barre du haut de Roblox)
+		local size = gui.AbsoluteSize
+		if typeof(size) ~= "Vector2" or size.X < 10 or size.Y < 10 then
+			local camera = workspace.CurrentCamera
+			if not camera then
+				return
+			end
+			size = camera.ViewportSize - Vector2.new(0, 58)
 		end
-		local size = camera.ViewportSize
-		-- l'interface est dessinée pour un écran de 720 px de haut
-		scale.Scale = math.clamp(math.min(size.X, size.Y) / 720, 0.72, 1.35)
+		-- l'interface a besoin d'environ 1150 x 640 points : on rapetisse sur les petits
+		-- écrans (téléphone en paysage), sans descendre trop bas pour rester lisible
+		scale.Scale = math.clamp(math.min(size.X / 1150, size.Y / 640), 0.45, 1.35)
 	end
 	update()
+	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(update)
 	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(update)
 	if workspace.CurrentCamera then
 		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(update)
 	end
 	gui.Parent = player:WaitForChild("PlayerGui")
+	task.defer(update)
 	return gui
 end
 

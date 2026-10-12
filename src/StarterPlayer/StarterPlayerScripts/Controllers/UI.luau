@@ -108,20 +108,27 @@ function UI.screen(name: string, displayOrder: number?): ScreenGui
 	})
 	local scale = UI.new("UIScale", { Parent = gui })
 	local function update()
-		local camera = workspace.CurrentCamera
-		if not camera then
-			return
+		-- la place vraiment libre (sans la barre du haut de Roblox)
+		local size = gui.AbsoluteSize
+		if typeof(size) ~= "Vector2" or size.X < 10 or size.Y < 10 then
+			local camera = workspace.CurrentCamera
+			if not camera then
+				return
+			end
+			size = camera.ViewportSize - Vector2.new(0, 58)
 		end
-		local size = camera.ViewportSize
-		-- l'interface est dessinée pour un écran de 720 px de haut
-		scale.Scale = math.clamp(math.min(size.X, size.Y) / 720, 0.72, 1.35)
+		-- l'interface a besoin d'environ 1150 x 640 points : on rapetisse sur les petits
+		-- écrans (téléphone en paysage), sans descendre trop bas pour rester lisible
+		scale.Scale = math.clamp(math.min(size.X / 1150, size.Y / 640), 0.45, 1.35)
 	end
 	update()
+	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(update)
 	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(update)
 	if workspace.CurrentCamera then
 		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(update)
 	end
 	gui.Parent = player:WaitForChild("PlayerGui")
+	task.defer(update)
 	return gui
 end
 
