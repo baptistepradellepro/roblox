@@ -4,7 +4,7 @@ Jeu Roblox multijoueur (8 à 12 joueurs) sur le thème d'Halloween, version cart
 
 Tout le jeu est écrit en Luau dans le dossier `src/`. La map, les fantômes et l'interface sont générés par le code au lancement : il n'y a rien à construire à la main dans Studio.
 
-![Les 32 fantômes](docs/apercu_fantomes.png)
+![Les 36 fantômes et quelques variantes](docs/apercu_fantomes.png)
 
 *(aperçu approximatif généré hors de Roblox, le rendu en jeu est plus propre)*
 
@@ -65,6 +65,7 @@ src/
       MonetizationService        Game Passes et pack de pièces
       IndexService               Fantômédex (collection et récompenses)
       CodeService                codes promo
+      LeaderboardService         classement des voleurs de la semaine
       AnnounceService            messages et annonces
       Guard                      vérifications anti-triche
   StarterPlayer/StarterPlayerScripts/

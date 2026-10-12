@@ -89,12 +89,16 @@ Pas de lien externe, c'est interdit. Les emojis sont l'usage sur Roblox et aiden
 ```
 Achète des fantômes complètement absurdes, pose-les dans ta base et regarde les pièces tomber. Mais les autres joueurs peuvent entrer chez toi et repartir avec tes fantômes !
 
-👻 32 fantômes à collectionner : Drap Mou, Caquetôme, DJ Bouh-Boum, Méga Bouh Cosmique...
+👻 36 fantômes à collectionner : Drap Mou, Caquetôme, DJ Bouh-Boum, Méga Bouh Cosmique...
+✨ Fantômes Dorés (x3) et Arc-en-ciel (x5) ultra rares
 🦹 Vole les fantômes des autres et cours jusqu'à ta base
 🔨 Un voleur passe près de toi ? Marteau Pouet !
 🔒 Verrouille ta base au bon moment
-🌙 Toutes les 10 minutes, la Nuit Hantée : fantômes rares... et Gloutrouille qui te poursuit
+🌙 Toutes les 10 minutes, la Nuit Hantée : Brouillard, Bonbons... et Gloutrouille qui te poursuit
+🔥 Super Nuit chaque samedi soir : Gloutrouille GÉANT et Mythique garanti
 🎃 Fantômes Halloween en édition limitée jusqu'au 3 novembre
+🏆 Deviens le plus grand voleur de la semaine
+🎉 Pièces x2 tout le week-end
 ♻️ Rebirth pour gagner plus, pour toujours
 👥 +10 % de pièces par ami dans ton serveur
 🎁 Un cadeau chaque jour
@@ -106,12 +110,16 @@ Achète des fantômes complètement absurdes, pose-les dans ta base et regarde l
 ```
 Buy totally ridiculous ghosts, put them in your base and watch the coins roll in. But other players can sneak in and run away with your ghosts!
 
-👻 32 ghosts to collect: Floppy Sheet, Cluck-a-Boo, DJ Boo-Boom, Cosmic Mega Boo...
+👻 36 ghosts to collect: Floppy Sheet, Cluck-a-Boo, DJ Boo-Boom, Cosmic Mega Boo...
+✨ Ultra rare Golden (x3) and Rainbow (x5) ghosts
 🦹 Steal other players' ghosts and run back to your base
 🔨 Thief nearby? BONK them!
 🔒 Lock your base at the right moment
-🌙 Every 10 minutes, the Haunted Night: rare ghosts... and Gloutrouille chasing you
+🌙 Every 10 minutes, the Haunted Night: Fog, Candy... and Gloutrouille chasing you
+🔥 Super Night every Saturday evening: GIANT Gloutrouille and a guaranteed Mythic
 🎃 Limited Halloween ghosts until November 3
+🏆 Become the top thief of the week
+🎉 x2 coins all weekend
 ♻️ Rebirth to earn more, forever
 👥 +10% coins for each friend in your server
 🎁 A free gift every day

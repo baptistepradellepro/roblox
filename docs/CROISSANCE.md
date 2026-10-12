@@ -42,35 +42,40 @@ Accélère une session de jeu : un seul Drap Mou au début, compteur de pièces 
 - Accroche : "J'ai commencé avec un drap..."
 - Mets le compteur de pièces en gros à chaque étape.
 
+## Déjà dans le jeu au lancement
+
+Pour que le jeu soit le plus complet possible dès le départ, tout ce qui était prévu pour novembre est déjà codé : le Fantômédex et les codes secrets, les fantômes Dorés et Arc-en-ciel, les 4 fantômes d'automne, les nuits à thème (Brouillard, Bonbons), la Super Nuit du samedi soir, le week-end x2 et le classement des voleurs de la semaine.
+
+Ça donne aussi de quoi filmer dès la première semaine : un Arc-en-ciel annoncé à tout le serveur, une Super Nuit avec le Gloutrouille géant, ou toi en tête du classement.
+
 ## Plan de mises à jour après Halloween (2 au 29 novembre 2026)
 
-L'idée : une nouveauté visible chaque semaine, annoncée dans le titre (`[🍂 UPDATE] Steal a Ghost`) et sur TikTok. Le 3 novembre, les fantômes Halloween arrêtent d'apparaître tout seuls (c'est déjà réglé dans `Config.luau`). Ils deviennent des pièces de collection : ceux qui en ont un le garderont, et les voler deviendra le grand défi du serveur.
+Le principe ne change pas : une nouveauté visible chaque semaine, annoncée dans le titre (`[🍂 UPDATE] Steal a Ghost`) et sur TikTok. Le 3 novembre, les fantômes Halloween arrêtent d'apparaître tout seuls (c'est réglé dans `Config.luau`). Ceux qui en ont un le gardent, et ils deviennent les cibles les plus recherchées du serveur.
 
-À surveiller chaque semaine dans Creator Hub > Analytics : la rétention à 1 jour (vise 20 % ou plus), la rétention à 7 jours (5 % ou plus) et la durée moyenne des sessions (12 minutes ou plus). Si la rétention à 1 jour passe sous 15 %, on retravaille d'abord les 5 premières minutes avant d'ajouter du contenu.
+Chaque semaine, regarde dans Creator Hub > Analytics la rétention à 1 jour (vise 20 % ou plus), la rétention à 7 jours (5 % ou plus) et la durée moyenne des sessions (12 minutes ou plus). Si la rétention à 1 jour passe sous 15 %, on retravaille d'abord les 5 premières minutes de jeu avant d'ajouter du contenu.
 
-### Semaine 1 (2-8 novembre) : collection et codes (codé, prêt à publier)
+### Semaine 1 (2-8 novembre) : bilan et missions du jour
 
-- Un "Fantômédex" : un panneau avec les 32 fantômes, en silhouette tant qu'on ne les a pas eus. Récompense en pièces quand on complète une rareté. C'est un objectif de long terme qui fait revenir.
-- Des codes promo à taper dans la boutique ("BOUH2026" = 5 000 pièces), publiés uniquement sur TikTok. Ça fait venir des abonnés. Dans le jeu, on ne parle pas de TikTok (règle Roblox), juste de "codes secrets".
-- Corrections des bugs remontés par les joueurs.
+- Équilibrage à partir des vraies données : prix, revenus, chance des variantes, fréquence des nuits. Tout se règle dans `Config.luau` et `GhostData.luau`.
+- Trois missions par jour, qui changent chaque jour : "Vole 2 fantômes", "Achète un Épique", "Reste 30 secondes dehors pendant une Nuit Hantée". Une récompense par mission et un bonus si les trois sont faites. C'est ce qui donne une raison de revenir chaque jour, en plus du cadeau.
+- Un nouveau code secret pour la fin d'Halloween.
 - TikTok : "Le dernier Squelette Disco du serveur".
 
-### Semaine 2 (9-15 novembre) : fantômes dorés et arc-en-ciel
+### Semaine 2 (9-15 novembre) : les pièges
 
-- Des variantes rares qui apparaissent sur le chemin : Doré (revenu x3) et Arc-en-ciel (x5), avec une couleur et des étincelles à part. Ça crée de nouvelles cibles de vol, même pour les fantômes Communs.
-- Un tableau des "plus grands voleurs de la semaine" près du chemin, remis à zéro chaque lundi.
-- TikTok : "J'ai trouvé un Drap Mou ARC-EN-CIEL".
+- Des pièges à acheter avec des pièces (jamais avec des Robux) et à poser dans sa base : une peau de banane qui fait glisser le voleur, une alarme qui fait sonner tout le serveur, une toile d'araignée qui le ralentit encore plus. Ça ajoute de la stratégie à la défense, en plus du verrou.
+- TikTok : "J'ai piégé ma base, regardez ce qui arrive au voleur".
 
-### Semaine 3 (16-22 novembre) : nuits différentes
+### Semaine 3 (16-22 novembre) : la rareté Secrète
 
-- Chaque Nuit Hantée tire un thème au hasard : Nuit du Brouillard (on y voit à peine, Gloutrouille plus rapide) ou Nuit des Bonbons (pluie de pièces sur le chemin, à ramasser au risque de se faire attraper).
-- 4 fantômes d'automne, un par rareté du Commun au Légendaire. Pistes : "Feuille Morte Râleuse", "Champignon Chuchoteur", "Marron Glacé Tout Tremblant", "Écureuil Fantôme Stressé".
-- Week-end pièces x2 du vendredi soir au dimanche soir, annoncé dans le jeu.
+- Une nouvelle rareté au-dessus de Mythique, "Secret" : 3 fantômes qui n'apparaissent presque jamais (environ 1 fois toutes les quelques heures par serveur), avec une annonce spéciale et un écran qui tremble. Personne ne connaît leur forme avant d'en voir un.
+- Des badges Roblox pour les grands moments : premier vol, premier Mythique, Fantômédex complet, premier rebirth. Ils s'affichent sur le profil des joueurs, donc leurs amis les voient.
+- TikTok : la première apparition d'un Secret, filmée en direct.
 
-### Semaine 4 (23-29 novembre) : rendez-vous et teaser d'hiver
+### Semaine 4 (23-29 novembre) : teaser de l'Hiver Hanté
 
-- "La Super Nuit" chaque samedi à 18h (heure de Paris) : une nuit spéciale annoncée dans le jeu à l'avance, avec un Mythique garanti et un Gloutrouille géant. Un horaire fixe concentre les joueurs, et c'est là que se filment les meilleurs clips.
-- Teaser de la mise à jour de décembre "Hiver Hanté" : un peu de neige sur la map, une silhouette mystère sur le chemin, et l'annonce d'une rareté limitée "Givré" du 1er décembre au 5 janvier.
+- Un peu de neige sur la map, une silhouette mystère sur le chemin et l'annonce de la mise à jour de décembre : la rareté limitée "Givré" (du 1er décembre au 5 janvier) et un nouveau monstre d'hiver.
+- La Super Nuit du samedi 28 novembre devient une "Super Nuit Glacée" exceptionnelle, avec un premier fantôme Givré à gagner.
 - TikTok : compte à rebours vers l'Hiver Hanté.
 
-Chacune de ces semaines représente du code que je peux écrire avec toi. Dis-moi par laquelle commencer, et je te livre la même chose que pour les étapes 1 et 2 : le code, les tests et un nouveau fichier `.rbxlx`.
+Chaque semaine représente du code que je peux écrire avec toi. Dis-moi par laquelle commencer, et je te livre comme d'habitude le code, les tests et un nouveau fichier `.rbxlx`.

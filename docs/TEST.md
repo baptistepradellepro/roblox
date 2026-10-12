@@ -59,9 +59,17 @@ Pour ne pas attendre 8 minutes, mets `Config.DayDuration = 30` pendant les tests
 
 ## Tester le Fantômédex et les codes
 
-- **Fantômédex** : bouton 📖 à gauche. Les 32 fantômes sont rangés par rareté. Ceux que tu n'as jamais eus sont des silhouettes noires avec "???". Touche une case pour lire la blague du fantôme. Achète un nouveau fantôme : un message "Nouveau dans le Fantômédex" apparaît et un point rouge s'allume sur le bouton.
+- **Fantômédex** : bouton 📖 à gauche. Les 36 fantômes sont rangés par rareté. Ceux que tu n'as jamais eus sont des silhouettes noires avec "???". Touche une case pour lire la blague du fantôme. Achète un nouveau fantôme : un message "Nouveau dans le Fantômédex" apparaît et un point rouge s'allume sur le bouton.
 - **Série complète** : trouve les 8 Communs (ils coûtent peu) pour recevoir 500 pièces. Quand toutes les raretés sauf Halloween sont complètes, tu gagnes +10 % de revenus pour toujours et tout le serveur reçoit une annonce.
 - **Codes** : boutique 🛒, dernière ligne. Tape `BOUH2026` puis OK : +5 000 pièces. Le même code une deuxième fois est refusé. Les codes de départ sont `BOUH2026` (5 000 pièces), `GLOUTROUILLE` (10 minutes de revenus) et `POUET` (un Caquetôme offert). Les majuscules et les espaces ne comptent pas.
+
+## Tester les variantes, les nuits à thème et le classement
+
+- **Fantômes Dorés et Arc-en-ciel** : environ 1 fantôme sur 30 sur le chemin est Doré (reflets dorés, revenu et prix x3), et environ 1 sur 170 est Arc-en-ciel (néon multicolore, petit arc-en-ciel au-dessus de la tête, x5, annonce à tout le serveur). C'est deux fois plus fréquent la nuit. Pour en voir vite, mets temporairement `Chance = 0.5` pour Gold dans `GhostData.Mutations`.
+- **Nuits à thème** : chaque nuit tire au hasard Classique, Brouillard (brume très épaisse, Gloutrouille plus rapide) ou Bonbons (pièces dorées qui tournent sur le chemin, à ramasser en passant dessus). Pour forcer un thème : `Config.NightThemes = { Classic = 0, Fog = 0, Candy = 1 }`.
+- **Super Nuit** : le samedi de 17h à 18h UTC. Pour la tester un autre jour, mets dans `Config.SuperNight` le jour d'aujourd'hui (1 = dimanche ... 7 = samedi), `StartHour = 0` et `EndHour = 24`. Gloutrouille devient géant, un Mythique apparaît et le ciel vire au rouge.
+- **Week-end x2** : du vendredi 17h UTC au dimanche 23h UTC, une pastille "Week-end x2 !" apparaît sous les pièces et les revenus doublent. `Config.WeekendBoost.Enabled = false` pour le couper.
+- **Classement** : le grand écran au-dessus du milieu du chemin affiche le top 10 des voleurs de la semaine. Dans Studio sans accès aux API, il montre les vols de la partie en cours. Il se met à jour toutes les minutes.
 
 ## Tester la sauvegarde
 
