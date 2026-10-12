@@ -10,6 +10,7 @@ local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Format = require(Shared:WaitForChild("Format"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Sounds = require(Shared:WaitForChild("Sounds"))
 
@@ -139,6 +140,38 @@ function Effects.coins(position: Vector3)
 	end, 20, 2)
 end
 
+-- Un "+1.2K" doré qui monte et disparaît (récolte des pièces)
+function Effects.floatingText(position: Vector3, text: string)
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanQuery = false
+	holder.CanTouch = false
+	holder.Transparency = 1
+	holder.Size = Vector3.one
+	holder.CFrame = CFrame.new(position)
+	holder.Parent = workspace
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(220, 60)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 2, 0)
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.Adornee = holder
+	gui.Parent = holder
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.Text = text
+	label.TextColor3 = Color3.fromRGB(255, 210, 60)
+	label.TextStrokeTransparency = 0.2
+	label.Parent = gui
+	TweenService:Create(gui, TweenInfo.new(1.1, Enum.EasingStyle.Quad), { StudsOffsetWorldSpace = Vector3.new(0, 6, 0) }):Play()
+	TweenService:Create(label, TweenInfo.new(1.1), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	Debris:AddItem(holder, 1.2)
+end
+
 -- Petite secousse de caméra
 function Effects.shake(strength: number?, duration: number?)
 	local character = player.Character
@@ -243,6 +276,16 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 		else
 			Effects.shake(0.8, 0.8)
 		end
+	end,
+	Collect = function(data)
+		if data.Position then
+			Effects.coins(data.Position)
+			Effects.floatingText(data.Position, "+" .. Format.short(data.Amount or 0))
+		end
+		Effects.sound("Sell")
+	end,
+	Elevator = function()
+		Effects.sound("StealStart")
 	end,
 	CoinPickup = function(data)
 		if data.Position then

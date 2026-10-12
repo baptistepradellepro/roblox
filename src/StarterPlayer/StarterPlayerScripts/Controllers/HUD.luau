@@ -378,6 +378,17 @@ function HUD.start()
 	buildTopBar()
 	buildColumns()
 
+	-- Pastille "pièces à récupérer" (sur les plaques vertes de ta base)
+	local storedPill = HUD.pill(UI.Colors.Good, 0)
+	local storedText = storedPill:FindFirstChild("Text") :: TextLabel
+	local function updateStored()
+		local stored = player:GetAttribute("Stored") or 0
+		storedPill.Visible = stored >= 1
+		storedText.Text = "💰 " .. Lang.t("StoredPill", { coins = Format.short(stored) })
+	end
+	player:GetAttributeChangedSignal("Stored"):Connect(updateStored)
+	updateStored()
+
 	-- Pastille "Week-end x2"
 	local weekendPill = HUD.pill(UI.Colors.Gold, 3)
 	local weekendText = weekendPill:FindFirstChild("Text") :: TextLabel

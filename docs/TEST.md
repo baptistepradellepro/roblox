@@ -16,15 +16,30 @@ Si tu utilises le fichier `.rbxlx`, tu peux faire ces changements directement da
 Clique sur Jouer (Play) ou F5. Tu dois voir :
 
 1. Ton personnage dans ta base, avec "TA BASE" écrit au-dessus de l'entrée.
-2. Un Drap Mou sur ton premier socle et le message "Cadeau ! Voici ton premier fantôme".
-3. Le compteur de pièces en haut qui monte chaque seconde.
-4. Le bouton bouclier à droite avec un compte à rebours de 2:00 (protection débutant).
+2. Une allée au milieu, 5 socles à gauche et 5 à droite. Un Drap Mou sur ton premier socle et le message "Cadeau ! Voici ton premier fantôme".
+3. Devant chaque socle occupé, une plaque verte avec un petit compteur de pièces qui monte.
+4. Le compteur de pièces en haut qui monte doucement (1 pièce par seconde : c'est le petit revenu de base, pour ne jamais rester bloqué à zéro).
+5. Le bouton bouclier à droite avec un compte à rebours de 2:00 (protection débutant).
 
 Ensuite :
 
 - **Acheter** : va sur le chemin au milieu, approche-toi d'un fantôme et appuie sur E (ou touche le bouton sur mobile). Il apparaît sur un de tes socles dans un petit nuage, et le prix est retiré.
-- **Vendre** : sur un de tes socles, maintiens E pendant 1 seconde. Tu récupères la moitié du prix.
-- **Verrouiller** : attends la fin du bouclier, puis appuie sur le bouton 🔒 à droite (ou sur le gros bouton rouge au sol dans ta base). Une barrière apparaît à l'entrée pendant 60 secondes. Toi, tu peux la traverser. Ensuite le bouton recharge pendant 2 minutes.
+- **Récupérer** : les fantômes ne versent plus leurs pièces directement sur ton compte. Elles s'empilent sur la plaque verte devant leur socle. Marche sur la plaque : les pièces passent sur ton compte avec un "+X" qui s'envole. Sous ton compteur, la pastille "💰 X à récupérer" te dit combien t'attend dans ta base.
+- **Vendre** : sur un de tes socles, maintiens E pendant 1 seconde. Tu récupères la moitié du prix, plus les pièces qui attendaient sur sa plaque.
+- **Verrouiller** : attends la fin du bouclier, puis va au fond de ta base. Le poste de verrouillage est entouré d'une barrière rouge et blanche, avec le panneau "🚧 VERROU". Appuie sur E devant le gros bouton rouge (ou sur le bouton 🔒 à droite de l'écran). Une barrière à barreaux ferme l'entrée pendant 60 secondes. Toi, tu peux la traverser. Ensuite le bouton recharge pendant 2 minutes.
+- **Base pleine** : quand tes 10 socles sont pris et que tu essaies d'acheter, le message "Base pleine ! Achète l'étage 2 ou vends un fantôme." s'affiche.
+
+## Tester l'étage 2
+
+Au fond de ta base, à côté du poste de verrouillage, il y a une plaque violette avec "🔒 Étage 2 : 🪙 25K". Pour tester sans attendre, mets temporairement `Config.FloorPrice = 100` dans `Config.luau`.
+
+1. Approche-toi de la plaque violette et appuie sur E (ou sur le bouton du téléphone). Si tu n'as pas assez de pièces, un message te le dit.
+2. Une fois l'étage acheté, un plancher, des murs vitrés et 10 nouveaux socles apparaissent en hauteur, avec leurs plaques vertes. Le panneau devient "⬆️ Étage 2".
+3. Marche sur la plaque violette : tu es téléporté à l'étage. Une autre plaque violette, au même endroit en haut, te ramène en bas.
+4. Achète des fantômes sur le chemin : une fois le rez-de-chaussée plein, ils vont à l'étage.
+5. Les voleurs peuvent aussi prendre ton ascenseur. Le verrou protège toute la base, étage compris.
+
+L'étage reste acheté après un rebirth. Pour qu'il soit perdu au rebirth, mets `Config.RebirthKeepsFloors = false`.
 
 ## Test à 2 ou 3 joueurs
 
@@ -51,9 +66,9 @@ Pour ne pas attendre 8 minutes, mets `Config.DayDuration = 30` pendant les tests
 
 - **Nuit Hantée** : 10 secondes avant, une annonce prévient. Le ciel devient violet, un fantôme spécial apparaît sur le chemin (Halloween pendant l'événement, sinon Légendaire) et Gloutrouille sort du portail. Reste dans ta base : il ne peut pas entrer. Sors : il te fonce dessus, les bords de l'écran deviennent rouges et tu entends des battements de cœur. S'il t'attrape, tu retournes chez toi avec 5 % de pièces en moins, et tout le serveur le voit dans une annonce.
 - **Voleur attrapé la nuit** : si tu portes un fantôme volé, Gloutrouille te le fait lâcher. Il préfère d'ailleurs poursuivre les voleurs.
-- **Rebirth** : dans `Config.luau`, mets temporairement `Config.RebirthBaseCost = 1000`. Bouton ♻️ à gauche, puis REBIRTH deux fois (la deuxième pression confirme). Tes pièces et tes fantômes repartent à zéro, tu gardes un Drap Mou, tu gagnes x1,5 sur tes revenus et un 9e socle. Une aura apparaît autour de ton personnage.
+- **Rebirth** : dans `Config.luau`, mets temporairement `Config.RebirthBaseCost = 1000` (le vrai prix est 5 millions, puis x3 à chaque rebirth). Bouton ♻️ à gauche, puis REBIRTH deux fois (la deuxième pression confirme). Tes pièces, tes fantômes et les pièces en attente sur les plaques repartent à zéro. Tu gardes un Drap Mou et ton étage 2, et tu gagnes +50 % de revenus pour toujours. Une aura apparaît autour de ton personnage.
 - **Cadeau du jour** : bouton 🎁 à gauche (un point rouge indique qu'il est prêt). Il s'ouvre aussi tout seul à l'arrivée, sauf pendant le tutoriel.
-- **Tutoriel** : avec un compte qui n'a jamais joué (ou après avoir effacé sa sauvegarde), trois flèches jaunes s'enchaînent : "Achète !", "Ta base", "Vole !".
+- **Tutoriel** : avec un compte qui n'a jamais joué (ou après avoir effacé sa sauvegarde), trois flèches jaunes s'enchaînent : "Achète !", "Récupère !" (sur la plaque verte qui a le plus de pièces) et "Vole !".
 - **Boutique** : bouton 🛒. Les articles affichent "Bientôt" tant que leurs IDs valent 0 dans `Config.luau`. Les achats Robux ne se testent vraiment qu'une fois le jeu publié (dans Studio, Roblox simule l'achat sans débiter de Robux).
 - **Fantômes Halloween** : ils n'apparaissent que la nuit, entre le 1er octobre et le 3 novembre 2026. Pour les voir hors période, mets `Config.ForceHalloween = true`.
 
@@ -83,7 +98,7 @@ Il faut avoir publié le jeu et activé l'accès aux API (voir le README).
 
 1. Joue, achète quelques fantômes, note ton nombre de pièces.
 2. Arrête le jeu, attends 5 secondes, relance.
-3. Tu dois retrouver tes fantômes et tes pièces, plus un message "Pendant ton absence, tes fantômes ont gagné..." si tu es parti plus d'une minute.
+3. Tu dois retrouver tes fantômes, tes pièces et ton étage. Si tu es parti plus d'une minute, un message "Pendant ton absence, tes fantômes ont produit..." s'affiche, et ces pièces t'attendent sur les plaques vertes (la moitié du revenu normal, 3 heures au maximum).
 
 Sans l'accès aux API, la fenêtre Sortie affiche "Mode test : la sauvegarde est désactivée". C'est normal et le jeu fonctionne quand même.
 

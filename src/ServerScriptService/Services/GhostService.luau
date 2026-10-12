@@ -152,7 +152,8 @@ local function onBuy(player: Player, uid: any)
 		return
 	end
 	if not BaseService.findFreeSlot(player) then
-		AnnounceService.notify(player, "NoFreePedestal", nil, "bad")
+		local message = if BaseService.floorsOf(player) < 2 then "NoFreePedestalFloor" else "NoFreePedestal"
+		AnnounceService.notify(player, message, nil, "bad")
 		return
 	end
 	local ghostKey = entry.GhostId
@@ -197,6 +198,7 @@ local function onSell(player: Player, slot: any)
 		AnnounceService.notify(player, "TooFar", nil, "bad")
 		return
 	end
+	EconomyService.collect(player, slot) -- on récupère d'abord les pièces du socle
 	BaseService.removeGhost(player, slot)
 	local value = math.floor(GhostData.priceOf(ghostId) * Config.SellRatio)
 	EconomyService.add(player, value)

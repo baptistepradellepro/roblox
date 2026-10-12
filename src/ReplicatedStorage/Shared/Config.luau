@@ -17,11 +17,15 @@ Config.SessionLockMaxWait = 25 -- au pire, on attend 25 s avant de reprendre la 
 
 -- ===== Bases =====
 Config.BaseCount = 12 -- une base par joueur (mets 12 joueurs max dans les paramètres)
-Config.StartPedestals = 8 -- socles débloqués au départ
-Config.MaxPedestals = 12 -- socles maximum (1 de plus par rebirth)
+Config.PedestalsPerFloor = 10 -- 5 socles à gauche + 5 à droite
+Config.MaxPedestals = 20 -- 2 étages
+Config.FloorPrice = 25000 -- prix de l'étage 2 (en pièces)
+Config.RebirthKeepsFloors = true -- false = le rebirth fait aussi perdre l'étage 2
 Config.StartCoins = 100
 Config.StarterGhost = "DrapMou" -- le fantôme offert au premier lancement
-Config.BaseIncome = 1 -- pièces/s gratuites pour ne jamais être bloqué à 0
+Config.BaseIncome = 1 -- pièces/s versées directement, pour ne jamais être bloqué à 0
+-- Les fantômes, eux, remplissent leur socle : il faut passer sur la plaque verte
+-- devant le socle pour récupérer les pièces.
 Config.RespawnDelay = 3
 
 -- ===== Chemin hanté =====
@@ -76,8 +80,8 @@ Config.SuperMutationBoost = 3
 Config.WeekendBoost = { Enabled = true, Mult = 2 }
 
 -- ===== Rebirth =====
-Config.RebirthBaseCost = 1000000
-Config.RebirthCostGrowth = 3.5
+Config.RebirthBaseCost = 5000000
+Config.RebirthCostGrowth = 3
 Config.RebirthIncomeBonus = 0.5 -- +50 % de revenus par rebirth
 
 -- ===== Retour des joueurs =====

@@ -117,13 +117,23 @@ local cData = DataService.get(chloe)
 check(aData.Slots["1"] == Config.StarterGhost, "fantôme de départ sur le socle 1")
 check(BaseService.getBase(alice) ~= BaseService.getBase(bob), "bases différentes")
 
-section("Revenus")
+section("Revenus et récolte sur les plaques")
 local before = aData.Coins
 Sched.advance(10)
 local gained = aData.Coins - before
-check(gained >= 19 and gained <= 21, "2 pièces/s pendant 10 s (gagné : " .. gained .. ")")
+check(gained >= 9 and gained <= 11, "1 pièce/s de revenu de base arrive directement (gagné : " .. gained .. ")")
+check(aData.Stored["1"] >= 9 and aData.Stored["1"] <= 14, "le Drap Mou remplit son socle (" .. tostring(aData.Stored["1"]) .. ")")
+check(BaseService.getBase(alice).Pedestals[1]:GetAttribute("Stored") >= 9, "pièces affichées au-dessus de la plaque")
+check(alice:GetAttribute("Stored") >= 9, "total à récupérer affiché dans le HUD")
 check(alice:GetAttribute("Coins") == math.floor(aData.Coins), "attribut Coins à jour")
 check(alice:GetAttribute("Income") == 2, "revenu affiché = 2/s")
+local pad1 = BaseService.getBase(alice).Pedestals[1]:FindFirstChild("CollectPad")
+local beforeCollect = aData.Coins
+pad1.Touched:Fire(bob.Character.HumanoidRootPart)
+check(aData.Coins == beforeCollect and aData.Stored["1"] >= 9, "un autre joueur ne peut pas récolter")
+pad1.Touched:Fire(alice.Character.HumanoidRootPart)
+check(aData.Coins >= beforeCollect + 9 and aData.Stored["1"] < 1, "Alice récolte ses pièces en passant sur la plaque")
+check(alice:GetAttribute("HasCollected") == true, "tutoriel : récolte notée")
 
 section("Achat sur le chemin")
 aData.Coins = 10_000_000
@@ -190,7 +200,8 @@ Sched.advance(0.4)
 local beforeSell = aData.Coins
 Fake.moveTo(alice, pedestalPos(alice, goldSlot))
 Fake.fire(alice, "SellGhost", goldSlot)
-check(aData.Coins - beforeSell == math.floor(GhostData.get("Caquetome").Price * 3 * Config.SellRatio), "revendu au prix Doré")
+local goldSale = math.floor(GhostData.get("Caquetome").Price * 3 * Config.SellRatio)
+check(aData.Coins - beforeSell >= goldSale and aData.Coins - beforeSell <= goldSale + 60, "revendu au prix Doré (+ les pièces du socle)")
 Sched.advance(0.4)
 
 section("Vente")
@@ -198,7 +209,8 @@ local coinsBefore = aData.Coins
 Fake.moveTo(alice, pedestalPos(alice, 2))
 Fake.fire(alice, "SellGhost", 2)
 check(aData.Slots["2"] == nil, "fantôme vendu")
-check(aData.Coins == coinsBefore + math.floor(GhostData.get(boughtId).Price * Config.SellRatio), "50 % du prix remboursé")
+local sale = math.floor(GhostData.get(boughtId).Price * Config.SellRatio)
+check(aData.Coins >= coinsBefore + sale and aData.Coins <= coinsBefore + sale + GhostData.incomeOf(boughtId) * 3 + 1, "50 % du prix remboursé")
 Sched.advance(0.4)
 Fake.fire(alice, "SellGhost", 99)
 Sched.advance(0.4)
@@ -206,6 +218,61 @@ Fake.fire(alice, "SellGhost", "1")
 Sched.advance(0.4)
 Fake.fire(alice, "SellGhost", 1.5)
 check(aData.Slots["1"] ~= nil, "ventes invalides ignorées")
+
+section("Étage 2 et ascenseur")
+local base = BaseService.getBase(alice)
+local floor2 = base.Model:FindFirstChild("Floor2")
+local platform = floor2:FindFirstChild("Floor2Platform")
+check(platform.Transparency == 1 and not platform.CanCollide, "étage 2 caché au départ")
+check(base.Pedestals[11]:GetAttribute("Unlocked") == false, "socles de l'étage fermés")
+local savedSlots = table.clone(aData.Slots)
+for slot = 1, Config.PedestalsPerFloor do
+	aData.Slots[tostring(slot)] = aData.Slots[tostring(slot)] or "DrapMou"
+end
+local fullHolder = RS.PathGhosts:GetChildren()[1]
+check(fullHolder ~= nil, "un fantôme sur le chemin pour tester la base pleine")
+if fullHolder then
+	Sched.advance(0.3)
+	m = mark()
+	Fake.moveTo(alice, pathPosition(fullHolder))
+	Fake.fire(alice, "BuyGhost", fullHolder.Name)
+	check(notified(alice, "NoFreePedestalFloor", m) and fullHolder.Parent ~= nil, "base pleine : le jeu propose l'étage 2")
+end
+for key in aData.Slots do
+	if savedSlots[key] == nil then
+		aData.Slots[key] = nil
+	end
+end
+local upPad = base.Model:FindFirstChild("UpPad")
+Fake.moveTo(alice, upPad.Position + Vector3.new(0, 3, 0))
+upPad.Touched:Fire(alice.Character.HumanoidRootPart)
+check(Fake.position(alice).Y < base.Origin.Position.Y + 8, "l'ascenseur ne marche pas sans l'étage")
+aData.Coins = 100
+m = mark()
+Fake.fire(alice, "BuyFloor")
+check(notified(alice, "NotEnoughCoins", m) and (aData.Floors or 1) == 1, "étage refusé sans argent")
+Sched.advance(1.1)
+aData.Coins = Config.FloorPrice + 500
+m = mark()
+Fake.fire(alice, "BuyFloor")
+check(aData.Floors == 2 and notified(alice, "FloorBought", m), "étage 2 acheté")
+check(aData.Coins == 500, "prix de l'étage retiré")
+check(base.Model:GetAttribute("Floors") == 2, "l'étage est annoncé aux joueurs")
+check(platform.Transparency == 0 and platform.CanCollide, "le sol de l'étage apparaît")
+check(base.Pedestals[11]:GetAttribute("Unlocked") == true and base.Pedestals[20]:GetAttribute("Unlocked") == true, "10 socles de plus")
+check(base.Pedestals[11]:FindFirstChild("CollectPad").CanTouch == true, "plaques de l'étage actives")
+Sched.advance(1.1)
+upPad.Touched:Fire(alice.Character.HumanoidRootPart)
+check(Fake.position(alice).Y > base.Origin.Position.Y + 14, "l'ascenseur monte à l'étage")
+local downPad = floor2:FindFirstChild("DownPad")
+Sched.advance(1.1)
+downPad.Touched:Fire(alice.Character.HumanoidRootPart)
+check(Fake.position(alice).Y < base.Origin.Position.Y + 8, "et redescend")
+check(BaseService.isInside(base, base.Origin.Position + Vector3.new(0, 17, 0)), "l'étage compte comme dans la base")
+Sched.advance(1.1)
+Fake.fire(alice, "BuyFloor")
+check(aData.Coins >= 500, "on ne paie pas deux fois l'étage")
+Fake.moveTo(alice, baseCenter(alice))
 
 section("Vol pendant le bouclier débutant")
 m = mark()
@@ -322,7 +389,16 @@ Fake.moveTo(bob, pedestalPos(alice, slot))
 m = mark()
 Fake.fire(alice, "RequestLock")
 check(notified(alice, "LockOn", m), "base verrouillée")
-check(BaseService.getBase(alice).Model:FindFirstChild("Barrier") ~= nil, "la barrière est là")
+local barrierModel = BaseService.getBase(alice).Model:FindFirstChild("Barrier")
+check(barrierModel ~= nil, "la barrière est là")
+check(barrierModel and barrierModel:FindFirstChild("Collider") and barrierModel.Collider.CanCollide, "elle bloque l'entrée")
+local bars = 0
+for _, d in barrierModel:GetChildren() do
+	if d.Name == "Bar" then
+		bars += 1
+	end
+end
+check(bars >= 5, "barreaux rouges et blancs (" .. bars .. ")")
 Sched.advance(0.5)
 check(not BaseService.isInside(BaseService.getBase(alice), Fake.position(bob)), "Bob est renvoyé dehors")
 m = mark()
@@ -461,7 +537,7 @@ aData.Coins = 10
 Fake.fire(alice, "Rebirth")
 check(notified(alice, "RebirthNotEnough", m) and aData.Rebirths == 0, "rebirth refusé sans argent")
 Sched.advance(3)
-aData.Coins = 2_000_000
+aData.Coins = 6_000_000
 Fake.fire(alice, "Rebirth")
 check(aData.Rebirths == 1, "rebirth fait")
 check(aData.Coins == Config.StartCoins, "pièces remises à zéro")
@@ -470,7 +546,8 @@ for _ in aData.Slots do
 	count += 1
 end
 check(count == 1 and aData.Slots["1"] == Config.StarterGhost, "il ne reste que le fantôme de départ")
-check(BaseService.getBase(alice).Pedestals[9]:GetAttribute("Unlocked") == true, "un 9e socle est débloqué")
+check(BaseService.getBase(alice).Pedestals[10]:GetAttribute("Unlocked") == true, "les 10 socles du rez-de-chaussée restent ouverts")
+check(next(aData.Stored) == nil, "les pièces en attente repartent à zéro")
 check(alice:GetAttribute("Multiplier") == 1.5, "multiplicateur x1,5")
 check(announced("AnnRebirth", m), "annonce du rebirth")
 
@@ -584,7 +661,7 @@ end
 check(sentMissions, "les missions sont envoyées au joueur")
 -- Alice : gagner des pièces, acheter un Rare, vendre
 aData.Missions.List = {
-	{ Id = "Earn", Tier = "easy", Target = 10, Progress = 0, Done = false },
+	{ Id = "Earn", Tier = "easy", Target = 5, Progress = 0, Done = false },
 	{ Id = "Sell", Tier = "medium", Target = 1, Progress = 0, Done = false },
 	{ Id = "BuyRare", Tier = "hard", Target = 1, Progress = 0, Done = false },
 }

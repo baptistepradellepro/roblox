@@ -72,7 +72,7 @@ for _, ghost in GhostData.List do
 	check(ghost.Name.fr and ghost.Name.en, "nom FR + EN : " .. ghost.Id)
 	check(ghost.Gag.fr and ghost.Gag.en, "blague FR + EN : " .. ghost.Id)
 	local payback = ghost.Price / ghost.Income
-	check(payback >= 10 and payback <= 200, string.format("rentabilisé en 10-200 s : %s (%.0f s)", ghost.Id, payback))
+	check(payback >= 15 and payback <= 400, string.format("rentabilisé en 15-400 s : %s (%.0f s)", ghost.Id, payback))
 	if maxPrice[ghost.Rarity] then
 		maxPrice[ghost.Rarity] = math.max(maxPrice[ghost.Rarity], ghost.Price)
 	end
@@ -121,7 +121,8 @@ end
 for _, rarity in Rarities.Order do
 	check(type(Config.IndexRewards[rarity]) == "number", "récompense du Fantômédex pour " .. rarity)
 end
-check(Config.StartPedestals <= Config.MaxPedestals and Config.MaxPedestals == 12, "nombre de socles")
+check(Config.PedestalsPerFloor == 10 and Config.MaxPedestals == 20, "10 socles par étage, 20 au total")
+check(Config.FloorPrice > 0, "prix de l'étage")
 
 ---------------------------------------------------------------- Missions du jour
 local Missions = loadModule(SHARED .. "Missions.luau")
@@ -278,13 +279,57 @@ if okMap then
 		local origins = {}
 		for _, base in bases:GetChildren() do
 			local pedestals = base:FindFirstChild("Pedestals")
-			check(pedestals and #pedestals:GetChildren() == 12, base.Name .. " a 12 socles")
+			check(pedestals and #pedestals:GetChildren() == 20, base.Name .. " a 20 socles (2 étages)")
 			check(base:FindFirstChild("Spawn") and base:FindFirstChild("LockButton") and base:FindFirstChild("Sign") and base:FindFirstChild("Mat"), base.Name .. " complet")
+			check(base:FindFirstChild("UpPad") and base:FindFirstChild("Floor2") and base:FindFirstChild("LockStation"), base.Name .. " : ascenseur, étage, poste de verrou")
+			local hidden = true
+			for _, d in base.Floor2:GetDescendants() do
+				if d:IsA("BasePart") and (d.Transparency < 1 or d.CanCollide) then
+					hidden = false
+				end
+			end
+			check(hidden, base.Name .. " : étage 2 caché au départ")
+			-- les plaques au sol (récolte, ascenseur, verrou) ne se chevauchent pas
+			local origin2 = base:GetAttribute("Origin")
+			local rects = {}
+			local function addRect(p: BasePart)
+				local c = origin2:PointToObjectSpace(p.CFrame.Position)
+				if c.Y < 3 then
+					table.insert(rects, { name = p.Name, x0 = c.X - p.Size.X / 2, x1 = c.X + p.Size.X / 2, z0 = c.Z - p.Size.Z / 2, z1 = c.Z + p.Size.Z / 2 })
+				end
+			end
+			addRect(base.UpPad)
+			local lock = base.LockButton
+			local lc = origin2:PointToObjectSpace(lock.CFrame.Position)
+			table.insert(rects, { name = "LockButton", x0 = lc.X - 2, x1 = lc.X + 2, z0 = lc.Z - 2, z1 = lc.Z + 2 })
+			for _, ped in base.Pedestals:GetChildren() do
+				addRect(ped.CollectPad)
+			end
+			for i = 1, #rects do
+				for j = i + 1, #rects do
+					local a, b = rects[i], rects[j]
+					local overlap = a.x0 < b.x1 and b.x0 < a.x1 and a.z0 < b.z1 and b.z0 < a.z1
+					check(not overlap, base.Name .. " : " .. a.name .. " et " .. b.name .. " ne se chevauchent pas")
+				end
+			end
+			if pedestals then
+				for _, ped in pedestals:GetChildren() do
+					local slot = ped:GetAttribute("Slot")
+					local cf = ped:GetAttribute("GhostCFrame")
+					local localLook = base:GetAttribute("Origin"):VectorToObjectSpace(cf.LookVector)
+					local localPos = base:GetAttribute("Origin"):PointToObjectSpace(cf.Position)
+					-- les fantômes regardent l'allée centrale
+					check(localLook.X * localPos.X < 0 and math.abs(localLook.X) > 0.99, base.Name .. " socle " .. slot .. " tourné vers l'allée")
+					check(ped:FindFirstChild("CollectPad") ~= nil, base.Name .. " socle " .. slot .. " a sa plaque")
+					local expectedSide = if (slot - 1) % 10 < 5 then -1 else 1
+					check(math.sign(localPos.X) == expectedSide, base.Name .. " socle " .. slot .. " du bon côté (5 à gauche, 5 à droite)")
+				end
+			end
 			local origin = base:GetAttribute("Origin")
 			check(typeof(origin) == "CFrame", base.Name .. " a une origine")
 			table.insert(origins, origin.Position)
 			-- l'avant de la base (-Z local) doit pointer vers le chemin (z = 0)
-			local front = origin:PointToWorldSpace(roblox.Vector3.new(0, 0, -16))
+			local front = origin:PointToWorldSpace(roblox.Vector3.new(0, 0, -20))
 			check(math.abs(front.Z) < math.abs(origin.Position.Z), base.Name .. " : entrée tournée vers le chemin")
 			check(math.abs(front.Z) > 7, base.Name .. " : entrée hors du chemin")
 		end

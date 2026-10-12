@@ -1,7 +1,8 @@
 --[[
 	BaseService : les bases des joueurs.
 	  - donne une base libre à chaque joueur qui arrive
-	  - gère les socles (quel fantôme est posé où)
+	  - gère les socles (quel fantôme est posé où) et l'étage 2 achetable
+	  - l'ascenseur entre le rez-de-chaussée et l'étage
 	  - gère le verrou (60 s, recharge 2 min) et le bouclier débutant
 	  - fait apparaître le joueur dans sa base
 
@@ -34,7 +35,7 @@ export type Base = {
 	Owner: Player?,
 	LockedUntil: number,
 	LockReadyAt: number,
-	Barrier: BasePart?,
+	Barrier: Instance?,
 	StolenOut: { [number]: boolean },
 }
 
@@ -44,7 +45,6 @@ local byPlayer: { [Player]: Base } = {}
 -- Ordre d'attribution : d'abord les bases du centre (plus d'action)
 local ASSIGN_ORDER = { 3, 9, 4, 10, 2, 8, 5, 11, 1, 7, 6, 12 }
 
-local LOCKED_SLOT_COLOR = Color3.fromRGB(35, 30, 40)
 local PEDESTAL_COLOR = Color3.fromRGB(60, 50, 75)
 
 local function now(): number
@@ -90,10 +90,40 @@ end
 
 ---------------------------------------------------------------- Socles
 
-function BaseService.unlockedSlots(player: Player): number
+function BaseService.floorsOf(player: Player): number
 	local data = DataService.get(player)
-	local rebirths = if data then data.Rebirths else 0
-	return math.min(Config.StartPedestals + rebirths, Config.MaxPedestals)
+	return math.clamp(if data then data.Floors or 1 else 1, 1, 2)
+end
+
+function BaseService.unlockedSlots(player: Player): number
+	return math.min(Config.PedestalsPerFloor * BaseService.floorsOf(player), Config.MaxPedestals)
+end
+
+-- Affiche ou cache l'étage 2 d'une base (sol, murs, socles, plaques, ascenseur)
+local function setFloorVisible(base: Base, visible: boolean)
+	local parts = {}
+	local floor2 = base.Model:FindFirstChild("Floor2")
+	if floor2 then
+		for _, d in floor2:GetDescendants() do
+			table.insert(parts, d)
+		end
+	end
+	for _, ped in base.Pedestals do
+		if ped:GetAttribute("Floor") == 2 then
+			table.insert(parts, ped)
+			for _, d in ped:GetDescendants() do
+				table.insert(parts, d)
+			end
+		end
+	end
+	for _, p in parts do
+		if p:IsA("BasePart") and p:GetAttribute("BaseTransparency") ~= nil then
+			p.Transparency = if visible then p:GetAttribute("BaseTransparency") else 1
+			p.CanCollide = visible and p:GetAttribute("BaseCollide") == true
+			p.CanTouch = visible and p:GetAttribute("BaseTouch") == true
+		end
+	end
+	base.Model:SetAttribute("Floors", if visible then 2 else 1)
 end
 
 -- Met à jour les attributs des socles d'après les données sauvegardées
@@ -103,16 +133,24 @@ function BaseService.refreshSlots(player: Player)
 	if not base or not data then
 		return
 	end
+	setFloorVisible(base, BaseService.floorsOf(player) >= 2)
 	local unlocked = BaseService.unlockedSlots(player)
 	for slot, ped in base.Pedestals do
 		ped:SetAttribute("GhostId", data.Slots[tostring(slot)] or "")
 		ped:SetAttribute("Stolen", base.StolenOut[slot] == true)
-		local isUnlocked = slot <= unlocked
-		ped:SetAttribute("Unlocked", isUnlocked)
-		ped.Color = if isUnlocked then PEDESTAL_COLOR else LOCKED_SLOT_COLOR
-		local rim = ped:FindFirstChild("Rim") :: BasePart?
-		if rim then
-			rim.Transparency = if isUnlocked then 0 else 0.85
+		ped:SetAttribute("Unlocked", slot <= unlocked)
+		ped:SetAttribute("Stored", math.floor(data.Stored and data.Stored[tostring(slot)] or 0))
+	end
+end
+
+-- Pièces en attente sur un socle (affichées au-dessus de la plaque verte)
+function BaseService.showStored(player: Player, slot: number, amount: number)
+	local base = byPlayer[player]
+	local ped = base and base.Pedestals[slot]
+	if ped then
+		local shown = math.floor(amount)
+		if ped:GetAttribute("Stored") ~= shown then
+			ped:SetAttribute("Stored", shown)
 		end
 	end
 end
@@ -186,6 +224,7 @@ function BaseService.clearAllGhosts(player: Player)
 		return
 	end
 	data.Slots = {}
+	data.Stored = {}
 	local base = byPlayer[player]
 	if base then
 		base.StolenOut = {}
@@ -243,7 +282,7 @@ function BaseService.isInside(base: Base, position: Vector3): boolean
 	return math.abs(localPos.X) < MapBuilder.BASE_WIDTH / 2
 		and math.abs(localPos.Z) < MapBuilder.BASE_DEPTH / 2
 		and localPos.Y > -5
-		and localPos.Y < MapBuilder.WALL_HEIGHT + 8
+		and localPos.Y < MapBuilder.FLOOR2_Y + MapBuilder.FLOOR2_WALL + 6
 end
 
 function BaseService.baseAt(position: Vector3): Base?
@@ -261,19 +300,49 @@ function BaseService.isLocked(base: Base): boolean
 	return now() < base.LockedUntil
 end
 
+-- Une barrière à barreaux rouges et blancs ferme l'entrée de la base
+local function makeBarrierPart(model: Model, size: Vector3, cf: CFrame, color: Color3, neon: boolean, name: string): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanTouch = false
+	p.CanQuery = false
+	p.CastShadow = false
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = if neon then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	p.Parent = model
+	return p
+end
+
+local RED = Color3.fromRGB(230, 40, 50)
+local WHITE = Color3.fromRGB(250, 250, 250)
+
 local function setBarrier(base: Base, on: boolean)
 	if on and not base.Barrier then
-		local barrier = Instance.new("Part")
+		local front = base.Origin * CFrame.new(0, 0, -MapBuilder.BASE_DEPTH / 2)
+		local barrier = Instance.new("Model")
 		barrier.Name = "Barrier"
-		barrier.Anchored = true
-		barrier.CanCollide = true
-		barrier.CanTouch = false
-		barrier.CastShadow = false
-		barrier.Size = Vector3.new(10, MapBuilder.WALL_HEIGHT, 0.6)
-		barrier.CFrame = base.Origin * CFrame.new(0, MapBuilder.WALL_HEIGHT / 2, -MapBuilder.BASE_DEPTH / 2)
-		barrier.Color = base.Model:GetAttribute("Color") or Color3.fromRGB(255, 80, 80)
-		barrier.Material = Enum.Material.ForceField
-		barrier.Transparency = 0.1
+		-- le "mur" invisible qui bloque vraiment (les barreaux sont décoratifs)
+		local wallSize = Vector3.new(10, MapBuilder.WALL_HEIGHT, 1)
+		local collider = makeBarrierPart(barrier, wallSize, front * CFrame.new(0, MapBuilder.WALL_HEIGHT / 2, 0), WHITE, false, "Collider")
+		collider.Transparency = 1
+		collider.CanCollide = true
+		barrier.PrimaryPart = collider
+		for i = 0, 6 do
+			local red = i % 2 == 0
+			local barCf = front * CFrame.new(-4.5 + i * 1.5, 5.5, 0) * CFrame.Angles(0, 0, math.rad(90))
+			local bar = makeBarrierPart(barrier, Vector3.new(11, 0.5, 0.5), barCf, if red then RED else WHITE, red, "Bar")
+			bar.Shape = Enum.PartType.Cylinder
+		end
+		for _, y in { 2.5, 8.5 } do
+			for i = 0, 4 do
+				local red = i % 2 == 0
+				makeBarrierPart(barrier, Vector3.new(2, 0.7, 0.7), front * CFrame.new(-4 + i * 2, y, 0), if red then RED else WHITE, red, "Rail")
+			end
+		end
 		barrier.Parent = base.Model
 		base.Barrier = barrier
 	elseif not on and base.Barrier then
@@ -428,11 +497,59 @@ function BaseService.release(player: Player)
 		ped:SetAttribute("GhostId", "")
 		ped:SetAttribute("Stolen", false)
 		ped:SetAttribute("Unlocked", false)
+		ped:SetAttribute("Stored", 0)
 		ped.Color = PEDESTAL_COLOR
+	end
+	setFloorVisible(base, false)
+end
+
+-- Ascenseur : la plaque violette du fond monte à l'étage, celle de l'étage redescend
+local elevatorCooldown: { [Player]: number } = {}
+
+local function useElevator(base: Base, hit: BasePart, up: boolean)
+	local character = hit.Parent
+	local player = character and Players:GetPlayerFromCharacter(character)
+	if not player or not base.Owner or base.Model:GetAttribute("Floors") ~= 2 then
+		return
+	end
+	if (elevatorCooldown[player] or 0) > os.clock() or not Guard.root(player) then
+		return
+	end
+	elevatorCooldown[player] = os.clock() + 1
+	local y = if up then MapBuilder.FLOOR2_Y + 3 else 3
+	character:PivotTo(base.Origin * CFrame.new(0, y, 6))
+	AnnounceService.effect("Elevator", { Position = base.Origin.Position }, player)
+end
+
+-- Débloque l'étage 2 d'un joueur (appelé par EconomyService après le paiement)
+function BaseService.unlockFloor(player: Player)
+	local data = DataService.get(player)
+	if data then
+		data.Floors = 2
+		BaseService.refreshSlots(player)
 	end
 end
 
 function BaseService.start()
+	for _, base in bases do
+		local upPad = base.Model:FindFirstChild("UpPad") :: BasePart?
+		local floor2 = base.Model:FindFirstChild("Floor2")
+		local downPad = floor2 and floor2:FindFirstChild("DownPad") :: BasePart?
+		if upPad then
+			upPad.Touched:Connect(function(hit)
+				useElevator(base, hit, true)
+			end)
+		end
+		if downPad then
+			downPad.Touched:Connect(function(hit)
+				useElevator(base, hit, false)
+			end)
+		end
+	end
+	Players.PlayerRemoving:Connect(function(player)
+		elevatorCooldown[player] = nil
+	end)
+
 	-- Le joueur appuie sur "Verrouiller"
 	Remotes.get("RequestLock").OnServerEvent:Connect(function(player)
 		if not Guard.rate(player, "Lock", 0.5) then

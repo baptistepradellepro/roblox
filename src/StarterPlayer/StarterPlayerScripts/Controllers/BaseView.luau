@@ -4,6 +4,8 @@
 	  - les fantômes posés sur les socles (construits de notre côté, d'après les attributs)
 	  - les boutons : "Voler" chez les autres, "Vendre" chez soi, "Verrouiller" sur le gros bouton
 	  - la barrière du verrou : on peut la traverser dans SA base, pas chez les autres
+	  - les pièces qui attendent au-dessus de chaque plaque verte
+	  - l'ascenseur et l'achat de l'étage 2
 ]]
 
 local Players = game:GetService("Players")
@@ -38,7 +40,7 @@ type Slot = {
 	Steal: ProximityPrompt,
 	Sell: ProximityPrompt,
 	Alert: BillboardGui?,
-	LockTag: BillboardGui?,
+	StoredLabel: TextLabel?,
 }
 
 local slots: { Slot } = {}
@@ -113,11 +115,16 @@ end
 
 local function setupBarrier(baseModel: Model)
 	local function onChild(child: Instance)
-		if child.Name == "Barrier" and child:IsA("BasePart") then
-			if isMine(baseModel) then
-				-- chez moi : je peux traverser (seulement de mon côté, le serveur ne change rien)
-				child.CanCollide = false
-				child.Transparency = 0.6
+		if child.Name == "Barrier" and isMine(baseModel) then
+			-- chez moi : je peux traverser (seulement de mon côté, le serveur ne change rien)
+			local parts = if child:IsA("BasePart") then { child } else child:GetDescendants()
+			for _, p in parts do
+				if p:IsA("BasePart") then
+					p.CanCollide = false
+					if p.Transparency < 1 then
+						p.Transparency = 0.6
+					end
+				end
 			end
 		end
 	end
@@ -153,6 +160,55 @@ local function setupLockButton(baseModel: Model)
 	local function refresh()
 		prompt.Enabled = isMine(baseModel)
 	end
+	baseModel:GetAttributeChangedSignal("OwnerUserId"):Connect(refresh)
+	refresh()
+	-- panneau au-dessus du poste de verrouillage, au fond de la base
+	local tag = Labels.simple(button, "🚧 " .. Lang.t("LockStation"), UI.Colors.Bad, Vector3.new(0, 5, 0), 6)
+	tag.MaxDistance = 50
+end
+
+---------------------------------------------------------------- Ascenseur et étage 2
+
+local function setupElevator(baseModel: Model)
+	local upPad = baseModel:WaitForChild("UpPad") :: BasePart
+	local tag = Labels.simple(upPad, "", UI.Colors.Purple, Vector3.new(0, 4, 0), 8)
+	tag.MaxDistance = 50
+	local text = tag:FindFirstChild("Text") :: TextLabel
+	local floor2 = baseModel:WaitForChild("Floor2")
+	local downPad = floor2:WaitForChild("DownPad") :: BasePart
+	local downTag = Labels.simple(downPad, "⬇️ " .. Lang.t("FloorDown"), UI.Colors.Purple, Vector3.new(0, 4, 0), 8)
+	downTag.MaxDistance = 40
+
+	-- Acheter l'étage (seulement pour le propriétaire, tant qu'il n'est pas acheté)
+	local attachment = Instance.new("Attachment")
+	attachment.Position = upPad.CFrame:PointToObjectSpace(upPad.Position + Vector3.new(0, 2.5, 0))
+	attachment.Parent = upPad
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = Lang.t("FloorBuy")
+	prompt.ObjectText = "🪙 " .. Format.short(Config.FloorPrice)
+	prompt.HoldDuration = 0.5
+	prompt.MaxActivationDistance = 9
+	prompt.RequiresLineOfSight = false
+	prompt.AutoLocalize = Lang.autoLocalize
+	prompt.Parent = attachment
+	prompt.Triggered:Connect(function()
+		Effects.sound("Click")
+		Remotes.get("BuyFloor"):FireServer()
+	end)
+
+	local function refresh()
+		local bought = baseModel:GetAttribute("Floors") == 2
+		local owned = ownerOf(baseModel) ~= 0
+		prompt.Enabled = isMine(baseModel) and not bought
+		downTag.Enabled = bought
+		tag.Enabled = owned
+		if bought then
+			text.Text = "⬆️ " .. Lang.t("FloorUp")
+		else
+			text.Text = "🔒 " .. Lang.t("FloorLocked", { coins = "🪙 " .. Format.short(Config.FloorPrice) })
+		end
+	end
+	baseModel:GetAttributeChangedSignal("Floors"):Connect(refresh)
 	baseModel:GetAttributeChangedSignal("OwnerUserId"):Connect(refresh)
 	refresh()
 end
@@ -197,14 +253,14 @@ local function renderSlot(slot: Slot)
 		slot.Alert = nil
 	end
 
-	-- Cadenas sur les socles pas encore débloqués (seulement chez moi)
-	local showLockTag = mine and not unlocked
-	if showLockTag and not slot.LockTag then
-		slot.LockTag = Labels.simple(ped, "🔒 " .. Lang.t("SlotLocked"), UI.Colors.Gray, Vector3.new(0, 3, 0), 7)
-		slot.LockTag.MaxDistance = 30
-	elseif not showLockTag and slot.LockTag then
-		slot.LockTag:Destroy()
-		slot.LockTag = nil
+	-- Pièces qui attendent sur ce socle (au-dessus de la plaque verte)
+	if slot.StoredLabel then
+		local stored = ped:GetAttribute("Stored") or 0
+		local label = slot.StoredLabel
+		label.Text = "🪙 " .. Format.short(stored)
+		label.TextColor3 = if mine then UI.Colors.Gold else UI.Colors.Text
+		local storedGui = label.Parent :: BillboardGui
+		storedGui.Enabled = stored >= 1 and unlocked
 	end
 
 	-- Texte du bouton "Vendre"
@@ -281,8 +337,15 @@ local function setupPedestal(baseModel: Model, ped: BasePart)
 		Steal = steal,
 		Sell = sell,
 		Alert = nil,
-		LockTag = nil,
+		StoredLabel = nil,
 	}
+	local pad = ped:FindFirstChild("CollectPad") :: BasePart?
+	if pad then
+		local storedTag = Labels.simple(pad, "", UI.Colors.Gold, Vector3.new(0, 2.2, 0), 5)
+		storedTag.MaxDistance = 40
+		storedTag.Enabled = false
+		slot.StoredLabel = storedTag:FindFirstChild("Text") :: TextLabel
+	end
 	table.insert(slots, slot)
 
 	local function refresh()
@@ -291,6 +354,7 @@ local function setupPedestal(baseModel: Model, ped: BasePart)
 	ped:GetAttributeChangedSignal("GhostId"):Connect(refresh)
 	ped:GetAttributeChangedSignal("Stolen"):Connect(refresh)
 	ped:GetAttributeChangedSignal("Unlocked"):Connect(refresh)
+	ped:GetAttributeChangedSignal("Stored"):Connect(refresh)
 	baseModel:GetAttributeChangedSignal("OwnerUserId"):Connect(refresh)
 	refresh()
 end
@@ -298,6 +362,7 @@ end
 local function setupBase(baseModel: Model)
 	task.spawn(setupSign, baseModel)
 	task.spawn(setupLockButton, baseModel)
+	task.spawn(setupElevator, baseModel)
 	setupBarrier(baseModel)
 	local pedestals = baseModel:WaitForChild("Pedestals")
 	for _, ped in pedestals:GetChildren() do

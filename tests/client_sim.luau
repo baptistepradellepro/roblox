@@ -121,11 +121,21 @@ for _ in aData.Slots do
 end
 check(count == 2, "achat par le bouton du client")
 check(#clientGhosts:GetChildren() == 3, "le nouveau fantôme apparaît sur le socle")
-check(marker.Parent and findText(marker, "Ta base") ~= nil, "tutoriel étape 2 : 'Ta base'")
+check(marker.Parent and findText(marker, "Récupère") ~= nil, "tutoriel étape 2 : 'Récupère !'")
 
-section("Tutoriel étapes 2 et 3")
-Fake.moveTo(alice, BaseService.getBase(alice).Origin.Position + Vector3.new(0, 3, 0))
+section("Tutoriel étapes 2 et 3, récolte des pièces")
+local aliceBase = BaseService.getBase(alice)
+local pad = aliceBase.Pedestals[1]:FindFirstChild("CollectPad")
+check(findText(gui.SAG_HUD, "à récupérer") ~= nil, "pastille 'à récupérer' dans le HUD")
+local padTag = pad:FindFirstChildOfClass("BillboardGui")
+check(padTag and padTag.Enabled and findText(padTag, "🪙") ~= nil, "pièces affichées au-dessus de la plaque verte")
+check((marker.Position - pad.Position).Magnitude < 8, "la flèche montre la plaque verte")
+Fake.moveTo(alice, pad.Position + Vector3.new(0, 3, 0))
+local coinsBeforePad = aData.Coins
+pad.Touched:Fire(alice.Character.HumanoidRootPart)
 Sched.advance(0.5)
+check(aData.Coins > coinsBeforePad, "récolte en passant sur la plaque")
+check(findText(workspace, "+") ~= nil, "le +X doré s'affiche")
 check(marker.Parent and findText(marker, "Vole") ~= nil, "tutoriel étape 3 : 'Vole !'")
 Sched.advance(26)
 check(workspace:FindFirstChild("TutorialMarker") == nil, "tutoriel terminé")
@@ -189,6 +199,22 @@ Fake.walk(bob, BaseService.getBase(bob).Origin.Position + Vector3.new(0, 3, 0), 
 Sched.advance(0.5)
 check(findText(gui.SAG_Announce, "Bob a volé") ~= nil, "bannière 'Bob a volé ... à Alice !'")
 
+section("Étage 2 (ascenseur et achat)")
+local upPad = aliceBase.Model:FindFirstChild("UpPad")
+local floorTag = upPad:FindFirstChildOfClass("BillboardGui")
+check(floorTag and findText(floorTag, "Étage 2 : 🪙 25K") ~= nil, "prix de l'étage affiché sur l'ascenseur")
+local floorPrompt = find(upPad, function(d)
+	return d.ClassName == "ProximityPrompt"
+end)
+check(floorPrompt and floorPrompt.Enabled and string.find(floorPrompt.ActionText, "étage", 1, true) ~= nil, "bouton 'Acheter l'étage 2'")
+aData.Coins = Config.FloorPrice + 1000
+floorPrompt.Triggered:Fire()
+Sched.advance(0.3)
+check(aData.Floors == 2, "étage acheté depuis le bouton")
+check(findText(floorTag, "⬆️") ~= nil and not floorPrompt.Enabled, "l'ascenseur affiche 'Étage 2'")
+local lockTag = aliceBase.Model.LockButton:FindFirstChildOfClass("BillboardGui")
+check(lockTag and findText(lockTag, "VERROU") ~= nil, "panneau 'VERROU' au fond de la base")
+
 section("Écran du classement")
 local LeaderboardServiceSim = Fake.require("ServerScriptService.Services.LeaderboardService")
 LeaderboardServiceSim.refresh()
@@ -207,12 +233,15 @@ end)
 lock.Activated:Fire()
 Sched.advance(0.3)
 check(BaseService.isLocked(BaseService.getBase(alice)), "base verrouillée par le bouton")
+local gate = BaseService.getBase(alice).Model:FindFirstChild("Barrier")
+check(gate and gate.Collider.CanCollide == false, "Alice peut traverser sa propre barrière")
 local caption = lock:FindFirstChild("Caption")
 check(caption and (caption.Text == "1:00" or string.match(caption.Text, "^%d+s$")), "le bouton affiche le compte à rebours (" .. tostring(caption and caption.Text) .. ")")
 check(findText(gui.SAG_HUD, "Base verrouillée") ~= nil, "message 'Base verrouillée !'")
 
 section("Rebirth par le panneau")
-aData.Coins = 5_000_000
+aData.Coins = 6_000_000
+Sched.advance(1.2)
 local rebirthButton = find(gui.SAG_HUD, function(d)
 	return d.Name == "Rebirth"
 end)

@@ -1,6 +1,6 @@
 # Steal a Ghost
 
-Jeu Roblox multijoueur (8 à 12 joueurs) sur le thème d'Halloween, version cartoon. On achète des fantômes absurdes sur un chemin hanté, ils rapportent des pièces dans ta base, et on peut aller voler ceux des autres.
+Jeu Roblox multijoueur (8 à 12 joueurs) sur le thème d'Halloween, version cartoon. On achète des fantômes absurdes sur un chemin hanté et on les pose dans sa base (5 socles à gauche, 5 à droite, plus un étage à acheter). Ils fabriquent des pièces qu'il faut venir ramasser sur les plaques vertes, et on peut aller voler les fantômes des autres.
 
 Tout le jeu est écrit en Luau dans le dossier `src/`. La map, les fantômes et l'interface sont générés par le code au lancement : il n'y a rien à construire à la main dans Studio.
 
@@ -56,8 +56,8 @@ src/
     Services/                    toute la logique importante (anti-triche)
       DataService                sauvegarde
       MapBuilder                 construit la map
-      BaseService                bases, socles, verrou
-      EconomyService             pièces, bonus amis, hors ligne, cadeau du jour
+      BaseService                bases, socles, étage 2, ascenseur, verrou
+      EconomyService             pièces, récolte sur les plaques, achat de l'étage, amis, hors ligne, cadeau du jour
       GhostService               chemin hanté, achat, vente
       StealService               vol, porteur, Marteau Pouet
       NightService               Nuit Hantée et Gloutrouille

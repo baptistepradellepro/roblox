@@ -267,13 +267,21 @@ end
 -- Lune (base de données officielle des classes Roblox) pour détecter les fautes.
 Fake.propertyErrors = {}
 local probes = {}
+local pristine = {} -- jamais modifiées : elles gardent les vraies valeurs par défaut
 local INTERNAL = { SourcePath = true, Source = true, Kicked = true, ProcessReceipt = true } -- ProcessReceipt est un "callback", pas une propriété
 local function probeFor(className: string)
 	if probes[className] == nil then
 		local ok, real = pcall(roblox.Instance.new, className)
 		probes[className] = if ok then real else false
+		local okDefault, clean = pcall(roblox.Instance.new, className)
+		pristine[className] = if okDefault then clean else false
 	end
 	return probes[className]
+end
+
+local function defaultsFor(className: string)
+	probeFor(className)
+	return pristine[className]
 end
 
 InstanceMT.__index = function(self, key)
@@ -306,7 +314,7 @@ InstanceMT.__index = function(self, key)
 		end
 	end
 	-- valeur par défaut réelle de Roblox (ex. Transparency = 0)
-	local probe = probeFor(props.ClassName)
+	local probe = defaultsFor(props.ClassName)
 	if probe then
 		local ok, default = pcall(function()
 			return probe[key]

@@ -20,6 +20,7 @@ Remotes.Names = {
 	"Rebirth", -- () faire un rebirth
 	"TutorialDone", -- () le tutoriel est terminé
 	"RedeemCode", -- (code) utiliser un code promo
+	"BuyFloor", -- () acheter l'étage 2 de sa base
 	-- Serveur -> Client
 	"Notify", -- (key, params, kind) petit message pour un joueur
 	"Announce", -- (key, params, kind) grande annonce pour tout le serveur

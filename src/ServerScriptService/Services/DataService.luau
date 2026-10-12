@@ -48,6 +48,8 @@ local function template()
 		Version = 1,
 		Coins = Config.StartCoins,
 		Slots = {}, -- ["1"] = "DrapMou" : le fantôme posé sur le socle 1
+		Stored = {}, -- ["1"] = 12.5 : pièces qui attendent sur le socle 1
+		Floors = 1, -- 2 quand l'étage est acheté
 		Rebirths = 0,
 		TotalEarned = 0,
 		TotalSteals = 0,

@@ -32,12 +32,12 @@ Strings.fr = {
 	LockedFor = "{time}",
 	LockReady = "Verrou",
 	LockCooldown = "Recharge {time}",
-	SlotLocked = "Rebirth pour débloquer",
 	ThiefLabel = "VOLEUR !",
 
 	-- Notifications
 	NotEnoughCoins = "Pas assez de pièces !",
 	NoFreePedestal = "Plus de socle libre ! Vends un fantôme.",
+	NoFreePedestalFloor = "Base pleine ! Achète l'étage 2 ou vends un fantôme.",
 	NoFreePedestalThief = "Ta base est pleine, impossible de voler !",
 	BaseIsLocked = "Cette base est verrouillée !",
 	TooFar = "Trop loin !",
@@ -91,7 +91,7 @@ Strings.fr = {
 	Rebirth = "Rebirth",
 	RebirthTitle = "REBIRTH",
 	RebirthDesc = "Recommence à zéro (pièces et fantômes) et gagne pour toujours :",
-	RebirthGain = "+{percent} % de revenus  •  +1 socle",
+	RebirthGain = "+{percent} % de revenus pour toujours",
 	RebirthCost = "Coût : {coins} pièces",
 	RebirthCurrent = "Multiplicateur actuel : x{mult}",
 	RebirthConfirm = "REBIRTH !",
@@ -110,7 +110,7 @@ Strings.fr = {
 	DailyGotGhost = "Jour {day} : +{coins} pièces et {ghost} !",
 	DailyNext = "Prochain cadeau dans {time}",
 	DailyGhostBonus = "+ fantôme Épique",
-	OfflineEarned = "Pendant ton absence, tes fantômes ont gagné {coins} pièces !",
+	OfflineEarned = "Pendant ton absence, tes fantômes ont produit {coins} pièces : va les récupérer sur les plaques vertes !",
 
 	-- Boutique
 	Shop = "Boutique",
@@ -127,8 +127,17 @@ Strings.fr = {
 
 	-- Tutoriel (3 flèches, très peu de texte)
 	Tuto1 = "Achète !",
-	Tuto2 = "Ta base",
+	Tuto2 = "Récupère !",
 	Tuto3 = "Vole !",
+
+	-- Base : récolte, étage, verrou
+	StoredPill = "{coins} à récupérer",
+	FloorBuy = "Acheter l'étage 2",
+	FloorLocked = "Étage 2 : {coins}",
+	FloorUp = "Étage 2",
+	FloorDown = "Rez-de-chaussée",
+	FloorBought = "Étage 2 débloqué : 10 socles de plus !",
+	LockStation = "VERROU",
 
 
 	-- Fantômédex
@@ -210,11 +219,11 @@ Strings.en = {
 	LockedFor = "{time}",
 	LockReady = "Lock",
 	LockCooldown = "Ready in {time}",
-	SlotLocked = "Rebirth to unlock",
 	ThiefLabel = "THIEF!",
 
 	NotEnoughCoins = "Not enough coins!",
 	NoFreePedestal = "No free pedestal! Sell a ghost.",
+	NoFreePedestalFloor = "Base full! Buy floor 2 or sell a ghost.",
 	NoFreePedestalThief = "Your base is full, you can't steal!",
 	BaseIsLocked = "This base is locked!",
 	TooFar = "Too far!",
@@ -264,7 +273,7 @@ Strings.en = {
 	Rebirth = "Rebirth",
 	RebirthTitle = "REBIRTH",
 	RebirthDesc = "Start over (coins and ghosts) and earn forever:",
-	RebirthGain = "+{percent}% income  •  +1 pedestal",
+	RebirthGain = "+{percent}% income forever",
 	RebirthCost = "Cost: {coins} coins",
 	RebirthCurrent = "Current multiplier: x{mult}",
 	RebirthConfirm = "REBIRTH!",
@@ -282,7 +291,7 @@ Strings.en = {
 	DailyGotGhost = "Day {day}: +{coins} coins and {ghost}!",
 	DailyNext = "Next gift in {time}",
 	DailyGhostBonus = "+ Epic ghost",
-	OfflineEarned = "While you were away, your ghosts earned {coins} coins!",
+	OfflineEarned = "While you were away, your ghosts made {coins} coins: collect them on the green pads!",
 
 	Shop = "Shop",
 	ShopTitle = "SHOP",
@@ -297,8 +306,16 @@ Strings.en = {
 	ShopThanks = "Thanks! Purchase received",
 
 	Tuto1 = "Buy!",
-	Tuto2 = "Your base",
+	Tuto2 = "Collect!",
 	Tuto3 = "Steal!",
+
+	StoredPill = "{coins} to collect",
+	FloorBuy = "Buy floor 2",
+	FloorLocked = "Floor 2: {coins}",
+	FloorUp = "Floor 2",
+	FloorDown = "Ground floor",
+	FloorBought = "Floor 2 unlocked: 10 more pedestals!",
+	LockStation = "LOCK",
 
 
 	Index = "Ghostdex",

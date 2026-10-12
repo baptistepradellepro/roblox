@@ -41,11 +41,15 @@ Config.SessionLockMaxWait = 25 -- au pire, on attend 25 s avant de reprendre la 
 
 -- ===== Bases =====
 Config.BaseCount = 12 -- une base par joueur (mets 12 joueurs max dans les paramètres)
-Config.StartPedestals = 8 -- socles débloqués au départ
-Config.MaxPedestals = 12 -- socles maximum (1 de plus par rebirth)
+Config.PedestalsPerFloor = 10 -- 5 socles à gauche + 5 à droite
+Config.MaxPedestals = 20 -- 2 étages
+Config.FloorPrice = 25000 -- prix de l'étage 2 (en pièces)
+Config.RebirthKeepsFloors = true -- false = le rebirth fait aussi perdre l'étage 2
 Config.StartCoins = 100
 Config.StarterGhost = "DrapMou" -- le fantôme offert au premier lancement
-Config.BaseIncome = 1 -- pièces/s gratuites pour ne jamais être bloqué à 0
+Config.BaseIncome = 1 -- pièces/s versées directement, pour ne jamais être bloqué à 0
+-- Les fantômes, eux, remplissent leur socle : il faut passer sur la plaque verte
+-- devant le socle pour récupérer les pièces.
 Config.RespawnDelay = 3
 
 -- ===== Chemin hanté =====
@@ -100,8 +104,8 @@ Config.SuperMutationBoost = 3
 Config.WeekendBoost = { Enabled = true, Mult = 2 }
 
 -- ===== Rebirth =====
-Config.RebirthBaseCost = 1000000
-Config.RebirthCostGrowth = 3.5
+Config.RebirthBaseCost = 5000000
+Config.RebirthCostGrowth = 3
 Config.RebirthIncomeBonus = 0.5 -- +50 % de revenus par rebirth
 
 -- ===== Retour des joueurs =====
@@ -247,55 +251,55 @@ local GhostData = {}
 GhostData.List = {
 	-- ===================== COMMUNS =====================
 	{
-		Id = "DrapMou", Rarity = "Common", Price = 15, Income = 1,
+		Id = "DrapMou", Rarity = "Common", Price = 20, Income = 1,
 		Name = { fr = "Drap Mou", en = "Floppy Sheet" },
 		Gag = { fr = "A oublié comment flotter.", en = "Forgot how to float." },
 		Look = { Body = "Sheet", Color = { 245, 245, 250 }, Face = "Sleepy", Accessories = {} },
 	},
 	{
-		Id = "ChaussetteOrpheline", Rarity = "Common", Price = 20, Income = 1,
+		Id = "ChaussetteOrpheline", Rarity = "Common", Price = 30, Income = 1,
 		Name = { fr = "Chaussette Orpheline", en = "Lonely Sock" },
 		Gag = { fr = "Cherche sa jumelle depuis 1987.", en = "Looking for its twin since 1987." },
 		Look = { Body = "Sock", Color = { 120, 200, 255 }, Accent = { 255, 90, 90 }, Face = "Sad", Accessories = {} },
 	},
 	{
-		Id = "TartineBoudeuse", Rarity = "Common", Price = 30, Income = 2,
+		Id = "TartineBoudeuse", Rarity = "Common", Price = 55, Income = 2,
 		Name = { fr = "Tartine Boudeuse", en = "Grumpy Toast" },
 		Gag = { fr = "Tombée côté confiture. Ne s'en remet pas.", en = "Landed jam side down. Still upset." },
 		Look = { Body = "Block", Size = { 3.6, 3.6, 1 }, Color = { 222, 170, 100 }, Accent = { 200, 40, 70 }, Face = "Angry", Accessories = { "Jam" } },
 	},
 	{
-		Id = "BouhBouhTimide", Rarity = "Common", Price = 35, Income = 2,
+		Id = "BouhBouhTimide", Rarity = "Common", Price = 65, Income = 2,
 		Name = { fr = "Bouh-Bouh le Timide", en = "Shy Boo-Boo" },
 		Gag = { fr = "Se fait peur tout seul.", en = "Scares himself." },
 		Look = { Body = "Blob", Color = { 230, 235, 255 }, Face = "Shy", Accessories = {} },
 	},
 	{
-		Id = "MamieCourantDair", Rarity = "Common", Price = 40, Income = 3,
+		Id = "MamieCourantDair", Rarity = "Common", Price = 80, Income = 3,
 		Name = { fr = "Mamie Courant d'Air", en = "Granny Draft" },
 		Gag = { fr = "Ferme les portes derrière toi. Fort.", en = "Slams doors behind you. Loudly." },
 		Look = { Body = "Sheet", Color = { 225, 240, 255 }, Accent = { 170, 170, 180 }, Face = "Happy", Accessories = { "Bun" } },
 	},
 	{
-		Id = "GobeMiettes", Rarity = "Common", Price = 45, Income = 3,
+		Id = "GobeMiettes", Rarity = "Common", Price = 95, Income = 3,
 		Name = { fr = "Gobe-Miettes", en = "Crumb Gobbler" },
 		Gag = { fr = "Mange les miettes sous ton canapé.", en = "Eats the crumbs under your couch." },
 		Look = { Body = "Blob", Color = { 255, 240, 200 }, Accent = { 160, 110, 60 }, Face = "BigMouth", Accessories = { "Crumbs" } },
 	},
 	{
-		Id = "SpectreSpaghetti", Rarity = "Common", Price = 55, Income = 4,
+		Id = "SpectreSpaghetti", Rarity = "Common", Price = 110, Income = 4,
 		Name = { fr = "Spectre Spaghetti", en = "Spaghetti Spook" },
 		Gag = { fr = "Toujours un peu trop cuit.", en = "Always a bit overcooked." },
 		Look = { Body = "Sheet", Color = { 255, 225, 130 }, Accent = { 200, 60, 40 }, Face = "Happy", Accessories = { "Spaghetti" } },
 	},
 	{
-		Id = "FantomePasFini", Rarity = "Common", Price = 60, Income = 4,
+		Id = "FantomePasFini", Rarity = "Common", Price = 125, Income = 4,
 		Name = { fr = "Fantôme Pas Fini", en = "Unfinished Ghost" },
 		Gag = { fr = "Encore en chargement... 99 %.", en = "Still loading... 99%." },
 		Look = { Body = "Sheet", Color = { 190, 190, 200 }, Accent = { 80, 255, 255 }, Face = "Blank", Transparency = 0.35, Accessories = { "LoadingRing" } },
 	},
 	{
-		Id = "FeuilleMorteRaleuse", Rarity = "Common", Price = 50, Income = 3,
+		Id = "FeuilleMorteRaleuse", Rarity = "Common", Price = 100, Income = 3,
 		Name = { fr = "Feuille Morte Râleuse", en = "Grumpy Dead Leaf" },
 		Gag = { fr = "Tombée de l'arbre. Elle ne l'a pas digéré.", en = "Fell off the tree. Still mad about it." },
 		Look = { Body = "Leaf", Color = { 230, 110, 30 }, Accent = { 120, 60, 25 }, Face = "Angry", FaceScale = 0.85, Accessories = {} },
@@ -303,49 +307,49 @@ GhostData.List = {
 
 	-- ===================== RARES =====================
 	{
-		Id = "Caquetome", Rarity = "Rare", Price = 300, Income = 10,
+		Id = "Caquetome", Rarity = "Rare", Price = 450, Income = 7,
 		Name = { fr = "Caquetôme", en = "Cluck-a-Boo" },
 		Gag = { fr = "Pond des œufs invisibles.", en = "Lays invisible eggs." },
 		Look = { Body = "Blob", Color = { 255, 255, 255 }, Accent = { 230, 40, 40 }, Face = "Shocked", Accessories = { "ChickenComb" } },
 	},
 	{
-		Id = "FrigoFrisson", Rarity = "Rare", Price = 380, Income = 12,
+		Id = "FrigoFrisson", Rarity = "Rare", Price = 560, Income = 8,
 		Name = { fr = "Frigo-Frisson", en = "Fridge Fright" },
 		Gag = { fr = "S'ouvre tout seul à 3 h du matin.", en = "Opens by itself at 3 a.m." },
 		Look = { Body = "Block", Size = { 3, 4.6, 2.4 }, Color = { 205, 235, 255 }, Accent = { 140, 150, 165 }, Face = "Shocked", Accessories = { "FridgeHandle" } },
 	},
 	{
-		Id = "BrocoliBouh", Rarity = "Rare", Price = 450, Income = 14,
+		Id = "BrocoliBouh", Rarity = "Rare", Price = 640, Income = 10,
 		Name = { fr = "Brocoli Bouh", en = "Broccoli Boo" },
 		Gag = { fr = "Le seul légume qui fait peur aux parents.", en = "The only veggie that scares parents." },
 		Look = { Body = "Cloud", Color = { 80, 170, 70 }, Accent = { 160, 210, 120 }, Face = "Happy", Accessories = { "Stalk" } },
 	},
 	{
-		Id = "PantouflePossedee", Rarity = "Rare", Price = 550, Income = 16,
+		Id = "PantouflePossedee", Rarity = "Rare", Price = 770, Income = 11,
 		Name = { fr = "Pantoufle Possédée", en = "Possessed Slipper" },
 		Gag = { fr = "Disparaît quand tu la cherches.", en = "Vanishes when you need it." },
 		Look = { Body = "Block", Size = { 2.6, 1.6, 4.2 }, Color = { 255, 150, 200 }, Accent = { 255, 255, 255 }, Face = "Angry", FaceScale = 0.6, Accessories = { "Pompom" } },
 	},
 	{
-		Id = "SpatuleErrante", Rarity = "Rare", Price = 650, Income = 18,
+		Id = "SpatuleErrante", Rarity = "Rare", Price = 900, Income = 13,
 		Name = { fr = "Spatule Errante", en = "Wandering Spatula" },
 		Gag = { fr = "Retourne les crêpes... et les gens.", en = "Flips pancakes... and people." },
 		Look = { Body = "Block", Size = { 2.8, 3, 0.5 }, Color = { 255, 120, 40 }, Accent = { 150, 100, 60 }, Face = "Happy", Accessories = { "Handle" } },
 	},
 	{
-		Id = "NuageGrognon", Rarity = "Rare", Price = 780, Income = 22,
+		Id = "NuageGrognon", Rarity = "Rare", Price = 1100, Income = 16,
 		Name = { fr = "Nuage Grognon", en = "Grumpy Cloud" },
 		Gag = { fr = "Il pleut seulement sur toi.", en = "It only rains on you." },
 		Look = { Body = "Cloud", Color = { 150, 155, 170 }, Accent = { 90, 160, 255 }, Face = "Angry", Accessories = { "Rain" } },
 	},
 	{
-		Id = "WifiFantome", Rarity = "Rare", Price = 900, Income = 25,
+		Id = "WifiFantome", Rarity = "Rare", Price = 1250, Income = 18,
 		Name = { fr = "Wifi-Fantôme", en = "Wi-Fi Ghost" },
 		Gag = { fr = "Coupe la connexion quand tu gagnes.", en = "Cuts your connection when you win." },
 		Look = { Body = "Sheet", Color = { 120, 255, 200 }, Accent = { 40, 255, 120 }, Face = "Cool", Accessories = { "Antenna" } },
 	},
 	{
-		Id = "ChampignonChuchoteur", Rarity = "Rare", Price = 700, Income = 20,
+		Id = "ChampignonChuchoteur", Rarity = "Rare", Price = 950, Income = 14,
 		Name = { fr = "Champignon Chuchoteur", en = "Whispering Mushroom" },
 		Gag = { fr = "Raconte des secrets aux racines.", en = "Tells secrets to the roots." },
 		Look = { Body = "Mushroom", Color = { 230, 50, 60 }, Accent = { 250, 240, 215 }, Face = "Shy", FaceScale = 0.6, Accessories = {} },
@@ -353,43 +357,43 @@ GhostData.List = {
 
 	-- ===================== ÉPIQUES =====================
 	{
-		Id = "CrepeFrisson", Rarity = "Epic", Price = 4000, Income = 70,
+		Id = "CrepeFrisson", Rarity = "Epic", Price = 6500, Income = 50,
 		Name = { fr = "Crêpe-Frisson", en = "Creepy Crêpe" },
 		Gag = { fr = "Sauté trop haut, jamais retombé.", en = "Flipped too high, never came down." },
 		Look = { Body = "Disc", Color = { 240, 190, 110 }, Accent = { 255, 255, 255 }, Face = "Happy", Accessories = { "ChefHat" } },
 	},
 	{
-		Id = "SirBougieFondue", Rarity = "Epic", Price = 5200, Income = 85,
+		Id = "SirBougieFondue", Rarity = "Epic", Price = 8000, Income = 60,
 		Name = { fr = "Sir Bougie Fondue", en = "Sir Melty Candle" },
 		Gag = { fr = "Très distingué. Un peu coulant.", en = "Very posh. A bit drippy." },
 		Look = { Body = "Tube", Size = { 2.6, 3.8 }, Color = { 255, 245, 220 }, Accent = { 255, 150, 30 }, Face = "Monocle", Accessories = { "Flame" } },
 	},
 	{
-		Id = "Miaoufantome", Rarity = "Epic", Price = 6500, Income = 100,
+		Id = "Miaoufantome", Rarity = "Epic", Price = 9500, Income = 70,
 		Name = { fr = "Miaoufantôme", en = "Meowghost" },
 		Gag = { fr = "Fait tomber tes affaires de la table.", en = "Knocks your stuff off the table." },
 		Look = { Body = "Sheet", Color = { 200, 180, 255 }, Accent = { 255, 160, 200 }, Face = "Cat", Accessories = { "CatEars" } },
 	},
 	{
-		Id = "TornadeDeDraps", Rarity = "Epic", Price = 8000, Income = 120,
+		Id = "TornadeDeDraps", Rarity = "Epic", Price = 11000, Income = 85,
 		Name = { fr = "Tornade de Draps", en = "Sheet Tornado" },
 		Gag = { fr = "A pris la machine à laver trop au sérieux.", en = "Took the washing machine too seriously." },
 		Look = { Body = "Tornado", Color = { 235, 240, 255 }, Accent = { 150, 200, 255 }, Face = "Dizzy", Accessories = {}, Spin = 4 },
 	},
 	{
-		Id = "CapitaineCornichon", Rarity = "Epic", Price = 10000, Income = 140,
+		Id = "CapitaineCornichon", Rarity = "Epic", Price = 13500, Income = 100,
 		Name = { fr = "Capitaine Cornichon", en = "Captain Gherkin" },
 		Gag = { fr = "Navigue dans un bocal.", en = "Sails in a jar." },
 		Look = { Body = "Tube", Size = { 2.4, 4.4 }, Color = { 90, 160, 60 }, Accent = { 30, 30, 35 }, Face = "Pirate", Accessories = { "Bumps", "PirateHat" } },
 	},
 	{
-		Id = "Ballonfantome", Rarity = "Epic", Price = 12000, Income = 160,
+		Id = "Ballonfantome", Rarity = "Epic", Price = 15000, Income = 115,
 		Name = { fr = "Ballonfantôme", en = "Balloon Boo" },
 		Gag = { fr = "Éclate de rire. Littéralement.", en = "Bursts out laughing. Literally." },
 		Look = { Body = "Blob", Color = { 255, 80, 90 }, Accent = { 255, 255, 255 }, Face = "Happy", Reflectance = 0.15, Accessories = { "String" } },
 	},
 	{
-		Id = "MarronToutTremblant", Rarity = "Epic", Price = 9000, Income = 130,
+		Id = "MarronToutTremblant", Rarity = "Epic", Price = 12500, Income = 95,
 		Name = { fr = "Marron Tout Tremblant", en = "Shivering Chestnut" },
 		Gag = { fr = "A peur des écureuils. Avec raison.", en = "Scared of squirrels. Rightly so." },
 		Look = { Body = "Blob", Color = { 125, 70, 40 }, Accent = { 215, 175, 120 }, Face = "Shocked", Accessories = { "Hilum" } },
@@ -397,31 +401,31 @@ GhostData.List = {
 
 	-- ===================== LÉGENDAIRES =====================
 	{
-		Id = "RoiPatatome", Rarity = "Legendary", Price = 60000, Income = 600,
+		Id = "RoiPatatome", Rarity = "Legendary", Price = 90000, Income = 420,
 		Name = { fr = "Roi Patatôme", en = "King Spudghost" },
 		Gag = { fr = "Règne sur toutes les frites du monde.", en = "Rules over every fry in the world." },
 		Look = { Body = "Blob", Color = { 175, 125, 75 }, Accent = { 255, 200, 40 }, Face = "Happy", Accessories = { "Lumps", "Crown" } },
 	},
 	{
-		Id = "DJBouhBoum", Rarity = "Legendary", Price = 85000, Income = 850,
+		Id = "DJBouhBoum", Rarity = "Legendary", Price = 130000, Income = 600,
 		Name = { fr = "DJ Bouh-Boum", en = "DJ Boo-Boom" },
 		Gag = { fr = "Ses basses font trembler les tombes.", en = "His bass shakes the graveyard." },
 		Look = { Body = "Sheet", Color = { 70, 70, 110 }, Accent = { 0, 255, 220 }, Face = "Cool", Accessories = { "Headphones" } },
 	},
 	{
-		Id = "BaronBiscotte", Rarity = "Legendary", Price = 115000, Income = 1100,
+		Id = "BaronBiscotte", Rarity = "Legendary", Price = 170000, Income = 770,
 		Name = { fr = "Baron Biscotte", en = "Baron Biscuit" },
 		Gag = { fr = "Se brise en mille morceaux d'émotion.", en = "Crumbles with emotion." },
 		Look = { Body = "Block", Size = { 3.4, 3.4, 1.2 }, Color = { 230, 180, 90 }, Accent = { 25, 25, 30 }, Face = "Monocle", Accessories = { "TopHat", "Mustache" } },
 	},
 	{
-		Id = "GrandMereTurbo", Rarity = "Legendary", Price = 150000, Income = 1400,
+		Id = "GrandMereTurbo", Rarity = "Legendary", Price = 220000, Income = 1000,
 		Name = { fr = "Grand-Mère Turbo", en = "Rocket Granny" },
 		Gag = { fr = "0 à 100 km/h en 2 secondes. Avec ses biscuits.", en = "0 to 60 in 2 seconds. With cookies." },
 		Look = { Body = "Sheet", Color = { 255, 230, 240 }, Accent = { 170, 170, 180 }, Face = "Happy", Accessories = { "Bun", "Rocket" } },
 	},
 	{
-		Id = "EcureuilFantomeStresse", Rarity = "Legendary", Price = 100000, Income = 950,
+		Id = "EcureuilFantomeStresse", Rarity = "Legendary", Price = 150000, Income = 680,
 		Name = { fr = "Écureuil Fantôme Stressé", en = "Stressed Ghost Squirrel" },
 		Gag = { fr = "A caché ses noisettes en 1923. Les cherche encore.", en = "Hid his nuts in 1923. Still looking." },
 		Look = { Body = "Sheet", Color = { 175, 115, 60 }, Accent = { 230, 190, 140 }, Face = "Shocked", Accessories = { "CatEars", "SquirrelTail" } },
@@ -429,19 +433,19 @@ GhostData.List = {
 
 	-- ===================== MYTHIQUES =====================
 	{
-		Id = "MegaBouhCosmique", Rarity = "Mythic", Price = 1000000, Income = 8000,
+		Id = "MegaBouhCosmique", Rarity = "Mythic", Price = 1800000, Income = 5500,
 		Name = { fr = "Méga Bouh Cosmique", en = "Cosmic Mega Boo" },
 		Gag = { fr = "A fait peur à une galaxie entière.", en = "Once scared an entire galaxy." },
 		Look = { Body = "Sheet", Color = { 60, 40, 150 }, Accent = { 255, 120, 255 }, Face = "Happy", Accessories = { "Rings" } },
 	},
 	{
-		Id = "EmpereurDesChaussettes", Rarity = "Mythic", Price = 1800000, Income = 13000,
+		Id = "EmpereurDesChaussettes", Rarity = "Mythic", Price = 3000000, Income = 9000,
 		Name = { fr = "Empereur des Chaussettes", en = "Sock Emperor" },
 		Gag = { fr = "Toutes les chaussettes perdues finissent chez lui.", en = "Every lost sock ends up at his palace." },
 		Look = { Body = "Sock", Color = { 255, 215, 80 }, Accent = { 200, 30, 50 }, Face = "Monocle", Accessories = { "Crown", "Cape" } },
 	},
 	{
-		Id = "SpectroPizzaSupreme", Rarity = "Mythic", Price = 3000000, Income = 20000,
+		Id = "SpectroPizzaSupreme", Rarity = "Mythic", Price = 4500000, Income = 14000,
 		Name = { fr = "Spectro-Pizza Suprême", en = "Supreme Spectro-Pizza" },
 		Gag = { fr = "Livrée en 30 secondes ou elle te hante.", en = "Delivered in 30 seconds or it haunts you." },
 		Look = { Body = "Pizza", Color = { 255, 205, 70 }, Accent = { 200, 40, 40 }, Face = "Happy", Accessories = { "Pepperoni" } },
@@ -449,25 +453,25 @@ GhostData.List = {
 
 	-- ===================== HALLOWEEN (édition limitée) =====================
 	{
-		Id = "CitrouilleToupie", Rarity = "Halloween", Price = 250000, Income = 3000,
+		Id = "CitrouilleToupie", Rarity = "Halloween", Price = 400000, Income = 2000,
 		Name = { fr = "Citrouille Toupie", en = "Spinning Pumpkin" },
 		Gag = { fr = "Tourne tellement qu'elle fait de la soupe.", en = "Spins so fast it makes soup." },
 		Look = { Body = "Blob", Color = { 255, 130, 20 }, Accent = { 60, 140, 40 }, Face = "JackO", Accessories = { "Stem" }, Spin = 6 },
 	},
 	{
-		Id = "SorciereTrottinette", Rarity = "Halloween", Price = 350000, Income = 3800,
+		Id = "SorciereTrottinette", Rarity = "Halloween", Price = 520000, Income = 2600,
 		Name = { fr = "Sorcière Trottinette", en = "Scooter Witch" },
 		Gag = { fr = "Le balai, c'était trop lent.", en = "The broom was too slow." },
 		Look = { Body = "Sheet", Color = { 170, 120, 230 }, Accent = { 40, 30, 50 }, Face = "Happy", Accessories = { "WitchHat", "Scooter" } },
 	},
 	{
-		Id = "SqueletteDisco", Rarity = "Halloween", Price = 450000, Income = 4800,
+		Id = "SqueletteDisco", Rarity = "Halloween", Price = 680000, Income = 3400,
 		Name = { fr = "Squelette Disco", en = "Disco Skeleton" },
 		Gag = { fr = "Danse jusqu'à l'os.", en = "Dances down to the bone." },
 		Look = { Body = "Sheet", Color = { 240, 235, 220 }, Accent = { 220, 220, 255 }, Face = "Skull", Accessories = { "DiscoBall" } },
 	},
 	{
-		Id = "BonbonHurleur", Rarity = "Halloween", Price = 600000, Income = 6000,
+		Id = "BonbonHurleur", Rarity = "Halloween", Price = 850000, Income = 4200,
 		Name = { fr = "Bonbon Hurleur", en = "Howling Candy" },
 		Gag = { fr = "Crie quand on veut le manger.", en = "Screams when you try to eat it." },
 		Look = { Body = "Candy", Color = { 255, 90, 180 }, Accent = { 255, 230, 120 }, Face = "Shocked", Accessories = {} },
@@ -1681,6 +1685,7 @@ Remotes.Names = {
 	"Rebirth", -- () faire un rebirth
 	"TutorialDone", -- () le tutoriel est terminé
 	"RedeemCode", -- (code) utiliser un code promo
+	"BuyFloor", -- () acheter l'étage 2 de sa base
 	-- Serveur -> Client
 	"Notify", -- (key, params, kind) petit message pour un joueur
 	"Announce", -- (key, params, kind) grande annonce pour tout le serveur
@@ -1807,12 +1812,12 @@ Strings.fr = {
 	LockedFor = "{time}",
 	LockReady = "Verrou",
 	LockCooldown = "Recharge {time}",
-	SlotLocked = "Rebirth pour débloquer",
 	ThiefLabel = "VOLEUR !",
 
 	-- Notifications
 	NotEnoughCoins = "Pas assez de pièces !",
 	NoFreePedestal = "Plus de socle libre ! Vends un fantôme.",
+	NoFreePedestalFloor = "Base pleine ! Achète l'étage 2 ou vends un fantôme.",
 	NoFreePedestalThief = "Ta base est pleine, impossible de voler !",
 	BaseIsLocked = "Cette base est verrouillée !",
 	TooFar = "Trop loin !",
@@ -1866,7 +1871,7 @@ Strings.fr = {
 	Rebirth = "Rebirth",
 	RebirthTitle = "REBIRTH",
 	RebirthDesc = "Recommence à zéro (pièces et fantômes) et gagne pour toujours :",
-	RebirthGain = "+{percent} % de revenus  •  +1 socle",
+	RebirthGain = "+{percent} % de revenus pour toujours",
 	RebirthCost = "Coût : {coins} pièces",
 	RebirthCurrent = "Multiplicateur actuel : x{mult}",
 	RebirthConfirm = "REBIRTH !",
@@ -1885,7 +1890,7 @@ Strings.fr = {
 	DailyGotGhost = "Jour {day} : +{coins} pièces et {ghost} !",
 	DailyNext = "Prochain cadeau dans {time}",
 	DailyGhostBonus = "+ fantôme Épique",
-	OfflineEarned = "Pendant ton absence, tes fantômes ont gagné {coins} pièces !",
+	OfflineEarned = "Pendant ton absence, tes fantômes ont produit {coins} pièces : va les récupérer sur les plaques vertes !",
 
 	-- Boutique
 	Shop = "Boutique",
@@ -1902,8 +1907,17 @@ Strings.fr = {
 
 	-- Tutoriel (3 flèches, très peu de texte)
 	Tuto1 = "Achète !",
-	Tuto2 = "Ta base",
+	Tuto2 = "Récupère !",
 	Tuto3 = "Vole !",
+
+	-- Base : récolte, étage, verrou
+	StoredPill = "{coins} à récupérer",
+	FloorBuy = "Acheter l'étage 2",
+	FloorLocked = "Étage 2 : {coins}",
+	FloorUp = "Étage 2",
+	FloorDown = "Rez-de-chaussée",
+	FloorBought = "Étage 2 débloqué : 10 socles de plus !",
+	LockStation = "VERROU",
 
 
 	-- Fantômédex
@@ -1985,11 +1999,11 @@ Strings.en = {
 	LockedFor = "{time}",
 	LockReady = "Lock",
 	LockCooldown = "Ready in {time}",
-	SlotLocked = "Rebirth to unlock",
 	ThiefLabel = "THIEF!",
 
 	NotEnoughCoins = "Not enough coins!",
 	NoFreePedestal = "No free pedestal! Sell a ghost.",
+	NoFreePedestalFloor = "Base full! Buy floor 2 or sell a ghost.",
 	NoFreePedestalThief = "Your base is full, you can't steal!",
 	BaseIsLocked = "This base is locked!",
 	TooFar = "Too far!",
@@ -2039,7 +2053,7 @@ Strings.en = {
 	Rebirth = "Rebirth",
 	RebirthTitle = "REBIRTH",
 	RebirthDesc = "Start over (coins and ghosts) and earn forever:",
-	RebirthGain = "+{percent}% income  •  +1 pedestal",
+	RebirthGain = "+{percent}% income forever",
 	RebirthCost = "Cost: {coins} coins",
 	RebirthCurrent = "Current multiplier: x{mult}",
 	RebirthConfirm = "REBIRTH!",
@@ -2057,7 +2071,7 @@ Strings.en = {
 	DailyGotGhost = "Day {day}: +{coins} coins and {ghost}!",
 	DailyNext = "Next gift in {time}",
 	DailyGhostBonus = "+ Epic ghost",
-	OfflineEarned = "While you were away, your ghosts earned {coins} coins!",
+	OfflineEarned = "While you were away, your ghosts made {coins} coins: collect them on the green pads!",
 
 	Shop = "Shop",
 	ShopTitle = "SHOP",
@@ -2072,8 +2086,16 @@ Strings.en = {
 	ShopThanks = "Thanks! Purchase received",
 
 	Tuto1 = "Buy!",
-	Tuto2 = "Your base",
+	Tuto2 = "Collect!",
 	Tuto3 = "Steal!",
+
+	StoredPill = "{coins} to collect",
+	FloorBuy = "Buy floor 2",
+	FloorLocked = "Floor 2: {coins}",
+	FloorUp = "Floor 2",
+	FloorDown = "Ground floor",
+	FloorBought = "Floor 2 unlocked: 10 more pedestals!",
+	LockStation = "LOCK",
 
 
 	Index = "Ghostdex",
@@ -2337,7 +2359,8 @@ return AnnounceService
           <string name="Source"><![CDATA[--[[
 	BaseService : les bases des joueurs.
 	  - donne une base libre à chaque joueur qui arrive
-	  - gère les socles (quel fantôme est posé où)
+	  - gère les socles (quel fantôme est posé où) et l'étage 2 achetable
+	  - l'ascenseur entre le rez-de-chaussée et l'étage
 	  - gère le verrou (60 s, recharge 2 min) et le bouclier débutant
 	  - fait apparaître le joueur dans sa base
 
@@ -2370,7 +2393,7 @@ export type Base = {
 	Owner: Player?,
 	LockedUntil: number,
 	LockReadyAt: number,
-	Barrier: BasePart?,
+	Barrier: Instance?,
 	StolenOut: { [number]: boolean },
 }
 
@@ -2380,7 +2403,6 @@ local byPlayer: { [Player]: Base } = {}
 -- Ordre d'attribution : d'abord les bases du centre (plus d'action)
 local ASSIGN_ORDER = { 3, 9, 4, 10, 2, 8, 5, 11, 1, 7, 6, 12 }
 
-local LOCKED_SLOT_COLOR = Color3.fromRGB(35, 30, 40)
 local PEDESTAL_COLOR = Color3.fromRGB(60, 50, 75)
 
 local function now(): number
@@ -2426,10 +2448,40 @@ end
 
 ---------------------------------------------------------------- Socles
 
-function BaseService.unlockedSlots(player: Player): number
+function BaseService.floorsOf(player: Player): number
 	local data = DataService.get(player)
-	local rebirths = if data then data.Rebirths else 0
-	return math.min(Config.StartPedestals + rebirths, Config.MaxPedestals)
+	return math.clamp(if data then data.Floors or 1 else 1, 1, 2)
+end
+
+function BaseService.unlockedSlots(player: Player): number
+	return math.min(Config.PedestalsPerFloor * BaseService.floorsOf(player), Config.MaxPedestals)
+end
+
+-- Affiche ou cache l'étage 2 d'une base (sol, murs, socles, plaques, ascenseur)
+local function setFloorVisible(base: Base, visible: boolean)
+	local parts = {}
+	local floor2 = base.Model:FindFirstChild("Floor2")
+	if floor2 then
+		for _, d in floor2:GetDescendants() do
+			table.insert(parts, d)
+		end
+	end
+	for _, ped in base.Pedestals do
+		if ped:GetAttribute("Floor") == 2 then
+			table.insert(parts, ped)
+			for _, d in ped:GetDescendants() do
+				table.insert(parts, d)
+			end
+		end
+	end
+	for _, p in parts do
+		if p:IsA("BasePart") and p:GetAttribute("BaseTransparency") ~= nil then
+			p.Transparency = if visible then p:GetAttribute("BaseTransparency") else 1
+			p.CanCollide = visible and p:GetAttribute("BaseCollide") == true
+			p.CanTouch = visible and p:GetAttribute("BaseTouch") == true
+		end
+	end
+	base.Model:SetAttribute("Floors", if visible then 2 else 1)
 end
 
 -- Met à jour les attributs des socles d'après les données sauvegardées
@@ -2439,16 +2491,24 @@ function BaseService.refreshSlots(player: Player)
 	if not base or not data then
 		return
 	end
+	setFloorVisible(base, BaseService.floorsOf(player) >= 2)
 	local unlocked = BaseService.unlockedSlots(player)
 	for slot, ped in base.Pedestals do
 		ped:SetAttribute("GhostId", data.Slots[tostring(slot)] or "")
 		ped:SetAttribute("Stolen", base.StolenOut[slot] == true)
-		local isUnlocked = slot <= unlocked
-		ped:SetAttribute("Unlocked", isUnlocked)
-		ped.Color = if isUnlocked then PEDESTAL_COLOR else LOCKED_SLOT_COLOR
-		local rim = ped:FindFirstChild("Rim") :: BasePart?
-		if rim then
-			rim.Transparency = if isUnlocked then 0 else 0.85
+		ped:SetAttribute("Unlocked", slot <= unlocked)
+		ped:SetAttribute("Stored", math.floor(data.Stored and data.Stored[tostring(slot)] or 0))
+	end
+end
+
+-- Pièces en attente sur un socle (affichées au-dessus de la plaque verte)
+function BaseService.showStored(player: Player, slot: number, amount: number)
+	local base = byPlayer[player]
+	local ped = base and base.Pedestals[slot]
+	if ped then
+		local shown = math.floor(amount)
+		if ped:GetAttribute("Stored") ~= shown then
+			ped:SetAttribute("Stored", shown)
 		end
 	end
 end
@@ -2522,6 +2582,7 @@ function BaseService.clearAllGhosts(player: Player)
 		return
 	end
 	data.Slots = {}
+	data.Stored = {}
 	local base = byPlayer[player]
 	if base then
 		base.StolenOut = {}
@@ -2579,7 +2640,7 @@ function BaseService.isInside(base: Base, position: Vector3): boolean
 	return math.abs(localPos.X) < MapBuilder.BASE_WIDTH / 2
 		and math.abs(localPos.Z) < MapBuilder.BASE_DEPTH / 2
 		and localPos.Y > -5
-		and localPos.Y < MapBuilder.WALL_HEIGHT + 8
+		and localPos.Y < MapBuilder.FLOOR2_Y + MapBuilder.FLOOR2_WALL + 6
 end
 
 function BaseService.baseAt(position: Vector3): Base?
@@ -2597,19 +2658,49 @@ function BaseService.isLocked(base: Base): boolean
 	return now() < base.LockedUntil
 end
 
+-- Une barrière à barreaux rouges et blancs ferme l'entrée de la base
+local function makeBarrierPart(model: Model, size: Vector3, cf: CFrame, color: Color3, neon: boolean, name: string): Part
+	local p = Instance.new("Part")
+	p.Name = name
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanTouch = false
+	p.CanQuery = false
+	p.CastShadow = false
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = if neon then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	p.Parent = model
+	return p
+end
+
+local RED = Color3.fromRGB(230, 40, 50)
+local WHITE = Color3.fromRGB(250, 250, 250)
+
 local function setBarrier(base: Base, on: boolean)
 	if on and not base.Barrier then
-		local barrier = Instance.new("Part")
+		local front = base.Origin * CFrame.new(0, 0, -MapBuilder.BASE_DEPTH / 2)
+		local barrier = Instance.new("Model")
 		barrier.Name = "Barrier"
-		barrier.Anchored = true
-		barrier.CanCollide = true
-		barrier.CanTouch = false
-		barrier.CastShadow = false
-		barrier.Size = Vector3.new(10, MapBuilder.WALL_HEIGHT, 0.6)
-		barrier.CFrame = base.Origin * CFrame.new(0, MapBuilder.WALL_HEIGHT / 2, -MapBuilder.BASE_DEPTH / 2)
-		barrier.Color = base.Model:GetAttribute("Color") or Color3.fromRGB(255, 80, 80)
-		barrier.Material = Enum.Material.ForceField
-		barrier.Transparency = 0.1
+		-- le "mur" invisible qui bloque vraiment (les barreaux sont décoratifs)
+		local wallSize = Vector3.new(10, MapBuilder.WALL_HEIGHT, 1)
+		local collider = makeBarrierPart(barrier, wallSize, front * CFrame.new(0, MapBuilder.WALL_HEIGHT / 2, 0), WHITE, false, "Collider")
+		collider.Transparency = 1
+		collider.CanCollide = true
+		barrier.PrimaryPart = collider
+		for i = 0, 6 do
+			local red = i % 2 == 0
+			local barCf = front * CFrame.new(-4.5 + i * 1.5, 5.5, 0) * CFrame.Angles(0, 0, math.rad(90))
+			local bar = makeBarrierPart(barrier, Vector3.new(11, 0.5, 0.5), barCf, if red then RED else WHITE, red, "Bar")
+			bar.Shape = Enum.PartType.Cylinder
+		end
+		for _, y in { 2.5, 8.5 } do
+			for i = 0, 4 do
+				local red = i % 2 == 0
+				makeBarrierPart(barrier, Vector3.new(2, 0.7, 0.7), front * CFrame.new(-4 + i * 2, y, 0), if red then RED else WHITE, red, "Rail")
+			end
+		end
 		barrier.Parent = base.Model
 		base.Barrier = barrier
 	elseif not on and base.Barrier then
@@ -2764,11 +2855,59 @@ function BaseService.release(player: Player)
 		ped:SetAttribute("GhostId", "")
 		ped:SetAttribute("Stolen", false)
 		ped:SetAttribute("Unlocked", false)
+		ped:SetAttribute("Stored", 0)
 		ped.Color = PEDESTAL_COLOR
+	end
+	setFloorVisible(base, false)
+end
+
+-- Ascenseur : la plaque violette du fond monte à l'étage, celle de l'étage redescend
+local elevatorCooldown: { [Player]: number } = {}
+
+local function useElevator(base: Base, hit: BasePart, up: boolean)
+	local character = hit.Parent
+	local player = character and Players:GetPlayerFromCharacter(character)
+	if not player or not base.Owner or base.Model:GetAttribute("Floors") ~= 2 then
+		return
+	end
+	if (elevatorCooldown[player] or 0) > os.clock() or not Guard.root(player) then
+		return
+	end
+	elevatorCooldown[player] = os.clock() + 1
+	local y = if up then MapBuilder.FLOOR2_Y + 3 else 3
+	character:PivotTo(base.Origin * CFrame.new(0, y, 6))
+	AnnounceService.effect("Elevator", { Position = base.Origin.Position }, player)
+end
+
+-- Débloque l'étage 2 d'un joueur (appelé par EconomyService après le paiement)
+function BaseService.unlockFloor(player: Player)
+	local data = DataService.get(player)
+	if data then
+		data.Floors = 2
+		BaseService.refreshSlots(player)
 	end
 end
 
 function BaseService.start()
+	for _, base in bases do
+		local upPad = base.Model:FindFirstChild("UpPad") :: BasePart?
+		local floor2 = base.Model:FindFirstChild("Floor2")
+		local downPad = floor2 and floor2:FindFirstChild("DownPad") :: BasePart?
+		if upPad then
+			upPad.Touched:Connect(function(hit)
+				useElevator(base, hit, true)
+			end)
+		end
+		if downPad then
+			downPad.Touched:Connect(function(hit)
+				useElevator(base, hit, false)
+			end)
+		end
+	end
+	Players.PlayerRemoving:Connect(function(player)
+		elevatorCooldown[player] = nil
+	end)
+
 	-- Le joueur appuie sur "Verrouiller"
 	Remotes.get("RequestLock").OnServerEvent:Connect(function(player)
 		if not Guard.rate(player, "Lock", 0.5) then
@@ -2962,6 +3101,8 @@ local function template()
 		Version = 1,
 		Coins = Config.StartCoins,
 		Slots = {}, -- ["1"] = "DrapMou" : le fantôme posé sur le socle 1
+		Stored = {}, -- ["1"] = 12.5 : pièces qui attendent sur le socle 1
+		Floors = 1, -- 2 quand l'étage est acheté
 		Rebirths = 0,
 		TotalEarned = 0,
 		TotalSteals = 0,
@@ -3191,7 +3332,10 @@ return DataService
           <string name="Name">EconomyService</string>
           <string name="Source"><![CDATA[--[[
 	EconomyService : l'argent du jeu. SEUL le serveur modifie les pièces.
-	  - chaque seconde : pièces += revenu des fantômes x multiplicateur
+	  - chaque seconde : chaque fantôme remplit SON socle (revenu x multiplicateur) ;
+	    le propriétaire passe sur la plaque verte devant le socle pour récupérer les pièces
+	  - un petit revenu de base (1/s) arrive directement, pour ne jamais être bloqué
+	  - achat de l'étage 2
 	  - multiplicateur = rebirths x Game Pass x2 x bonus amis
 	  - gains hors ligne (plafonnés) et cadeau du jour
 	  - affichage : attributs du joueur + classement (leaderstats)
@@ -3216,6 +3360,15 @@ local EconomyService = {}
 
 local friendBonus: { [Player]: number } = {}
 local friendCache: { [string]: boolean } = {}
+
+-- Total des pièces qui attendent sur les socles (affiché dans le HUD)
+local function updateStoredTotal(player: Player, data)
+	local total = 0
+	for _, amount in data.Stored do
+		total += amount
+	end
+	player:SetAttribute("Stored", math.floor(total))
+end
 
 ---------------------------------------------------------------- Calculs
 
@@ -3297,6 +3450,9 @@ function EconomyService.refresh(player: Player)
 	player:SetAttribute("Multiplier", math.floor(EconomyService.multiplier(player) * 100) / 100)
 	player:SetAttribute("Rebirths", data.Rebirths)
 	player:SetAttribute("FriendBonus", friendBonus[player] or 0)
+	if data.Stored then
+		updateStoredTotal(player, data)
+	end
 	local stats = ensureLeaderstats(player)
 	stats.Coins.Value = Format.short(data.Coins)
 	stats.Rebirths.Value = data.Rebirths
@@ -3376,7 +3532,47 @@ end
 
 ---------------------------------------------------------------- Hors ligne & cadeau du jour
 
--- Revenus gagnés pendant l'absence (50 %, 3 h max). À appeler après la pose des fantômes.
+---------------------------------------------------------------- Récolte sur les socles
+
+-- Le propriétaire passe sur la plaque verte : il récupère les pièces du socle
+function EconomyService.collect(player: Player, slot: number): number
+	local data = DataService.get(player)
+	if not data then
+		return 0
+	end
+	local key = tostring(slot)
+	local stored = data.Stored[key] or 0
+	local amount = math.floor(stored)
+	if amount < 1 then
+		return 0
+	end
+	data.Stored[key] = stored - amount
+	BaseService.showStored(player, slot, data.Stored[key])
+	EconomyService.add(player, amount, true)
+	updateStoredTotal(player, data)
+	player:SetAttribute("HasCollected", true)
+	return amount
+end
+
+-- Chaque fantôme remplit son socle (appelé chaque seconde)
+local function produce(player: Player, data, seconds: number, multiplier: number)
+	local base = BaseService.getBase(player)
+	if not base then
+		return
+	end
+	for key, ghostKey in data.Slots do
+		local slot = tonumber(key)
+		if slot and not BaseService.isStolenOut(player, slot) then
+			local amount = GhostData.incomeOf(ghostKey) * multiplier * seconds
+			data.Stored[key] = (data.Stored[key] or 0) + amount
+			BaseService.showStored(player, slot, data.Stored[key])
+		end
+	end
+	updateStoredTotal(player, data)
+end
+
+-- Revenus produits pendant l'absence (50 %, 3 h max), posés sur les socles.
+-- À appeler après la pose des fantômes.
 function EconomyService.grantOffline(player: Player, lastOnline: number)
 	if lastOnline <= 0 then
 		return
@@ -3385,21 +3581,45 @@ function EconomyService.grantOffline(player: Player, lastOnline: number)
 	if away < Config.OfflineMinSeconds then
 		return
 	end
-	-- sans le bonus amis (on ne sait pas qui était là)
+	-- sans le bonus amis ni le week-end (on ne sait pas ce qui s'est passé)
 	local data = DataService.get(player)
-	local rebirths = if data then data.Rebirths else 0
-	local perSecond = EconomyService.baseIncome(player) * EconomyService.rebirthMultiplier(rebirths)
+	if not data then
+		return
+	end
+	local multiplier = EconomyService.rebirthMultiplier(data.Rebirths)
 	if player:GetAttribute("DoubleCoins") then
-		perSecond *= 2
+		multiplier *= 2
 	end
-	if data and data.IndexComplete then
-		perSecond *= 1 + Config.IndexCompleteBonus
+	if data.IndexComplete then
+		multiplier *= 1 + Config.IndexCompleteBonus
 	end
-	local amount = math.floor(perSecond * away * Config.OfflineRate)
+	local before = player:GetAttribute("Stored") or 0
+	produce(player, data, away * Config.OfflineRate, multiplier)
+	local amount = (player:GetAttribute("Stored") or 0) - before
 	if amount > 0 then
-		EconomyService.add(player, amount, true)
 		AnnounceService.notify(player, "OfflineEarned", { coins = Format.short(amount) }, "good")
 	end
+end
+
+-- Achat de l'étage 2
+local function buyFloor(player: Player)
+	if not Guard.rate(player, "BuyFloor", 1) then
+		return
+	end
+	local data = DataService.get(player)
+	if not data or not BaseService.getBase(player) then
+		return
+	end
+	if (data.Floors or 1) >= 2 then
+		return
+	end
+	if not EconomyService.trySpend(player, Config.FloorPrice) then
+		AnnounceService.notify(player, "NotEnoughCoins", nil, "bad")
+		return
+	end
+	BaseService.unlockFloor(player)
+	AnnounceService.notify(player, "FloorBought", nil, "good")
+	AnnounceService.effect("Rebirth", { Position = BaseService.getBase(player).Origin.Position, PlayerId = player.UserId })
 end
 
 local function today(): number
@@ -3491,6 +3711,32 @@ function EconomyService.start()
 			EconomyService.claimDaily(player)
 		end
 	end)
+	Remotes.get("BuyFloor").OnServerEvent:Connect(buyFloor)
+
+	-- Plaques vertes : seul le propriétaire de la base récupère les pièces
+	local padCooldown: { [BasePart]: number } = {}
+	for _, base in BaseService.allBases() do
+		for slot, ped in base.Pedestals do
+			local pad = ped:FindFirstChild("CollectPad") :: BasePart?
+			if pad then
+				pad.Touched:Connect(function(hit)
+					local owner = base.Owner
+					if not owner or (padCooldown[pad] or 0) > os.clock() then
+						return
+					end
+					local character = hit.Parent
+					if not character or Players:GetPlayerFromCharacter(character) ~= owner then
+						return
+					end
+					padCooldown[pad] = os.clock() + 0.3
+					local amount = EconomyService.collect(owner, slot)
+					if amount > 0 then
+						AnnounceService.effect("Collect", { Position = pad.Position, Amount = amount }, owner)
+					end
+				end)
+			end
+		end
+	end
 
 	-- Le revenu tombe toutes les secondes
 	task.spawn(function()
@@ -3501,8 +3747,11 @@ function EconomyService.start()
 				ReplicatedStorage:SetAttribute("WeekendBoost", boost)
 			end
 			for _, player in Players:GetPlayers() do
-				if DataService.get(player) and BaseService.getBase(player) then
-					EconomyService.add(player, EconomyService.incomePerSecond(player), true)
+				local data = DataService.get(player)
+				if data and BaseService.getBase(player) then
+					local multiplier = EconomyService.multiplier(player)
+					EconomyService.add(player, Config.BaseIncome * multiplier, true)
+					produce(player, data, 1, multiplier)
 				end
 			end
 		end
@@ -3670,7 +3919,8 @@ local function onBuy(player: Player, uid: any)
 		return
 	end
 	if not BaseService.findFreeSlot(player) then
-		AnnounceService.notify(player, "NoFreePedestal", nil, "bad")
+		local message = if BaseService.floorsOf(player) < 2 then "NoFreePedestalFloor" else "NoFreePedestal"
+		AnnounceService.notify(player, message, nil, "bad")
 		return
 	end
 	local ghostKey = entry.GhostId
@@ -3715,6 +3965,7 @@ local function onSell(player: Player, slot: any)
 		AnnounceService.notify(player, "TooFar", nil, "bad")
 		return
 	end
+	EconomyService.collect(player, slot) -- on récupère d'abord les pièces du socle
 	BaseService.removeGhost(player, slot)
 	local value = math.floor(GhostData.priceOf(ghostId) * Config.SellRatio)
 	EconomyService.add(player, value)
@@ -4120,12 +4371,15 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local MapBuilder = {}
 
 MapBuilder.BASE_WIDTH = 36
-MapBuilder.BASE_DEPTH = 32
-MapBuilder.BASE_Z = 33
+MapBuilder.BASE_DEPTH = 40
+MapBuilder.BASE_Z = 37
 MapBuilder.WALL_HEIGHT = 12
+MapBuilder.FLOOR2_Y = 14 -- hauteur du sol de l'étage 2
+MapBuilder.FLOOR2_WALL = 10
 MapBuilder.BASE_XS = { -110, -66, -22, 22, 66, 110 }
 MapBuilder.FLOOR_Y = 0.6
 MapBuilder.PEDESTAL_HEIGHT = 2
+MapBuilder.PER_FLOOR = 10
 
 -- Couleur de chaque base
 MapBuilder.BASE_COLORS = {
@@ -4145,11 +4399,17 @@ MapBuilder.BASE_COLORS = {
 
 local ROT_UP = CFrame.Angles(0, 0, math.rad(90))
 
--- Positions des 12 socles dans une base (x, z). L'avant de la base (côté chemin) est en -Z.
+-- Positions des socles dans une base : 5 à gauche, 5 à droite, une allée au milieu.
+-- L'avant de la base (côté chemin) est en -Z. Socles 1-10 au rez-de-chaussée, 11-20 à l'étage.
+-- Side = -1 (gauche) ou 1 (droite) : le fantôme regarde vers l'allée.
 MapBuilder.PEDESTAL_SPOTS = {}
-for row, z in { -3, 4.5, 12 } do
-	for col, x in { -12, -4, 4, 12 } do
-		MapBuilder.PEDESTAL_SPOTS[(row - 1) * 4 + col] = Vector2.new(x, z)
+MapBuilder.ROW_Z = { -8, -2, 4, 10, 16 }
+for floor = 1, 2 do
+	for sideIndex, side in { -1, 1 } do
+		for row, z in MapBuilder.ROW_Z do
+			local slot = (floor - 1) * MapBuilder.PER_FLOOR + (sideIndex - 1) * 5 + row
+			MapBuilder.PEDESTAL_SPOTS[slot] = { X = side * 13, Z = z, Side = side, Floor = floor }
+		end
 	end
 end
 
@@ -4172,6 +4432,18 @@ local function part(props: { [string]: any }): BasePart
 	return p
 end
 
+-- Pièces de l'étage 2 : cachées tant que le joueur ne l'a pas acheté.
+-- On retient leur apparence normale pour pouvoir les réafficher.
+local function hideUntilBought(p: BasePart)
+	p:SetAttribute("BaseTransparency", p.Transparency)
+	p:SetAttribute("BaseCollide", p.CanCollide)
+	p:SetAttribute("BaseTouch", p.CanTouch)
+	p.Transparency = 1
+	p.CanCollide = false
+	p.CanTouch = false
+	p:SetAttribute("Floor", 2)
+end
+
 -- Le repère d'une base : origine au centre du sol, -Z = vers le chemin
 function MapBuilder.baseOrigin(index: number): CFrame
 	local col = (index - 1) % 6 + 1
@@ -4182,28 +4454,87 @@ function MapBuilder.baseOrigin(index: number): CFrame
 	return CFrame.new(x, MapBuilder.FLOOR_Y, -MapBuilder.BASE_Z) * CFrame.Angles(0, math.pi, 0)
 end
 
-local function wallSegment(parent: Instance, origin: CFrame, center: Vector3, size: Vector3, color: Color3)
+local function wallSegment(parent: Instance, origin: CFrame, center: Vector3, size: Vector3, color: Color3, baseY: number?, glassOnly: boolean?)
 	-- bas plein (3 studs) + haut en "verre fantôme" pour voir les fantômes à l'intérieur
-	local lowH = 3
-	local highH = MapBuilder.WALL_HEIGHT - lowH
-	part({
-		Name = "Wall",
-		Size = Vector3.new(size.X, lowH, size.Z),
-		CFrame = origin * CFrame.new(center.X, lowH / 2, center.Z),
-		Color = color:Lerp(Color3.new(0, 0, 0), 0.35),
-		Material = Enum.Material.Brick,
-		Parent = parent,
-	})
-	part({
+	local y0 = baseY or 0
+	local lowH = if glassOnly then 0 else 3
+	local highH = (if glassOnly then MapBuilder.FLOOR2_WALL else MapBuilder.WALL_HEIGHT) - lowH
+	local made = {}
+	if lowH > 0 then
+		table.insert(made, part({
+			Name = "Wall",
+			Size = Vector3.new(size.X, lowH, size.Z),
+			CFrame = origin * CFrame.new(center.X, y0 + lowH / 2, center.Z),
+			Color = color:Lerp(Color3.new(0, 0, 0), 0.35),
+			Material = Enum.Material.Brick,
+			Parent = parent,
+		}))
+	end
+	table.insert(made, part({
 		Name = "Glass",
 		Size = Vector3.new(size.X, highH, size.Z),
-		CFrame = origin * CFrame.new(center.X, lowH + highH / 2, center.Z),
+		CFrame = origin * CFrame.new(center.X, y0 + lowH + highH / 2, center.Z),
 		Color = color,
 		Material = Enum.Material.Glass,
 		Transparency = 0.75,
 		CastShadow = false,
 		Parent = parent,
+	}))
+	return made
+end
+
+-- Un socle + sa plaque de récolte (devant, côté allée)
+local function buildPedestal(parent: Instance, origin: CFrame, index: number, slot: number, color: Color3)
+	local spot = MapBuilder.PEDESTAL_SPOTS[slot]
+	local floorY = if spot.Floor == 2 then MapBuilder.FLOOR2_Y else 0
+	-- le fantôme regarde vers l'allée (vers +X à gauche, vers -X à droite)
+	local facing = CFrame.Angles(0, spot.Side * math.pi / 2, 0)
+	local top = origin * CFrame.new(spot.X, floorY + MapBuilder.PEDESTAL_HEIGHT, spot.Z) * facing
+	local ped = part({
+		Name = "P" .. slot,
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(MapBuilder.PEDESTAL_HEIGHT, 5, 5),
+		CFrame = origin * CFrame.new(spot.X, floorY + MapBuilder.PEDESTAL_HEIGHT / 2, spot.Z) * ROT_UP,
+		Color = Color3.fromRGB(60, 50, 75),
+		Material = Enum.Material.Slate,
+		Parent = parent,
 	})
+	local rim = part({
+		Name = "Rim",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.15, 5.3, 5.3),
+		CFrame = origin * CFrame.new(spot.X, floorY + MapBuilder.PEDESTAL_HEIGHT, spot.Z) * ROT_UP,
+		Color = color,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CastShadow = false,
+		Parent = ped,
+	})
+	local pad = part({
+		Name = "CollectPad",
+		Size = Vector3.new(3.4, 0.3, 4.4),
+		CFrame = origin * CFrame.new(spot.X - spot.Side * 4.8, floorY + 0.15, spot.Z),
+		Color = Color3.fromRGB(80, 230, 120),
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanTouch = true,
+		CastShadow = false,
+		Parent = ped,
+	})
+	ped:SetAttribute("Slot", slot)
+	ped:SetAttribute("BaseIndex", index)
+	ped:SetAttribute("GhostCFrame", top)
+	ped:SetAttribute("GhostId", "")
+	ped:SetAttribute("Stolen", false)
+	ped:SetAttribute("Unlocked", false)
+	ped:SetAttribute("Stored", 0)
+	ped:SetAttribute("Floor", spot.Floor)
+	if spot.Floor == 2 then
+		hideUntilBought(ped)
+		hideUntilBought(rim)
+		hideUntilBought(pad)
+	end
+	return ped
 end
 
 function MapBuilder.buildBase(index: number, parent: Instance): Model
@@ -4224,7 +4555,19 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 	})
 	model.PrimaryPart = floor
 
-	-- Murs (avec une entrée de 10 studs à l'avant)
+	-- Allée centrale (on y court entre les deux rangées de socles)
+	part({
+		Name = "Aisle",
+		Size = Vector3.new(9, 0.05, d - 2),
+		CFrame = origin * CFrame.new(0, 0.03, 0),
+		Color = color:Lerp(Color3.new(0, 0, 0), 0.55),
+		Material = Enum.Material.Fabric,
+		CanCollide = false,
+		CastShadow = false,
+		Parent = model,
+	})
+
+	-- Murs du rez-de-chaussée (avec une entrée de 10 studs à l'avant)
 	local walls = Instance.new("Folder")
 	walls.Name = "Walls"
 	walls.Parent = model
@@ -4238,8 +4581,8 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 	for _, x in { -5.5, 5.5 } do
 		part({
 			Name = "Post",
-			Size = Vector3.new(1.2, 15, 1.2),
-			CFrame = origin * CFrame.new(x, 7.5, -d / 2),
+			Size = Vector3.new(1.2, 17, 1.2),
+			CFrame = origin * CFrame.new(x, 8.5, -d / 2),
 			Color = color,
 			Material = Enum.Material.SmoothPlastic,
 			Parent = model,
@@ -4248,7 +4591,7 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 	part({
 		Name = "Sign",
 		Size = Vector3.new(14, 3.2, 0.8),
-		CFrame = origin * CFrame.new(0, 14.2, -d / 2),
+		CFrame = origin * CFrame.new(0, 16.4, -d / 2 - 0.6),
 		Color = Color3.fromRGB(35, 25, 45),
 		Material = Enum.Material.SmoothPlastic,
 		Parent = model,
@@ -4257,8 +4600,8 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 	-- Tapis d'entrée (zone de dépôt des fantômes volés)
 	part({
 		Name = "Mat",
-		Size = Vector3.new(9, 0.1, 6),
-		CFrame = origin * CFrame.new(0, 0.05, -11.5),
+		Size = Vector3.new(9, 0.1, 5),
+		CFrame = origin * CFrame.new(0, 0.06, -d / 2 + 4),
 		Color = color,
 		Material = Enum.Material.Fabric,
 		CanCollide = false,
@@ -4271,7 +4614,7 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 		ClassName = "SpawnLocation",
 		Name = "Spawn",
 		Size = Vector3.new(6, 0.2, 6),
-		CFrame = origin * CFrame.new(0, 0.1, -8),
+		CFrame = origin * CFrame.new(0, 0.1, -d / 2 + 9),
 		Transparency = 1,
 		CanCollide = false,
 		CastShadow = false,
@@ -4282,51 +4625,102 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 	})
 	spawn:SetAttribute("BaseSpawn", true)
 
-	-- Bouton de verrouillage
+	-- Au fond : le poste de verrouillage (gros bouton + petite barrière rouge et blanche)
 	local lockButton = part({
 		Name = "LockButton",
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(0.8, 4, 4),
-		CFrame = origin * CFrame.new(12, 0.4, -11) * ROT_UP,
+		CFrame = origin * CFrame.new(-3.2, 0.4, d / 2 - 4) * ROT_UP,
 		Color = Color3.fromRGB(255, 70, 90),
 		Material = Enum.Material.Neon,
 		CastShadow = false,
 		Parent = model,
 	})
 	lockButton:SetAttribute("BaseIndex", index)
+	local lockStation = Instance.new("Folder")
+	lockStation.Name = "LockStation"
+	lockStation.Parent = model
+	for _, x in { -6, -0.4 } do
+		part({
+			Name = "BarrierPost",
+			Size = Vector3.new(0.6, 3.2, 0.6),
+			CFrame = origin * CFrame.new(x, 1.6, d / 2 - 1.8),
+			Color = Color3.fromRGB(240, 240, 240),
+			Parent = lockStation,
+		})
+	end
+	for i = 0, 3 do
+		part({
+			Name = "BarrierStripe",
+			Size = Vector3.new(1.4, 0.6, 0.4),
+			CFrame = origin * CFrame.new(-5.3 + i * 1.4, 2.7, d / 2 - 1.8),
+			Color = if i % 2 == 0 then Color3.fromRGB(230, 40, 50) else Color3.fromRGB(250, 250, 250),
+			Material = if i % 2 == 0 then Enum.Material.Neon else Enum.Material.SmoothPlastic,
+			CastShadow = false,
+			Parent = lockStation,
+		})
+	end
 
-	-- Socles
+	-- Ascenseur vers l'étage 2 (au fond, à droite du bouton de verrou)
+	part({
+		Name = "UpPad",
+		Size = Vector3.new(5, 0.3, 5),
+		CFrame = origin * CFrame.new(3.2, 0.15, d / 2 - 4),
+		Color = Color3.fromRGB(150, 90, 255),
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanTouch = true,
+		CastShadow = false,
+		Parent = model,
+	})
+
+	-- Étage 2 (caché tant qu'il n'est pas acheté)
+	local floor2 = Instance.new("Folder")
+	floor2.Name = "Floor2"
+	floor2.Parent = model
+	local y2 = MapBuilder.FLOOR2_Y
+	local platform = part({
+		Name = "Floor2Platform",
+		Size = Vector3.new(w, 1, d),
+		CFrame = origin * CFrame.new(0, y2 - 0.5, 0),
+		Color = Color3.fromRGB(70, 55, 80),
+		Material = Enum.Material.WoodPlanks,
+		Parent = floor2,
+	})
+	hideUntilBought(platform)
+	local upperWalls = {}
+	for _, info in {
+		{ Vector3.new(0, 0, d / 2), Vector3.new(w, 0, 1) },
+		{ Vector3.new(0, 0, -d / 2), Vector3.new(w, 0, 1) },
+		{ Vector3.new(-w / 2, 0, 0), Vector3.new(1, 0, d) },
+		{ Vector3.new(w / 2, 0, 0), Vector3.new(1, 0, d) },
+	} do
+		for _, p in wallSegment(floor2, origin, info[1], info[2], color, y2, true) do
+			table.insert(upperWalls, p)
+		end
+	end
+	for _, p in upperWalls do
+		hideUntilBought(p)
+	end
+	local downPad = part({
+		Name = "DownPad",
+		Size = Vector3.new(5, 0.3, 5),
+		CFrame = origin * CFrame.new(3.2, y2 + 0.15, d / 2 - 4),
+		Color = Color3.fromRGB(150, 90, 255),
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanTouch = true,
+		CastShadow = false,
+		Parent = floor2,
+	})
+	hideUntilBought(downPad)
+
+	-- Socles (1-10 en bas, 11-20 à l'étage)
 	local pedestals = Instance.new("Folder")
 	pedestals.Name = "Pedestals"
 	pedestals.Parent = model
-	for slot, spot in MapBuilder.PEDESTAL_SPOTS do
-		local top = origin * CFrame.new(spot.X, MapBuilder.PEDESTAL_HEIGHT, spot.Y)
-		local ped = part({
-			Name = "P" .. slot,
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(MapBuilder.PEDESTAL_HEIGHT, 5, 5),
-			CFrame = origin * CFrame.new(spot.X, MapBuilder.PEDESTAL_HEIGHT / 2, spot.Y) * ROT_UP,
-			Color = Color3.fromRGB(60, 50, 75),
-			Material = Enum.Material.Slate,
-			Parent = pedestals,
-		})
-		part({
-			Name = "Rim",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.15, 5.3, 5.3),
-			CFrame = top * ROT_UP,
-			Color = color,
-			Material = Enum.Material.Neon,
-			CanCollide = false,
-			CastShadow = false,
-			Parent = ped,
-		})
-		ped:SetAttribute("Slot", slot)
-		ped:SetAttribute("BaseIndex", index)
-		ped:SetAttribute("GhostCFrame", top)
-		ped:SetAttribute("GhostId", "")
-		ped:SetAttribute("Stolen", false)
-		ped:SetAttribute("Unlocked", false)
+	for slot = 1, MapBuilder.PER_FLOOR * 2 do
+		buildPedestal(pedestals, origin, index, slot, color)
 	end
 
 	model:SetAttribute("Index", index)
@@ -4336,6 +4730,7 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 	model:SetAttribute("OwnerName", "")
 	model:SetAttribute("LockedUntil", 0)
 	model:SetAttribute("LockReadyAt", 0)
+	model:SetAttribute("Floors", 1)
 	model.Parent = parent
 	return model
 end
@@ -4610,12 +5005,12 @@ function MapBuilder.build(): Model
 	-- Citrouilles, arbres morts et tombes autour de la map
 	for _ = 1, 26 do
 		local x = rng:NextNumber(-180, 180)
-		local z = (if rng:NextNumber() < 0.5 then -1 else 1) * rng:NextNumber(55, 85)
+		local z = (if rng:NextNumber() < 0.5 then -1 else 1) * rng:NextNumber(62, 86)
 		pumpkin(decor, Vector3.new(x, 0, z), rng:NextNumber(2, 5))
 	end
 	for _ = 1, 10 do
 		local x = rng:NextNumber(-175, 175)
-		local z = (if rng:NextNumber() < 0.5 then -1 else 1) * rng:NextNumber(60, 85)
+		local z = (if rng:NextNumber() < 0.5 then -1 else 1) * rng:NextNumber(64, 86)
 		deadTree(decor, Vector3.new(x, 0, z), rng)
 	end
 	for _, x in { -168, -162, -172, 162, 168, 172 } do
@@ -5337,9 +5732,9 @@ return NightService
           <string name="Name">RebirthService</string>
           <string name="Source"><![CDATA[--[[
 	RebirthService : recommencer à zéro contre un bonus permanent.
-	  - coût : 1M, puis x3,5 à chaque rebirth (3,5M, 12,25M...)
-	  - on perd les pièces et les fantômes (on garde le fantôme de départ)
-	  - on gagne +50 % de revenus pour toujours, +1 socle, et une aura qui se voit
+	  - coût : 5M, puis x3 à chaque rebirth (15M, 45M...)
+	  - on perd les pièces et les fantômes (on garde le fantôme de départ et l'étage 2)
+	  - on gagne +50 % de revenus pour toujours et une aura qui se voit
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -5422,6 +5817,9 @@ local function onRebirth(player: Player)
 	-- On remet tout à zéro...
 	data.Coins = Config.StartCoins
 	data.Rebirths += 1
+	if not Config.RebirthKeepsFloors then
+		data.Floors = 1
+	end
 	BaseService.clearAllGhosts(player)
 	-- ...mais on garde un fantôme pour repartir tout de suite
 	GhostService.giveGhost(player, Config.StarterGhost)
@@ -6044,6 +6442,8 @@ return Announce
 	  - les fantômes posés sur les socles (construits de notre côté, d'après les attributs)
 	  - les boutons : "Voler" chez les autres, "Vendre" chez soi, "Verrouiller" sur le gros bouton
 	  - la barrière du verrou : on peut la traverser dans SA base, pas chez les autres
+	  - les pièces qui attendent au-dessus de chaque plaque verte
+	  - l'ascenseur et l'achat de l'étage 2
 ]]
 
 local Players = game:GetService("Players")
@@ -6078,7 +6478,7 @@ type Slot = {
 	Steal: ProximityPrompt,
 	Sell: ProximityPrompt,
 	Alert: BillboardGui?,
-	LockTag: BillboardGui?,
+	StoredLabel: TextLabel?,
 }
 
 local slots: { Slot } = {}
@@ -6153,11 +6553,16 @@ end
 
 local function setupBarrier(baseModel: Model)
 	local function onChild(child: Instance)
-		if child.Name == "Barrier" and child:IsA("BasePart") then
-			if isMine(baseModel) then
-				-- chez moi : je peux traverser (seulement de mon côté, le serveur ne change rien)
-				child.CanCollide = false
-				child.Transparency = 0.6
+		if child.Name == "Barrier" and isMine(baseModel) then
+			-- chez moi : je peux traverser (seulement de mon côté, le serveur ne change rien)
+			local parts = if child:IsA("BasePart") then { child } else child:GetDescendants()
+			for _, p in parts do
+				if p:IsA("BasePart") then
+					p.CanCollide = false
+					if p.Transparency < 1 then
+						p.Transparency = 0.6
+					end
+				end
 			end
 		end
 	end
@@ -6193,6 +6598,55 @@ local function setupLockButton(baseModel: Model)
 	local function refresh()
 		prompt.Enabled = isMine(baseModel)
 	end
+	baseModel:GetAttributeChangedSignal("OwnerUserId"):Connect(refresh)
+	refresh()
+	-- panneau au-dessus du poste de verrouillage, au fond de la base
+	local tag = Labels.simple(button, "🚧 " .. Lang.t("LockStation"), UI.Colors.Bad, Vector3.new(0, 5, 0), 6)
+	tag.MaxDistance = 50
+end
+
+---------------------------------------------------------------- Ascenseur et étage 2
+
+local function setupElevator(baseModel: Model)
+	local upPad = baseModel:WaitForChild("UpPad") :: BasePart
+	local tag = Labels.simple(upPad, "", UI.Colors.Purple, Vector3.new(0, 4, 0), 8)
+	tag.MaxDistance = 50
+	local text = tag:FindFirstChild("Text") :: TextLabel
+	local floor2 = baseModel:WaitForChild("Floor2")
+	local downPad = floor2:WaitForChild("DownPad") :: BasePart
+	local downTag = Labels.simple(downPad, "⬇️ " .. Lang.t("FloorDown"), UI.Colors.Purple, Vector3.new(0, 4, 0), 8)
+	downTag.MaxDistance = 40
+
+	-- Acheter l'étage (seulement pour le propriétaire, tant qu'il n'est pas acheté)
+	local attachment = Instance.new("Attachment")
+	attachment.Position = upPad.CFrame:PointToObjectSpace(upPad.Position + Vector3.new(0, 2.5, 0))
+	attachment.Parent = upPad
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = Lang.t("FloorBuy")
+	prompt.ObjectText = "🪙 " .. Format.short(Config.FloorPrice)
+	prompt.HoldDuration = 0.5
+	prompt.MaxActivationDistance = 9
+	prompt.RequiresLineOfSight = false
+	prompt.AutoLocalize = Lang.autoLocalize
+	prompt.Parent = attachment
+	prompt.Triggered:Connect(function()
+		Effects.sound("Click")
+		Remotes.get("BuyFloor"):FireServer()
+	end)
+
+	local function refresh()
+		local bought = baseModel:GetAttribute("Floors") == 2
+		local owned = ownerOf(baseModel) ~= 0
+		prompt.Enabled = isMine(baseModel) and not bought
+		downTag.Enabled = bought
+		tag.Enabled = owned
+		if bought then
+			text.Text = "⬆️ " .. Lang.t("FloorUp")
+		else
+			text.Text = "🔒 " .. Lang.t("FloorLocked", { coins = "🪙 " .. Format.short(Config.FloorPrice) })
+		end
+	end
+	baseModel:GetAttributeChangedSignal("Floors"):Connect(refresh)
 	baseModel:GetAttributeChangedSignal("OwnerUserId"):Connect(refresh)
 	refresh()
 end
@@ -6237,14 +6691,14 @@ local function renderSlot(slot: Slot)
 		slot.Alert = nil
 	end
 
-	-- Cadenas sur les socles pas encore débloqués (seulement chez moi)
-	local showLockTag = mine and not unlocked
-	if showLockTag and not slot.LockTag then
-		slot.LockTag = Labels.simple(ped, "🔒 " .. Lang.t("SlotLocked"), UI.Colors.Gray, Vector3.new(0, 3, 0), 7)
-		slot.LockTag.MaxDistance = 30
-	elseif not showLockTag and slot.LockTag then
-		slot.LockTag:Destroy()
-		slot.LockTag = nil
+	-- Pièces qui attendent sur ce socle (au-dessus de la plaque verte)
+	if slot.StoredLabel then
+		local stored = ped:GetAttribute("Stored") or 0
+		local label = slot.StoredLabel
+		label.Text = "🪙 " .. Format.short(stored)
+		label.TextColor3 = if mine then UI.Colors.Gold else UI.Colors.Text
+		local storedGui = label.Parent :: BillboardGui
+		storedGui.Enabled = stored >= 1 and unlocked
 	end
 
 	-- Texte du bouton "Vendre"
@@ -6321,8 +6775,15 @@ local function setupPedestal(baseModel: Model, ped: BasePart)
 		Steal = steal,
 		Sell = sell,
 		Alert = nil,
-		LockTag = nil,
+		StoredLabel = nil,
 	}
+	local pad = ped:FindFirstChild("CollectPad") :: BasePart?
+	if pad then
+		local storedTag = Labels.simple(pad, "", UI.Colors.Gold, Vector3.new(0, 2.2, 0), 5)
+		storedTag.MaxDistance = 40
+		storedTag.Enabled = false
+		slot.StoredLabel = storedTag:FindFirstChild("Text") :: TextLabel
+	end
 	table.insert(slots, slot)
 
 	local function refresh()
@@ -6331,6 +6792,7 @@ local function setupPedestal(baseModel: Model, ped: BasePart)
 	ped:GetAttributeChangedSignal("GhostId"):Connect(refresh)
 	ped:GetAttributeChangedSignal("Stolen"):Connect(refresh)
 	ped:GetAttributeChangedSignal("Unlocked"):Connect(refresh)
+	ped:GetAttributeChangedSignal("Stored"):Connect(refresh)
 	baseModel:GetAttributeChangedSignal("OwnerUserId"):Connect(refresh)
 	refresh()
 end
@@ -6338,6 +6800,7 @@ end
 local function setupBase(baseModel: Model)
 	task.spawn(setupSign, baseModel)
 	task.spawn(setupLockButton, baseModel)
+	task.spawn(setupElevator, baseModel)
 	setupBarrier(baseModel)
 	local pedestals = baseModel:WaitForChild("Pedestals")
 	for _, ped in pedestals:GetChildren() do
@@ -6596,6 +7059,7 @@ local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Format = require(Shared:WaitForChild("Format"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Sounds = require(Shared:WaitForChild("Sounds"))
 
@@ -6725,6 +7189,38 @@ function Effects.coins(position: Vector3)
 	end, 20, 2)
 end
 
+-- Un "+1.2K" doré qui monte et disparaît (récolte des pièces)
+function Effects.floatingText(position: Vector3, text: string)
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanQuery = false
+	holder.CanTouch = false
+	holder.Transparency = 1
+	holder.Size = Vector3.one
+	holder.CFrame = CFrame.new(position)
+	holder.Parent = workspace
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(220, 60)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 2, 0)
+	gui.AlwaysOnTop = true
+	gui.LightInfluence = 0
+	gui.Adornee = holder
+	gui.Parent = holder
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.Text = text
+	label.TextColor3 = Color3.fromRGB(255, 210, 60)
+	label.TextStrokeTransparency = 0.2
+	label.Parent = gui
+	TweenService:Create(gui, TweenInfo.new(1.1, Enum.EasingStyle.Quad), { StudsOffsetWorldSpace = Vector3.new(0, 6, 0) }):Play()
+	TweenService:Create(label, TweenInfo.new(1.1), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+	Debris:AddItem(holder, 1.2)
+end
+
 -- Petite secousse de caméra
 function Effects.shake(strength: number?, duration: number?)
 	local character = player.Character
@@ -6829,6 +7325,16 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 		else
 			Effects.shake(0.8, 0.8)
 		end
+	end,
+	Collect = function(data)
+		if data.Position then
+			Effects.coins(data.Position)
+			Effects.floatingText(data.Position, "+" .. Format.short(data.Amount or 0))
+		end
+		Effects.sound("Sell")
+	end,
+	Elevator = function()
+		Effects.sound("StealStart")
 	end,
 	CoinPickup = function(data)
 		if data.Position then
@@ -7244,6 +7750,17 @@ function HUD.start()
 	HUD.gui = gui
 	buildTopBar()
 	buildColumns()
+
+	-- Pastille "pièces à récupérer" (sur les plaques vertes de ta base)
+	local storedPill = HUD.pill(UI.Colors.Good, 0)
+	local storedText = storedPill:FindFirstChild("Text") :: TextLabel
+	local function updateStored()
+		local stored = player:GetAttribute("Stored") or 0
+		storedPill.Visible = stored >= 1
+		storedText.Text = "💰 " .. Lang.t("StoredPill", { coins = Format.short(stored) })
+	end
+	player:GetAttributeChangedSignal("Stored"):Connect(updateStored)
+	updateStored()
 
 	-- Pastille "Week-end x2"
 	local weekendPill = HUD.pill(UI.Colors.Gold, 3)
@@ -8859,7 +9376,7 @@ return PathView
             <string name="Source"><![CDATA[--[[
 	Tutorial : le tutoriel des nouveaux joueurs, en 3 flèches et presque sans texte.
 	  1. "Achète !"  -> flèche sur un fantôme du chemin (fini quand on a acheté)
-	  2. "Ta base"   -> flèche sur sa base (fini quand on y est entré)
+	  2. "Récupère !" -> flèche sur la plaque verte qui a le plus de pièces (fini à la 1re récolte)
 	  3. "Vole !"    -> flèche sur la base d'un autre joueur (fini quand on vole, ou après 25 s)
 	Une ligne jaune relie le joueur à la flèche. À la fin, le serveur note que c'est fait.
 ]]
@@ -8900,12 +9417,6 @@ local function myBase(): Model?
 	local folder = basesFolder()
 	local index = player:GetAttribute("BaseIndex")
 	return folder and index and folder:FindFirstChild("Base_" .. index) :: Model?
-end
-
-local function insideBase(base: Model, position: Vector3): boolean
-	local origin = base:GetAttribute("Origin") :: CFrame
-	local localPos = origin:PointToObjectSpace(position)
-	return math.abs(localPos.X) < 18 and math.abs(localPos.Z) < 16
 end
 
 -- La base d'un autre joueur la plus proche, qui a au moins un fantôme
@@ -9047,12 +9558,20 @@ function Tutorial.start()
 				nextStep()
 			end
 		elseif step == 2 then
-			arrowText.Text = "🏠 " .. Lang.t("Tuto2")
+			arrowText.Text = "💰 " .. Lang.t("Tuto2")
 			local base = myBase()
 			if base then
-				local mat = base:FindFirstChild("Mat") :: BasePart?
-				targetPosition = if mat then mat.Position + Vector3.new(0, 4, 0) else nil
-				if insideBase(base, r.Position) or t - stepStarted > 20 then
+				-- la plaque verte du socle qui a le plus de pièces en attente
+				local bestPad, bestStored = nil, -1
+				for _, ped in base.Pedestals:GetChildren() do
+					local stored = ped:GetAttribute("Stored") or 0
+					local pad = ped:FindFirstChild("CollectPad") :: BasePart?
+					if pad and ped:GetAttribute("Floor") ~= 2 and stored > bestStored then
+						bestPad, bestStored = pad, stored
+					end
+				end
+				targetPosition = if bestPad then bestPad.Position + Vector3.new(0, 3, 0) else nil
+				if player:GetAttribute("HasCollected") or t - stepStarted > 45 then
 					nextStep()
 				end
 			else

@@ -18,12 +18,15 @@ local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Co
 local MapBuilder = {}
 
 MapBuilder.BASE_WIDTH = 36
-MapBuilder.BASE_DEPTH = 32
-MapBuilder.BASE_Z = 33
+MapBuilder.BASE_DEPTH = 40
+MapBuilder.BASE_Z = 37
 MapBuilder.WALL_HEIGHT = 12
+MapBuilder.FLOOR2_Y = 14 -- hauteur du sol de l'étage 2
+MapBuilder.FLOOR2_WALL = 10
 MapBuilder.BASE_XS = { -110, -66, -22, 22, 66, 110 }
 MapBuilder.FLOOR_Y = 0.6
 MapBuilder.PEDESTAL_HEIGHT = 2
+MapBuilder.PER_FLOOR = 10
 
 -- Couleur de chaque base
 MapBuilder.BASE_COLORS = {
@@ -43,11 +46,17 @@ MapBuilder.BASE_COLORS = {
 
 local ROT_UP = CFrame.Angles(0, 0, math.rad(90))
 
--- Positions des 12 socles dans une base (x, z). L'avant de la base (côté chemin) est en -Z.
+-- Positions des socles dans une base : 5 à gauche, 5 à droite, une allée au milieu.
+-- L'avant de la base (côté chemin) est en -Z. Socles 1-10 au rez-de-chaussée, 11-20 à l'étage.
+-- Side = -1 (gauche) ou 1 (droite) : le fantôme regarde vers l'allée.
 MapBuilder.PEDESTAL_SPOTS = {}
-for row, z in { -3, 4.5, 12 } do
-	for col, x in { -12, -4, 4, 12 } do
-		MapBuilder.PEDESTAL_SPOTS[(row - 1) * 4 + col] = Vector2.new(x, z)
+MapBuilder.ROW_Z = { -8, -2, 4, 10, 16 }
+for floor = 1, 2 do
+	for sideIndex, side in { -1, 1 } do
+		for row, z in MapBuilder.ROW_Z do
+			local slot = (floor - 1) * MapBuilder.PER_FLOOR + (sideIndex - 1) * 5 + row
+			MapBuilder.PEDESTAL_SPOTS[slot] = { X = side * 13, Z = z, Side = side, Floor = floor }
+		end
 	end
 end
 
@@ -70,6 +79,18 @@ local function part(props: { [string]: any }): BasePart
 	return p
 end
 
+-- Pièces de l'étage 2 : cachées tant que le joueur ne l'a pas acheté.
+-- On retient leur apparence normale pour pouvoir les réafficher.
+local function hideUntilBought(p: BasePart)
+	p:SetAttribute("BaseTransparency", p.Transparency)
+	p:SetAttribute("BaseCollide", p.CanCollide)
+	p:SetAttribute("BaseTouch", p.CanTouch)
+	p.Transparency = 1
+	p.CanCollide = false
+	p.CanTouch = false
+	p:SetAttribute("Floor", 2)
+end
+
 -- Le repère d'une base : origine au centre du sol, -Z = vers le chemin
 function MapBuilder.baseOrigin(index: number): CFrame
 	local col = (index - 1) % 6 + 1
@@ -80,28 +101,87 @@ function MapBuilder.baseOrigin(index: number): CFrame
 	return CFrame.new(x, MapBuilder.FLOOR_Y, -MapBuilder.BASE_Z) * CFrame.Angles(0, math.pi, 0)
 end
 
-local function wallSegment(parent: Instance, origin: CFrame, center: Vector3, size: Vector3, color: Color3)
+local function wallSegment(parent: Instance, origin: CFrame, center: Vector3, size: Vector3, color: Color3, baseY: number?, glassOnly: boolean?)
 	-- bas plein (3 studs) + haut en "verre fantôme" pour voir les fantômes à l'intérieur
-	local lowH = 3
-	local highH = MapBuilder.WALL_HEIGHT - lowH
-	part({
-		Name = "Wall",
-		Size = Vector3.new(size.X, lowH, size.Z),
-		CFrame = origin * CFrame.new(center.X, lowH / 2, center.Z),
-		Color = color:Lerp(Color3.new(0, 0, 0), 0.35),
-		Material = Enum.Material.Brick,
-		Parent = parent,
-	})
-	part({
+	local y0 = baseY or 0
+	local lowH = if glassOnly then 0 else 3
+	local highH = (if glassOnly then MapBuilder.FLOOR2_WALL else MapBuilder.WALL_HEIGHT) - lowH
+	local made = {}
+	if lowH > 0 then
+		table.insert(made, part({
+			Name = "Wall",
+			Size = Vector3.new(size.X, lowH, size.Z),
+			CFrame = origin * CFrame.new(center.X, y0 + lowH / 2, center.Z),
+			Color = color:Lerp(Color3.new(0, 0, 0), 0.35),
+			Material = Enum.Material.Brick,
+			Parent = parent,
+		}))
+	end
+	table.insert(made, part({
 		Name = "Glass",
 		Size = Vector3.new(size.X, highH, size.Z),
-		CFrame = origin * CFrame.new(center.X, lowH + highH / 2, center.Z),
+		CFrame = origin * CFrame.new(center.X, y0 + lowH + highH / 2, center.Z),
 		Color = color,
 		Material = Enum.Material.Glass,
 		Transparency = 0.75,
 		CastShadow = false,
 		Parent = parent,
+	}))
+	return made
+end
+
+-- Un socle + sa plaque de récolte (devant, côté allée)
+local function buildPedestal(parent: Instance, origin: CFrame, index: number, slot: number, color: Color3)
+	local spot = MapBuilder.PEDESTAL_SPOTS[slot]
+	local floorY = if spot.Floor == 2 then MapBuilder.FLOOR2_Y else 0
+	-- le fantôme regarde vers l'allée (vers +X à gauche, vers -X à droite)
+	local facing = CFrame.Angles(0, spot.Side * math.pi / 2, 0)
+	local top = origin * CFrame.new(spot.X, floorY + MapBuilder.PEDESTAL_HEIGHT, spot.Z) * facing
+	local ped = part({
+		Name = "P" .. slot,
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(MapBuilder.PEDESTAL_HEIGHT, 5, 5),
+		CFrame = origin * CFrame.new(spot.X, floorY + MapBuilder.PEDESTAL_HEIGHT / 2, spot.Z) * ROT_UP,
+		Color = Color3.fromRGB(60, 50, 75),
+		Material = Enum.Material.Slate,
+		Parent = parent,
 	})
+	local rim = part({
+		Name = "Rim",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.15, 5.3, 5.3),
+		CFrame = origin * CFrame.new(spot.X, floorY + MapBuilder.PEDESTAL_HEIGHT, spot.Z) * ROT_UP,
+		Color = color,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CastShadow = false,
+		Parent = ped,
+	})
+	local pad = part({
+		Name = "CollectPad",
+		Size = Vector3.new(3.4, 0.3, 4.4),
+		CFrame = origin * CFrame.new(spot.X - spot.Side * 4.8, floorY + 0.15, spot.Z),
+		Color = Color3.fromRGB(80, 230, 120),
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanTouch = true,
+		CastShadow = false,
+		Parent = ped,
+	})
+	ped:SetAttribute("Slot", slot)
+	ped:SetAttribute("BaseIndex", index)
+	ped:SetAttribute("GhostCFrame", top)
+	ped:SetAttribute("GhostId", "")
+	ped:SetAttribute("Stolen", false)
+	ped:SetAttribute("Unlocked", false)
+	ped:SetAttribute("Stored", 0)
+	ped:SetAttribute("Floor", spot.Floor)
+	if spot.Floor == 2 then
+		hideUntilBought(ped)
+		hideUntilBought(rim)
+		hideUntilBought(pad)
+	end
+	return ped
 end
 
 function MapBuilder.buildBase(index: number, parent: Instance): Model
@@ -122,7 +202,19 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 	})
 	model.PrimaryPart = floor
 
-	-- Murs (avec une entrée de 10 studs à l'avant)
+	-- Allée centrale (on y court entre les deux rangées de socles)
+	part({
+		Name = "Aisle",
+		Size = Vector3.new(9, 0.05, d - 2),
+		CFrame = origin * CFrame.new(0, 0.03, 0),
+		Color = color:Lerp(Color3.new(0, 0, 0), 0.55),
+		Material = Enum.Material.Fabric,
+		CanCollide = false,
+		CastShadow = false,
+		Parent = model,
+	})
+
+	-- Murs du rez-de-chaussée (avec une entrée de 10 studs à l'avant)
 	local walls = Instance.new("Folder")
 	walls.Name = "Walls"
 	walls.Parent = model
@@ -136,8 +228,8 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 	for _, x in { -5.5, 5.5 } do
 		part({
 			Name = "Post",
-			Size = Vector3.new(1.2, 15, 1.2),
-			CFrame = origin * CFrame.new(x, 7.5, -d / 2),
+			Size = Vector3.new(1.2, 17, 1.2),
+			CFrame = origin * CFrame.new(x, 8.5, -d / 2),
 			Color = color,
 			Material = Enum.Material.SmoothPlastic,
 			Parent = model,
@@ -146,7 +238,7 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 	part({
 		Name = "Sign",
 		Size = Vector3.new(14, 3.2, 0.8),
-		CFrame = origin * CFrame.new(0, 14.2, -d / 2),
+		CFrame = origin * CFrame.new(0, 16.4, -d / 2 - 0.6),
 		Color = Color3.fromRGB(35, 25, 45),
 		Material = Enum.Material.SmoothPlastic,
 		Parent = model,
@@ -155,8 +247,8 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 	-- Tapis d'entrée (zone de dépôt des fantômes volés)
 	part({
 		Name = "Mat",
-		Size = Vector3.new(9, 0.1, 6),
-		CFrame = origin * CFrame.new(0, 0.05, -11.5),
+		Size = Vector3.new(9, 0.1, 5),
+		CFrame = origin * CFrame.new(0, 0.06, -d / 2 + 4),
 		Color = color,
 		Material = Enum.Material.Fabric,
 		CanCollide = false,
@@ -169,7 +261,7 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 		ClassName = "SpawnLocation",
 		Name = "Spawn",
 		Size = Vector3.new(6, 0.2, 6),
-		CFrame = origin * CFrame.new(0, 0.1, -8),
+		CFrame = origin * CFrame.new(0, 0.1, -d / 2 + 9),
 		Transparency = 1,
 		CanCollide = false,
 		CastShadow = false,
@@ -180,51 +272,102 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 	})
 	spawn:SetAttribute("BaseSpawn", true)
 
-	-- Bouton de verrouillage
+	-- Au fond : le poste de verrouillage (gros bouton + petite barrière rouge et blanche)
 	local lockButton = part({
 		Name = "LockButton",
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(0.8, 4, 4),
-		CFrame = origin * CFrame.new(12, 0.4, -11) * ROT_UP,
+		CFrame = origin * CFrame.new(-3.2, 0.4, d / 2 - 4) * ROT_UP,
 		Color = Color3.fromRGB(255, 70, 90),
 		Material = Enum.Material.Neon,
 		CastShadow = false,
 		Parent = model,
 	})
 	lockButton:SetAttribute("BaseIndex", index)
+	local lockStation = Instance.new("Folder")
+	lockStation.Name = "LockStation"
+	lockStation.Parent = model
+	for _, x in { -6, -0.4 } do
+		part({
+			Name = "BarrierPost",
+			Size = Vector3.new(0.6, 3.2, 0.6),
+			CFrame = origin * CFrame.new(x, 1.6, d / 2 - 1.8),
+			Color = Color3.fromRGB(240, 240, 240),
+			Parent = lockStation,
+		})
+	end
+	for i = 0, 3 do
+		part({
+			Name = "BarrierStripe",
+			Size = Vector3.new(1.4, 0.6, 0.4),
+			CFrame = origin * CFrame.new(-5.3 + i * 1.4, 2.7, d / 2 - 1.8),
+			Color = if i % 2 == 0 then Color3.fromRGB(230, 40, 50) else Color3.fromRGB(250, 250, 250),
+			Material = if i % 2 == 0 then Enum.Material.Neon else Enum.Material.SmoothPlastic,
+			CastShadow = false,
+			Parent = lockStation,
+		})
+	end
 
-	-- Socles
+	-- Ascenseur vers l'étage 2 (au fond, à droite du bouton de verrou)
+	part({
+		Name = "UpPad",
+		Size = Vector3.new(5, 0.3, 5),
+		CFrame = origin * CFrame.new(3.2, 0.15, d / 2 - 4),
+		Color = Color3.fromRGB(150, 90, 255),
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanTouch = true,
+		CastShadow = false,
+		Parent = model,
+	})
+
+	-- Étage 2 (caché tant qu'il n'est pas acheté)
+	local floor2 = Instance.new("Folder")
+	floor2.Name = "Floor2"
+	floor2.Parent = model
+	local y2 = MapBuilder.FLOOR2_Y
+	local platform = part({
+		Name = "Floor2Platform",
+		Size = Vector3.new(w, 1, d),
+		CFrame = origin * CFrame.new(0, y2 - 0.5, 0),
+		Color = Color3.fromRGB(70, 55, 80),
+		Material = Enum.Material.WoodPlanks,
+		Parent = floor2,
+	})
+	hideUntilBought(platform)
+	local upperWalls = {}
+	for _, info in {
+		{ Vector3.new(0, 0, d / 2), Vector3.new(w, 0, 1) },
+		{ Vector3.new(0, 0, -d / 2), Vector3.new(w, 0, 1) },
+		{ Vector3.new(-w / 2, 0, 0), Vector3.new(1, 0, d) },
+		{ Vector3.new(w / 2, 0, 0), Vector3.new(1, 0, d) },
+	} do
+		for _, p in wallSegment(floor2, origin, info[1], info[2], color, y2, true) do
+			table.insert(upperWalls, p)
+		end
+	end
+	for _, p in upperWalls do
+		hideUntilBought(p)
+	end
+	local downPad = part({
+		Name = "DownPad",
+		Size = Vector3.new(5, 0.3, 5),
+		CFrame = origin * CFrame.new(3.2, y2 + 0.15, d / 2 - 4),
+		Color = Color3.fromRGB(150, 90, 255),
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		CanTouch = true,
+		CastShadow = false,
+		Parent = floor2,
+	})
+	hideUntilBought(downPad)
+
+	-- Socles (1-10 en bas, 11-20 à l'étage)
 	local pedestals = Instance.new("Folder")
 	pedestals.Name = "Pedestals"
 	pedestals.Parent = model
-	for slot, spot in MapBuilder.PEDESTAL_SPOTS do
-		local top = origin * CFrame.new(spot.X, MapBuilder.PEDESTAL_HEIGHT, spot.Y)
-		local ped = part({
-			Name = "P" .. slot,
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(MapBuilder.PEDESTAL_HEIGHT, 5, 5),
-			CFrame = origin * CFrame.new(spot.X, MapBuilder.PEDESTAL_HEIGHT / 2, spot.Y) * ROT_UP,
-			Color = Color3.fromRGB(60, 50, 75),
-			Material = Enum.Material.Slate,
-			Parent = pedestals,
-		})
-		part({
-			Name = "Rim",
-			Shape = Enum.PartType.Cylinder,
-			Size = Vector3.new(0.15, 5.3, 5.3),
-			CFrame = top * ROT_UP,
-			Color = color,
-			Material = Enum.Material.Neon,
-			CanCollide = false,
-			CastShadow = false,
-			Parent = ped,
-		})
-		ped:SetAttribute("Slot", slot)
-		ped:SetAttribute("BaseIndex", index)
-		ped:SetAttribute("GhostCFrame", top)
-		ped:SetAttribute("GhostId", "")
-		ped:SetAttribute("Stolen", false)
-		ped:SetAttribute("Unlocked", false)
+	for slot = 1, MapBuilder.PER_FLOOR * 2 do
+		buildPedestal(pedestals, origin, index, slot, color)
 	end
 
 	model:SetAttribute("Index", index)
@@ -234,6 +377,7 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 	model:SetAttribute("OwnerName", "")
 	model:SetAttribute("LockedUntil", 0)
 	model:SetAttribute("LockReadyAt", 0)
+	model:SetAttribute("Floors", 1)
 	model.Parent = parent
 	return model
 end
@@ -508,12 +652,12 @@ function MapBuilder.build(): Model
 	-- Citrouilles, arbres morts et tombes autour de la map
 	for _ = 1, 26 do
 		local x = rng:NextNumber(-180, 180)
-		local z = (if rng:NextNumber() < 0.5 then -1 else 1) * rng:NextNumber(55, 85)
+		local z = (if rng:NextNumber() < 0.5 then -1 else 1) * rng:NextNumber(62, 86)
 		pumpkin(decor, Vector3.new(x, 0, z), rng:NextNumber(2, 5))
 	end
 	for _ = 1, 10 do
 		local x = rng:NextNumber(-175, 175)
-		local z = (if rng:NextNumber() < 0.5 then -1 else 1) * rng:NextNumber(60, 85)
+		local z = (if rng:NextNumber() < 0.5 then -1 else 1) * rng:NextNumber(64, 86)
 		deadTree(decor, Vector3.new(x, 0, z), rng)
 	end
 	for _, x in { -168, -162, -172, 162, 168, 172 } do

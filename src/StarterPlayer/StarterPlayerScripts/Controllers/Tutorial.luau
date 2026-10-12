@@ -1,7 +1,7 @@
 --[[
 	Tutorial : le tutoriel des nouveaux joueurs, en 3 flèches et presque sans texte.
 	  1. "Achète !"  -> flèche sur un fantôme du chemin (fini quand on a acheté)
-	  2. "Ta base"   -> flèche sur sa base (fini quand on y est entré)
+	  2. "Récupère !" -> flèche sur la plaque verte qui a le plus de pièces (fini à la 1re récolte)
 	  3. "Vole !"    -> flèche sur la base d'un autre joueur (fini quand on vole, ou après 25 s)
 	Une ligne jaune relie le joueur à la flèche. À la fin, le serveur note que c'est fait.
 ]]
@@ -42,12 +42,6 @@ local function myBase(): Model?
 	local folder = basesFolder()
 	local index = player:GetAttribute("BaseIndex")
 	return folder and index and folder:FindFirstChild("Base_" .. index) :: Model?
-end
-
-local function insideBase(base: Model, position: Vector3): boolean
-	local origin = base:GetAttribute("Origin") :: CFrame
-	local localPos = origin:PointToObjectSpace(position)
-	return math.abs(localPos.X) < 18 and math.abs(localPos.Z) < 16
 end
 
 -- La base d'un autre joueur la plus proche, qui a au moins un fantôme
@@ -189,12 +183,20 @@ function Tutorial.start()
 				nextStep()
 			end
 		elseif step == 2 then
-			arrowText.Text = "🏠 " .. Lang.t("Tuto2")
+			arrowText.Text = "💰 " .. Lang.t("Tuto2")
 			local base = myBase()
 			if base then
-				local mat = base:FindFirstChild("Mat") :: BasePart?
-				targetPosition = if mat then mat.Position + Vector3.new(0, 4, 0) else nil
-				if insideBase(base, r.Position) or t - stepStarted > 20 then
+				-- la plaque verte du socle qui a le plus de pièces en attente
+				local bestPad, bestStored = nil, -1
+				for _, ped in base.Pedestals:GetChildren() do
+					local stored = ped:GetAttribute("Stored") or 0
+					local pad = ped:FindFirstChild("CollectPad") :: BasePart?
+					if pad and ped:GetAttribute("Floor") ~= 2 and stored > bestStored then
+						bestPad, bestStored = pad, stored
+					end
+				end
+				targetPosition = if bestPad then bestPad.Position + Vector3.new(0, 3, 0) else nil
+				if player:GetAttribute("HasCollected") or t - stepStarted > 45 then
 					nextStep()
 				end
 			else

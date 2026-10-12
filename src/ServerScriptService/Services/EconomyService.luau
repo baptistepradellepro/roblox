@@ -1,6 +1,9 @@
 --[[
 	EconomyService : l'argent du jeu. SEUL le serveur modifie les pièces.
-	  - chaque seconde : pièces += revenu des fantômes x multiplicateur
+	  - chaque seconde : chaque fantôme remplit SON socle (revenu x multiplicateur) ;
+	    le propriétaire passe sur la plaque verte devant le socle pour récupérer les pièces
+	  - un petit revenu de base (1/s) arrive directement, pour ne jamais être bloqué
+	  - achat de l'étage 2
 	  - multiplicateur = rebirths x Game Pass x2 x bonus amis
 	  - gains hors ligne (plafonnés) et cadeau du jour
 	  - affichage : attributs du joueur + classement (leaderstats)
@@ -25,6 +28,15 @@ local EconomyService = {}
 
 local friendBonus: { [Player]: number } = {}
 local friendCache: { [string]: boolean } = {}
+
+-- Total des pièces qui attendent sur les socles (affiché dans le HUD)
+local function updateStoredTotal(player: Player, data)
+	local total = 0
+	for _, amount in data.Stored do
+		total += amount
+	end
+	player:SetAttribute("Stored", math.floor(total))
+end
 
 ---------------------------------------------------------------- Calculs
 
@@ -106,6 +118,9 @@ function EconomyService.refresh(player: Player)
 	player:SetAttribute("Multiplier", math.floor(EconomyService.multiplier(player) * 100) / 100)
 	player:SetAttribute("Rebirths", data.Rebirths)
 	player:SetAttribute("FriendBonus", friendBonus[player] or 0)
+	if data.Stored then
+		updateStoredTotal(player, data)
+	end
 	local stats = ensureLeaderstats(player)
 	stats.Coins.Value = Format.short(data.Coins)
 	stats.Rebirths.Value = data.Rebirths
@@ -185,7 +200,47 @@ end
 
 ---------------------------------------------------------------- Hors ligne & cadeau du jour
 
--- Revenus gagnés pendant l'absence (50 %, 3 h max). À appeler après la pose des fantômes.
+---------------------------------------------------------------- Récolte sur les socles
+
+-- Le propriétaire passe sur la plaque verte : il récupère les pièces du socle
+function EconomyService.collect(player: Player, slot: number): number
+	local data = DataService.get(player)
+	if not data then
+		return 0
+	end
+	local key = tostring(slot)
+	local stored = data.Stored[key] or 0
+	local amount = math.floor(stored)
+	if amount < 1 then
+		return 0
+	end
+	data.Stored[key] = stored - amount
+	BaseService.showStored(player, slot, data.Stored[key])
+	EconomyService.add(player, amount, true)
+	updateStoredTotal(player, data)
+	player:SetAttribute("HasCollected", true)
+	return amount
+end
+
+-- Chaque fantôme remplit son socle (appelé chaque seconde)
+local function produce(player: Player, data, seconds: number, multiplier: number)
+	local base = BaseService.getBase(player)
+	if not base then
+		return
+	end
+	for key, ghostKey in data.Slots do
+		local slot = tonumber(key)
+		if slot and not BaseService.isStolenOut(player, slot) then
+			local amount = GhostData.incomeOf(ghostKey) * multiplier * seconds
+			data.Stored[key] = (data.Stored[key] or 0) + amount
+			BaseService.showStored(player, slot, data.Stored[key])
+		end
+	end
+	updateStoredTotal(player, data)
+end
+
+-- Revenus produits pendant l'absence (50 %, 3 h max), posés sur les socles.
+-- À appeler après la pose des fantômes.
 function EconomyService.grantOffline(player: Player, lastOnline: number)
 	if lastOnline <= 0 then
 		return
@@ -194,21 +249,45 @@ function EconomyService.grantOffline(player: Player, lastOnline: number)
 	if away < Config.OfflineMinSeconds then
 		return
 	end
-	-- sans le bonus amis (on ne sait pas qui était là)
+	-- sans le bonus amis ni le week-end (on ne sait pas ce qui s'est passé)
 	local data = DataService.get(player)
-	local rebirths = if data then data.Rebirths else 0
-	local perSecond = EconomyService.baseIncome(player) * EconomyService.rebirthMultiplier(rebirths)
+	if not data then
+		return
+	end
+	local multiplier = EconomyService.rebirthMultiplier(data.Rebirths)
 	if player:GetAttribute("DoubleCoins") then
-		perSecond *= 2
+		multiplier *= 2
 	end
-	if data and data.IndexComplete then
-		perSecond *= 1 + Config.IndexCompleteBonus
+	if data.IndexComplete then
+		multiplier *= 1 + Config.IndexCompleteBonus
 	end
-	local amount = math.floor(perSecond * away * Config.OfflineRate)
+	local before = player:GetAttribute("Stored") or 0
+	produce(player, data, away * Config.OfflineRate, multiplier)
+	local amount = (player:GetAttribute("Stored") or 0) - before
 	if amount > 0 then
-		EconomyService.add(player, amount, true)
 		AnnounceService.notify(player, "OfflineEarned", { coins = Format.short(amount) }, "good")
 	end
+end
+
+-- Achat de l'étage 2
+local function buyFloor(player: Player)
+	if not Guard.rate(player, "BuyFloor", 1) then
+		return
+	end
+	local data = DataService.get(player)
+	if not data or not BaseService.getBase(player) then
+		return
+	end
+	if (data.Floors or 1) >= 2 then
+		return
+	end
+	if not EconomyService.trySpend(player, Config.FloorPrice) then
+		AnnounceService.notify(player, "NotEnoughCoins", nil, "bad")
+		return
+	end
+	BaseService.unlockFloor(player)
+	AnnounceService.notify(player, "FloorBought", nil, "good")
+	AnnounceService.effect("Rebirth", { Position = BaseService.getBase(player).Origin.Position, PlayerId = player.UserId })
 end
 
 local function today(): number
@@ -300,6 +379,32 @@ function EconomyService.start()
 			EconomyService.claimDaily(player)
 		end
 	end)
+	Remotes.get("BuyFloor").OnServerEvent:Connect(buyFloor)
+
+	-- Plaques vertes : seul le propriétaire de la base récupère les pièces
+	local padCooldown: { [BasePart]: number } = {}
+	for _, base in BaseService.allBases() do
+		for slot, ped in base.Pedestals do
+			local pad = ped:FindFirstChild("CollectPad") :: BasePart?
+			if pad then
+				pad.Touched:Connect(function(hit)
+					local owner = base.Owner
+					if not owner or (padCooldown[pad] or 0) > os.clock() then
+						return
+					end
+					local character = hit.Parent
+					if not character or Players:GetPlayerFromCharacter(character) ~= owner then
+						return
+					end
+					padCooldown[pad] = os.clock() + 0.3
+					local amount = EconomyService.collect(owner, slot)
+					if amount > 0 then
+						AnnounceService.effect("Collect", { Position = pad.Position, Amount = amount }, owner)
+					end
+				end)
+			end
+		end
+	end
 
 	-- Le revenu tombe toutes les secondes
 	task.spawn(function()
@@ -310,8 +415,11 @@ function EconomyService.start()
 				ReplicatedStorage:SetAttribute("WeekendBoost", boost)
 			end
 			for _, player in Players:GetPlayers() do
-				if DataService.get(player) and BaseService.getBase(player) then
-					EconomyService.add(player, EconomyService.incomePerSecond(player), true)
+				local data = DataService.get(player)
+				if data and BaseService.getBase(player) then
+					local multiplier = EconomyService.multiplier(player)
+					EconomyService.add(player, Config.BaseIncome * multiplier, true)
+					produce(player, data, 1, multiplier)
 				end
 			end
 		end

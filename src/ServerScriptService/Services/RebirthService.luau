@@ -1,8 +1,8 @@
 --[[
 	RebirthService : recommencer à zéro contre un bonus permanent.
-	  - coût : 1M, puis x3,5 à chaque rebirth (3,5M, 12,25M...)
-	  - on perd les pièces et les fantômes (on garde le fantôme de départ)
-	  - on gagne +50 % de revenus pour toujours, +1 socle, et une aura qui se voit
+	  - coût : 5M, puis x3 à chaque rebirth (15M, 45M...)
+	  - on perd les pièces et les fantômes (on garde le fantôme de départ et l'étage 2)
+	  - on gagne +50 % de revenus pour toujours et une aura qui se voit
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -85,6 +85,9 @@ local function onRebirth(player: Player)
 	-- On remet tout à zéro...
 	data.Coins = Config.StartCoins
 	data.Rebirths += 1
+	if not Config.RebirthKeepsFloors then
+		data.Floors = 1
+	end
 	BaseService.clearAllGhosts(player)
 	-- ...mais on garde un fantôme pour repartir tout de suite
 	GhostService.giveGhost(player, Config.StarterGhost)

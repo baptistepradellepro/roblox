@@ -9,7 +9,8 @@ Dans `Config.luau`, vérifie que les valeurs de test sont revenues à la normale
 - [ ] `Config.ForceLanguage = nil`
 - [ ] `Config.NewPlayerShield = 120`
 - [ ] `Config.DayDuration = 480`
-- [ ] `Config.RebirthBaseCost = 1000000`
+- [ ] `Config.RebirthBaseCost = 5000000`
+- [ ] `Config.FloorPrice = 25000`
 - [ ] `Config.ForceHalloween = false`
 
 Puis un dernier test à 3 joueurs (voir [TEST.md](TEST.md)), sans ligne rouge dans la fenêtre Sortie.
@@ -87,13 +88,14 @@ Pas de lien externe, c'est interdit. Les emojis sont l'usage sur Roblox et aiden
 **Français**
 
 ```
-Achète des fantômes complètement absurdes, pose-les dans ta base et regarde les pièces tomber. Mais les autres joueurs peuvent entrer chez toi et repartir avec tes fantômes !
+Achète des fantômes complètement absurdes, pose-les dans ta base et ramasse les pièces qu'ils fabriquent. Mais les autres joueurs peuvent entrer chez toi et repartir avec tes fantômes !
 
 👻 36 fantômes à collectionner : Drap Mou, Caquetôme, DJ Bouh-Boum, Méga Bouh Cosmique...
 ✨ Fantômes Dorés (x3) et Arc-en-ciel (x5) ultra rares
 🦹 Vole les fantômes des autres et cours jusqu'à ta base
 🔨 Un voleur passe près de toi ? Marteau Pouet !
 🔒 Verrouille ta base au bon moment
+🏰 Achète un 2e étage pour 10 fantômes de plus
 🌙 Toutes les 10 minutes, la Nuit Hantée : Brouillard, Bonbons... et Gloutrouille qui te poursuit
 🔥 Super Nuit chaque samedi soir : Gloutrouille GÉANT et Mythique garanti
 🎃 Fantômes Halloween en édition limitée jusqu'au 3 novembre
@@ -108,13 +110,14 @@ Achète des fantômes complètement absurdes, pose-les dans ta base et regarde l
 **English**
 
 ```
-Buy totally ridiculous ghosts, put them in your base and watch the coins roll in. But other players can sneak in and run away with your ghosts!
+Buy totally ridiculous ghosts, put them in your base and collect the coins they make. But other players can sneak in and run away with your ghosts!
 
 👻 36 ghosts to collect: Floppy Sheet, Cluck-a-Boo, DJ Boo-Boom, Cosmic Mega Boo...
 ✨ Ultra rare Golden (x3) and Rainbow (x5) ghosts
 🦹 Steal other players' ghosts and run back to your base
 🔨 Thief nearby? BONK them!
 🔒 Lock your base at the right moment
+🏰 Buy a 2nd floor for 10 more ghosts
 🌙 Every 10 minutes, the Haunted Night: Fog, Candy... and Gloutrouille chasing you
 🔥 Super Night every Saturday evening: GIANT Gloutrouille and a guaranteed Mythic
 🎃 Limited Halloween ghosts until November 3
