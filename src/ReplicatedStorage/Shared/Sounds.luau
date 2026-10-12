@@ -40,6 +40,9 @@ local Sounds = {
 	WheelTick = { Id = PING, Volume = 0.2, Pitch = 2.8 },
 	WheelWin = { Id = PING, Volume = 0.8, Jingle = { 1, 1.5, 2, 1.5, 2, 2.5 } },
 	MonsterSummon = { Id = SWOOSH, Volume = 1, Pitch = 0.3 },
+	Alarm = { Id = PING, Volume = 0.8, Jingle = { 2, 1.5, 2, 1.5, 2, 1.5 } },
+	Slip = { Id = SWOOSH, Volume = 0.9, Pitch = 1.4 },
+	Web = { Id = SWOOSH, Volume = 0.6, Pitch = 0.5 },
 	-- Musique de fond pendant la Nuit Hantée (aucune par défaut).
 	-- Mets ici l'ID d'une musique gratuite du Creator Store (catégorie Audio > Music).
 	NightMusic = { Id = "", Volume = 0.4, Looped = true },

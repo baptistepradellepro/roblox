@@ -44,6 +44,7 @@ type Carry = {
 local carries: { [Player]: Carry } = {}
 local holdStarts: { [Player]: { BaseIndex: number, Slot: number, Time: number } } = {}
 local stunnedUntil: { [Player]: number } = {}
+local slowedUntil: { [Player]: { Until: number, Speed: number } } = {}
 
 local function setSpeed(player: Player, speed: number)
 	local humanoid = Guard.humanoid(player)
@@ -56,7 +57,12 @@ local function normalSpeedFor(player: Player): number
 	if (stunnedUntil[player] or 0) > os.clock() then
 		return 4
 	end
-	return if carries[player] then Config.CarrierWalkSpeed else Config.NormalWalkSpeed
+	local speed = if carries[player] then Config.CarrierWalkSpeed else Config.NormalWalkSpeed
+	local slow = slowedUntil[player]
+	if slow and slow.Until > os.clock() then
+		speed = math.min(speed, slow.Speed)
+	end
+	return speed
 end
 
 local function flat(v: Vector3): Vector3
@@ -84,7 +90,7 @@ local function clearCarry(carry: Carry)
 	setSpeed(carry.Thief, normalSpeedFor(carry.Thief))
 end
 
--- Le fantôme rentre chez son propriétaire. reason = "Timeout", "Caught", "Bonk", "Monster", "Died", "Left", "Cheat", "NoSpace"
+-- Le fantôme rentre chez son propriétaire. reason = "Timeout", "Caught", "Bonk", "Monster", "Died", "Left", "Cheat", "NoSpace", "Trap"
 function StealService.failCarry(thief: Player, reason: string, by: Player?)
 	local carry = carries[thief]
 	if not carry then
@@ -111,6 +117,8 @@ function StealService.failCarry(thief: Player, reason: string, by: Player?)
 		end
 	elseif reason == "Monster" then
 		AnnounceService.notify(thief, "StealFailMonster", params, "bad")
+	elseif reason == "Trap" then
+		AnnounceService.notify(thief, "StealFailTrap", params, "bad")
 	elseif reason == "NoSpace" then
 		AnnounceService.notify(thief, "StealFailNoSpace", params, "bad")
 	end
@@ -257,6 +265,17 @@ function StealService.stun(player: Player, seconds: number)
 	end)
 end
 
+-- Ralentit un joueur (toile d'araignée) pendant "seconds" secondes
+function StealService.slow(player: Player, speed: number, seconds: number)
+	slowedUntil[player] = { Until = os.clock() + seconds, Speed = speed }
+	setSpeed(player, normalSpeedFor(player))
+	task.delay(seconds, function()
+		if player.Parent then
+			setSpeed(player, normalSpeedFor(player))
+		end
+	end)
+end
+
 function StealService.isStunned(player: Player): boolean
 	return (stunnedUntil[player] or 0) > os.clock()
 end
@@ -327,6 +346,7 @@ end
 function StealService.onPlayerRemoving(player: Player)
 	holdStarts[player] = nil
 	stunnedUntil[player] = nil
+	slowedUntil[player] = nil
 	-- Le voleur part : le fantôme rentre chez lui
 	if carries[player] then
 		StealService.failCarry(player, "Left")

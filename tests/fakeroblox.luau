@@ -313,6 +313,14 @@ InstanceMT.__index = function(self, key)
 	if key == "Position" and props.CFrame and props.ClassName ~= "Attachment" then
 		return props.CFrame.Position
 	end
+	-- position d'un point d'attache dans le monde (repère de sa pièce)
+	if (key == "WorldPosition" or key == "WorldCFrame") and props.ClassName == "Attachment" then
+		local parent = props.Parent
+		local parentCf = parent and parent.__props.CFrame or roblox.CFrame.identity
+		local localCf = props.CFrame or roblox.CFrame.new(props.Position or roblox.Vector3.zero)
+		local world = parentCf * localCf
+		return if key == "WorldPosition" then world.Position else world
+	end
 	if SIGNALS[key] then
 		local sig = self.__signals[key]
 		if not sig then

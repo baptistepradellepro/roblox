@@ -435,6 +435,93 @@ bob:LoadCharacter()
 Sched.advance(0.5)
 check(hasTool(bob, "Batte"), "la batte revient après une réapparition")
 
+section("Pièges")
+local Traps = Fake.require("ReplicatedStorage.Shared.Traps")
+local TrapService = Fake.require("ServerScriptService.Services.TrapService")
+local aliceBase = BaseService.getBase(alice)
+local function trapModel(id: string)
+	return aliceBase.Model.Traps:FindFirstChild("Trap_" .. id)
+end
+local function trapPos(id: string): Vector3
+	return aliceBase.Origin:PointToWorldSpace(Traps.ById[id].Position)
+end
+local function lookVisible(id: string): boolean
+	for _, d in trapModel(id):GetDescendants() do
+		if d:GetAttribute("TrapLook") and d.Transparency < 1 then
+			return true
+		end
+	end
+	return false
+end
+check(trapModel("Banana") and trapModel("Web") and trapModel("Alarm"), "3 emplacements de pièges dans la base")
+check(not lookVisible("Banana") and trapModel("Banana").Spot.Transparency < 1, "piège caché, emplacement visible")
+aData.Coins = 1_000_000
+Fake.moveTo(alice, baseCenter(bob))
+Sched.advance(0.6)
+Fake.fire(alice, "BuyTrap", "Banana")
+check(not (aData.Traps or {}).Banana, "on n'achète pas un piège de loin")
+Fake.moveTo(alice, trapPos("Banana") + Vector3.new(0, 3, 2))
+aData.Coins = 100
+Sched.advance(0.6)
+m = mark()
+Fake.fire(alice, "BuyTrap", "Banana")
+check(notified(alice, "NotEnoughCoins", m) and not aData.Traps.Banana, "pas assez de pièces")
+aData.Coins = 1_000_000
+for _, id in { "Banana", "Web", "Alarm" } do
+	Fake.moveTo(alice, trapPos(id) + Vector3.new(0, 3, 2))
+	Sched.advance(0.6)
+	Fake.fire(alice, "BuyTrap", id)
+end
+check(aData.Traps.Banana and aData.Traps.Web and aData.Traps.Alarm, "3 pièges achetés")
+local afterTraps = 1_000_000 - Config.Traps.Banana.Price - Config.Traps.Web.Price - Config.Traps.Alarm.Price
+check(aData.Coins >= afterTraps and aData.Coins < afterTraps + 100, "prix des pièges retirés (" .. math.floor(aData.Coins) .. ")")
+check(lookVisible("Banana") and lookVisible("Web") and lookVisible("Alarm"), "les pièges apparaissent")
+check(trapModel("Banana").Spot.Transparency == 1 and trapModel("Banana"):GetAttribute("Owned") == true, "l'emplacement disparaît")
+Sched.advance(0.6)
+m = mark()
+Fake.fire(alice, "BuyTrap", "Alarm")
+check(notified(alice, "TrapOwned", m), "pas deux fois le même piège")
+-- le propriétaire ne déclenche jamais ses pièges
+Fake.moveTo(alice, trapPos("Banana") + Vector3.new(0, 3, 0))
+Sched.advance(0.5)
+Fake.moveTo(alice, trapPos("Web") + Vector3.new(0, 3, 0))
+Sched.advance(0.5)
+check(alice.Character.Humanoid.WalkSpeed == Config.NormalWalkSpeed and lookVisible("Banana"), "Alice ne se fait pas piéger chez elle")
+park(alice, 150, 70)
+-- Bob entre : l'alarme prévient Alice, même loin
+m = mark()
+steal(bob, alice, slot)
+check(notified(alice, "AlarmOwner", m), "l'alarme prévient Alice")
+check(aliceBase.Model:GetAttribute("AlarmUntil") > workspace:GetServerTimeNow(), "la sirène sonne")
+check(notified(bob, "AlarmIntruder", m), "Bob sait que l'alarme sonne")
+check(bob:GetAttribute("CarryGhost") ~= nil, "Bob vole quand même")
+-- en repartant, il glisse sur la banane
+m = mark()
+Fake.moveTo(bob, trapPos("Banana") + Vector3.new(0.8, 3, 0))
+Sched.advance(0.3)
+check(bob:GetAttribute("CarryGhost") == nil, "Bob glisse sur la banane et lâche le fantôme")
+check(notified(bob, "TrapSlipped", m) and notified(alice, "TrapCaught", m), "messages du piège")
+check(bob.Character.Humanoid.WalkSpeed == 4, "Bob est étourdi")
+check(not lookVisible("Banana"), "la banane a servi")
+Sched.advance(Config.Traps.Banana.Stun + 0.2)
+check(bob.Character.Humanoid.WalkSpeed == Config.NormalWalkSpeed, "Bob se relève")
+Fake.moveTo(bob, trapPos("Banana") + Vector3.new(0.8, 3, 0))
+Sched.advance(0.3)
+check(bob.Character.Humanoid.WalkSpeed == Config.NormalWalkSpeed, "la banane ne resert pas tout de suite")
+-- la toile ralentit
+m = mark()
+Fake.moveTo(bob, trapPos("Web") + Vector3.new(3, 3, 0.5))
+Sched.advance(0.3)
+check(bob.Character.Humanoid.WalkSpeed == Config.Traps.Web.Speed and notified(bob, "TrapWebbed", m), "la toile ralentit Bob")
+park(bob, -150, 70)
+Sched.advance(Config.Traps.Web.SlowTime + 0.2)
+check(bob.Character.Humanoid.WalkSpeed == Config.NormalWalkSpeed, "plus ralenti après quelques secondes")
+Sched.advance(Config.Traps.Banana.Cooldown)
+check(lookVisible("Banana"), "la banane revient")
+-- après un rebirth (réglage par défaut), on garde ses pièges
+TrapService.onRebirth(alice)
+check(aData.Traps.Banana and lookVisible("Banana"), "les pièges restent après un rebirth")
+
 section("Anti-triche vitesse")
 park(chloe, -160, -75)
 steal(bob, alice, slot)

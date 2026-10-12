@@ -18,6 +18,7 @@ local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local GhostService = require(script.Parent.GhostService)
 local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
 local StealService = require(script.Parent.StealService)
 
 local RebirthService = {}
@@ -94,6 +95,7 @@ local function onRebirth(player: Player)
 	BaseService.refreshSlots(player)
 	EconomyService.refresh(player)
 	applyAura(player)
+	Hooks.fire("Rebirth", player, data.Rebirths)
 
 	local mult = EconomyService.rebirthMultiplier(data.Rebirths)
 	AnnounceService.notify(player, "RebirthDone", { mult = mult }, "good")

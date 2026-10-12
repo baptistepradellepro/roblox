@@ -429,6 +429,17 @@ if okMap then
 			for _, ped in base.Pedestals:GetChildren() do
 				addRect(ped.CollectPad)
 			end
+			-- les emplacements de pièges (disques couchés : rayon = taille Y / 2)
+			local trapsFolder = base:FindFirstChild("Traps")
+			check(trapsFolder ~= nil and #trapsFolder:GetChildren() == 3, base.Name .. " : 3 emplacements de pièges")
+			for _, trapModel in trapsFolder and trapsFolder:GetChildren() or {} do
+				local spot = trapModel:FindFirstChild("Spot")
+				local c = origin2:PointToObjectSpace(spot.CFrame.Position)
+				local r = spot.Size.Y / 2
+				table.insert(rects, { name = trapModel.Name, x0 = c.X - r, x1 = c.X + r, z0 = c.Z - r, z1 = c.Z + r })
+			end
+			local spawnPart = base.Spawn
+			addRect(spawnPart)
 			for i = 1, #rects do
 				for j = i + 1, #rects do
 					local a, b = rects[i], rects[j]

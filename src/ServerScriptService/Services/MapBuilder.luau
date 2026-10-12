@@ -15,6 +15,7 @@ local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Traps = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Traps"))
 
 local MapBuilder = {}
 
@@ -307,6 +308,22 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 			CastShadow = false,
 			Parent = lockStation,
 		})
+	end
+
+	-- Les pièges dans l'allée : on voit l'emplacement d'achat, le piège apparaît une fois acheté
+	local trapsFolder = Instance.new("Folder")
+	trapsFolder.Name = "Traps"
+	trapsFolder.Parent = model
+	for _, trap in Traps.List do
+		local trapModel = Traps.build(trap.Id, origin * CFrame.new(trap.Position))
+		for _, p in trapModel:GetDescendants() do
+			if p:IsA("BasePart") and p.Name ~= "Spot" then
+				p:SetAttribute("TrapLook", true)
+				p:SetAttribute("BaseTransparency", p.Transparency)
+				p.Transparency = 1
+			end
+		end
+		trapModel.Parent = trapsFolder
 	end
 
 	-- Ascenseur vers l'étage 2 (au fond, à droite du bouton de verrou)

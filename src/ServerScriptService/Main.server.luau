@@ -32,6 +32,7 @@ local MonsterService = require(Services:WaitForChild("MonsterService"))
 local NightService = require(Services:WaitForChild("NightService"))
 local RebirthService = require(Services:WaitForChild("RebirthService"))
 local StealService = require(Services:WaitForChild("StealService"))
+local TrapService = require(Services:WaitForChild("TrapService"))
 local WeaponService = require(Services:WaitForChild("WeaponService"))
 local WheelService = require(Services:WaitForChild("WheelService"))
 
@@ -47,6 +48,7 @@ EconomyService.start()
 GhostService.start()
 StealService.start()
 WeaponService.start()
+TrapService.start()
 MonsterService.start()
 NightService.start()
 WheelService.start()
@@ -81,6 +83,7 @@ local function onPlayerAdded(player: Player)
 	MonetizationService.setup(player) -- Game Passes (x2 pièces, verrou+, armes)
 	WeaponService.setup(player) -- la Batte et les armes achetées, à chaque apparition
 	WheelService.setup(player) -- tours de Roue de la Fortune
+	TrapService.setup(player) -- pièges achetés pour sa base
 	RebirthService.setup(player) -- aura des rebirths
 	EconomyService.setup(player)
 	IndexService.setup(player) -- collection (avant le cadeau, pour ne pas afficher 2 messages)
@@ -109,6 +112,7 @@ end
 local function onPlayerRemoving(player: Player)
 	StealService.onPlayerRemoving(player)
 	WheelService.onPlayerRemoving(player) -- gain de la roue pas encore donné
+	TrapService.release(player) -- sa base redevient vide
 	EconomyService.onPlayerRemoving(player)
 	BaseService.release(player)
 	Guard.clear(player)

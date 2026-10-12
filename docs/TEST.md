@@ -109,6 +109,18 @@ Tant que tu n'as pas créé les articles sur le Creator Hub (IDs à 0 dans `Conf
 - Les armes Robux (onglet ⚔️, gratuites dans Studio) : **Marteau Pouet Géant** (plus loin, plus fort), **Balai de Sorcière** (touche tous les voleurs autour), **Aspira-Fantôme** (de très loin). Elles arrivent tout de suite dans le sac après l'achat, et à chaque réapparition.
 - Les réglages (portée, recharge, étourdissement) sont dans `Weapons.luau`.
 
+## Tester les pièges
+
+Dans l'allée de ta base, trois emplacements gris avec leur prix : 🍌 Peau de banane (2,5K), 🕸️ Toile d'araignée (8K) et 🚨 Alarme (20K). Ils s'achètent avec des pièces, jamais avec des Robux. Mets-toi dessus et maintiens E pour poser le piège. Il reste pour toujours, même après un rebirth.
+
+Tes pièges ne te touchent jamais. Pour les voir marcher, il faut un deuxième joueur (Serveur local à 2) :
+
+1. **Alarme** : Player2 entre dans la base de Player1. La sirène clignote, ça sonne, et Player1 reçoit « ALARME ! Player2 est entré dans ta base ! », même s'il est loin.
+2. **Peau de banane** : Player2 vole un fantôme et repasse sur la banane en partant. Il glisse, lâche le fantôme (qui rentre chez Player1) et reste étourdi. La banane disparaît puis revient 40 secondes plus tard.
+3. **Toile d'araignée** : Player2 la traverse et marche au ralenti pendant 4 secondes.
+
+Les prix et les durées se règlent dans `Config.Traps`, les positions dans `Traps.luau`.
+
 ## Les animations
 
 - **Coups d'arme** : ce sont les animations officielles de Roblox, celles de l'épée classique (coup « Slash » pour la batte, le marteau et le balai, coup vers l'avant « Lunge » pour l'Aspira-Fantôme). Elles sont déjà dans chaque personnage et Roblox les montre à tous les joueurs.

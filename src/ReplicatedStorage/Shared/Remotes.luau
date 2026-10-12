@@ -21,6 +21,7 @@ Remotes.Names = {
 	"TutorialDone", -- () le tutoriel est terminé
 	"RedeemCode", -- (code) utiliser un code promo
 	"BuyFloor", -- () acheter l'étage 2 de sa base
+	"BuyTrap", -- (trapId) acheter un piège pour sa base (avec des pièces)
 	"SpinWheel", -- () utiliser un tour de Roue de la Fortune
 	"ShopBuy", -- (key) acheter un article de la boutique (le serveur ouvre la fenêtre Robux)
 	-- Serveur -> Client

@@ -6,6 +6,7 @@
 	  - la barrière du verrou : on peut la traverser dans SA base, pas chez les autres
 	  - les pièces qui attendent au-dessus de chaque plaque verte
 	  - l'ascenseur et l'achat de l'étage 2
+	  - les pièges : prix et bouton d'achat sur leur emplacement, sirène qui clignote
 ]]
 
 local Players = game:GetService("Players")
@@ -18,6 +19,7 @@ local Format = require(Shared:WaitForChild("Format"))
 local GhostData = require(Shared:WaitForChild("GhostData"))
 local GhostFactory = require(Shared:WaitForChild("GhostFactory"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Traps = require(Shared:WaitForChild("Traps"))
 
 local Effects = require(script.Parent.Effects)
 local Labels = require(script.Parent.Labels)
@@ -172,7 +174,11 @@ local function setupLockButton(baseModel: Model)
 	baseModel:GetAttributeChangedSignal("OwnerUserId"):Connect(refresh)
 	refresh()
 	-- panneau au-dessus du poste de verrouillage, au fond de la base
-	local tag = Labels.simple(button, "🚧 " .. Lang.t("LockStation"), UI.Colors.Bad, Vector3.new(0, 5, 0), 6)
+	-- (le bouton est un cylindre tourné : on vise "en haut" dans le repère du monde)
+	local labelPoint = Instance.new("Attachment")
+	labelPoint.Position = button.CFrame:PointToObjectSpace(button.Position + Vector3.new(0, 5, 0))
+	labelPoint.Parent = button
+	local tag = Labels.simple(labelPoint, "🚧 " .. Lang.t("LockStation"), UI.Colors.Bad, Vector3.zero, 6)
 	tag.MaxDistance = 50
 end
 
@@ -220,6 +226,65 @@ local function setupElevator(baseModel: Model)
 	baseModel:GetAttributeChangedSignal("Floors"):Connect(refresh)
 	baseModel:GetAttributeChangedSignal("OwnerUserId"):Connect(refresh)
 	refresh()
+end
+
+---------------------------------------------------------------- Pièges
+
+local sirens: { { Model: Model, Siren: BasePart, Light: PointLight? } } = {}
+
+local function setupTraps(baseModel: Model)
+	local folder = baseModel:WaitForChild("Traps")
+	for _, trap in Traps.List do
+		local model = folder:WaitForChild("Trap_" .. trap.Id) :: Model
+		local spot = model:WaitForChild("Spot") :: BasePart
+		local price = Config.Traps[trap.Id].Price
+		-- le disque est couché : on place des points d'attache au-dessus, dans le repère du monde
+		local labelPoint = Instance.new("Attachment")
+		labelPoint.Position = spot.CFrame:PointToObjectSpace(spot.Position + Vector3.new(0, 3.2, 0))
+		labelPoint.Parent = spot
+		local tag = Labels.simple(labelPoint, trap.Icon .. " " .. Lang.t("TrapLabel", { name = Lang.pick(trap.Name), coins = "🪙 " .. Format.short(price) }), UI.Colors.Gold, Vector3.zero, 7)
+		tag.MaxDistance = 35
+		local attachment = Instance.new("Attachment")
+		attachment.Position = spot.CFrame:PointToObjectSpace(spot.Position + Vector3.new(0, 2, 0))
+		attachment.Parent = spot
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = Lang.t("TrapBuy")
+		prompt.ObjectText = trap.Icon .. " 🪙 " .. Format.short(price)
+		prompt.HoldDuration = 0.5
+		prompt.MaxActivationDistance = 9
+		prompt.RequiresLineOfSight = false
+		prompt.AutoLocalize = Lang.autoLocalize
+		prompt.Parent = attachment
+		prompt.Triggered:Connect(function()
+			Effects.sound("Click")
+			Remotes.get("BuyTrap"):FireServer(trap.Id)
+		end)
+		local function refresh()
+			local available = isMine(baseModel) and model:GetAttribute("Owned") ~= true
+			prompt.Enabled = available
+			tag.Enabled = available
+		end
+		model:GetAttributeChangedSignal("Owned"):Connect(refresh)
+		baseModel:GetAttributeChangedSignal("OwnerUserId"):Connect(refresh)
+		refresh()
+		local siren = model:FindFirstChild("Siren", true)
+		if siren and siren:IsA("BasePart") then
+			table.insert(sirens, { Model = baseModel, Siren = siren, Light = siren:FindFirstChildOfClass("PointLight") })
+		end
+	end
+end
+
+-- La sirène clignote pendant que l'alarme sonne
+local function updateSirens()
+	local now = workspace:GetServerTimeNow()
+	for _, entry in sirens do
+		local ringing = now < (entry.Model:GetAttribute("AlarmUntil") or 0)
+		local on = ringing and math.floor(now * 6) % 2 == 0
+		entry.Siren.Color = if on then Color3.fromRGB(255, 60, 60) else Color3.fromRGB(200, 40, 50)
+		if entry.Light then
+			entry.Light.Enabled = on
+		end
+	end
 end
 
 ---------------------------------------------------------------- Socles
@@ -372,6 +437,7 @@ local function setupBase(baseModel: Model)
 	task.spawn(setupSign, baseModel)
 	task.spawn(setupLockButton, baseModel)
 	task.spawn(setupElevator, baseModel)
+	task.spawn(setupTraps, baseModel)
 	setupBarrier(baseModel)
 	local pedestals = baseModel:WaitForChild("Pedestals")
 	for _, ped in pedestals:GetChildren() do
@@ -394,6 +460,7 @@ function BaseView.start()
 
 	-- Animation douce des fantômes proches (les lointains restent immobiles : économie de batterie)
 	RunService.RenderStepped:Connect(function()
+		updateSirens()
 		local camera = workspace.CurrentCamera
 		if not camera then
 			return

@@ -5,7 +5,8 @@
 	des autres. Utilisé par les missions du jour.
 
 	Événements : Buy (joueur, fantôme), Sell, Steal, Bonk, Lock, Earn (joueur, pièces),
-	NightOutside (joueur, secondes passées dehors pendant la nuit)
+	NightOutside (joueur, secondes passées dehors pendant la nuit), Trap (propriétaire
+	dont un piège a attrapé quelqu'un), Rebirth (joueur, nombre de rebirths)
 ]]
 
 local Hooks = {}

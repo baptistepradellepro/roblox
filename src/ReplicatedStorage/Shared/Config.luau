@@ -48,6 +48,15 @@ Config.StealTimeout = 45 -- au-delà, le fantôme rentre chez lui
 Config.RecoverRange = 6 -- le propriétaire touche le voleur = fantôme récupéré
 -- Les armes contre les voleurs (portée, recharge...) sont réglées dans Weapons.luau
 
+-- ===== Pièges (achetés avec des pièces, une fois pour toutes) =====
+-- Price = prix, Cooldown = temps avant de resservir (banane) ou entre deux alertes (alarme)
+Config.Traps = {
+	Banana = { Price = 2500, Cooldown = 40, Stun = 2.5 },
+	Web = { Price = 8000, Speed = 6, SlowTime = 4 },
+	Alarm = { Price = 20000, Cooldown = 20, RingTime = 6 },
+}
+Config.RebirthKeepsTraps = true -- false = le rebirth fait aussi perdre les pièges
+
 -- ===== Verrou de base =====
 Config.LockDuration = 45
 Config.LockCooldown = 120 -- recharge après la fin du verrou

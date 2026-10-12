@@ -72,6 +72,15 @@ Config.StealTimeout = 45 -- au-delà, le fantôme rentre chez lui
 Config.RecoverRange = 6 -- le propriétaire touche le voleur = fantôme récupéré
 -- Les armes contre les voleurs (portée, recharge...) sont réglées dans Weapons.luau
 
+-- ===== Pièges (achetés avec des pièces, une fois pour toutes) =====
+-- Price = prix, Cooldown = temps avant de resservir (banane) ou entre deux alertes (alarme)
+Config.Traps = {
+	Banana = { Price = 2500, Cooldown = 40, Stun = 2.5 },
+	Web = { Price = 8000, Speed = 6, SlowTime = 4 },
+	Alarm = { Price = 20000, Cooldown = 20, RingTime = 6 },
+}
+Config.RebirthKeepsTraps = true -- false = le rebirth fait aussi perdre les pièges
+
 -- ===== Verrou de base =====
 Config.LockDuration = 45
 Config.LockCooldown = 120 -- recharge après la fin du verrou
@@ -2056,6 +2065,7 @@ Remotes.Names = {
 	"TutorialDone", -- () le tutoriel est terminé
 	"RedeemCode", -- (code) utiliser un code promo
 	"BuyFloor", -- () acheter l'étage 2 de sa base
+	"BuyTrap", -- (trapId) acheter un piège pour sa base (avec des pièces)
 	"SpinWheel", -- () utiliser un tour de Roue de la Fortune
 	"ShopBuy", -- (key) acheter un article de la boutique (le serveur ouvre la fenêtre Robux)
 	-- Serveur -> Client
@@ -2255,6 +2265,9 @@ local Sounds = {
 	WheelTick = { Id = PING, Volume = 0.2, Pitch = 2.8 },
 	WheelWin = { Id = PING, Volume = 0.8, Jingle = { 1, 1.5, 2, 1.5, 2, 2.5 } },
 	MonsterSummon = { Id = SWOOSH, Volume = 1, Pitch = 0.3 },
+	Alarm = { Id = PING, Volume = 0.8, Jingle = { 2, 1.5, 2, 1.5, 2, 1.5 } },
+	Slip = { Id = SWOOSH, Volume = 0.9, Pitch = 1.4 },
+	Web = { Id = SWOOSH, Volume = 0.6, Pitch = 0.5 },
 	-- Musique de fond pendant la Nuit Hantée (aucune par défaut).
 	-- Mets ici l'ID d'une musique gratuite du Creator Store (catégorie Audio > Music).
 	NightMusic = { Id = "", Volume = 0.4, Looped = true },
@@ -2316,6 +2329,18 @@ Strings.fr = {
 	LockOn = "Base verrouillée !",
 	LockNotReady = "Le verrou recharge encore ({time})",
 	LockGoToButton = "Va au bouton du verrou, au fond de ta base !",
+
+	-- Pièges
+	TrapLabel = "{name} : {coins}",
+	TrapBuy = "Poser le piège",
+	TrapOwned = "Tu as déjà ce piège",
+	TrapBought = "{trap} posé dans ta base !",
+	TrapSlipped = "Oups ! Tu as glissé sur une peau de banane",
+	TrapWebbed = "Pris dans la toile ! Tu avances au ralenti",
+	TrapCaught = "{trap} a eu {player} !",
+	StealFailTrap = "Tu as glissé et lâché {ghost} !",
+	AlarmOwner = "ALARME ! {player} est entré dans ta base !",
+	AlarmIntruder = "L'alarme sonne, le propriétaire est prévenu !",
 	LockPillReady = "Verrou prêt",
 	LockPillOn = "Verrouillée : {time}",
 	LockPillCooldown = "Verrou : {time}",
@@ -2550,6 +2575,18 @@ Strings.en = {
 	LockOn = "Base locked!",
 	LockNotReady = "Lock still recharging ({time})",
 	LockGoToButton = "Go to the lock button at the back of your base!",
+
+	-- Traps
+	TrapLabel = "{name}: {coins}",
+	TrapBuy = "Place the trap",
+	TrapOwned = "You already have this trap",
+	TrapBought = "{trap} placed in your base!",
+	TrapSlipped = "Oops! You slipped on a banana peel",
+	TrapWebbed = "Stuck in the web! You move in slow motion",
+	TrapCaught = "{trap} got {player}!",
+	StealFailTrap = "You slipped and dropped {ghost}!",
+	AlarmOwner = "ALARM! {player} entered your base!",
+	AlarmIntruder = "The alarm is ringing, the owner knows you're here!",
 	LockPillReady = "Lock ready",
 	LockPillOn = "Locked: {time}",
 	LockPillCooldown = "Lock: {time}",
@@ -2762,6 +2799,163 @@ return Strings
         </Properties>
       </Item>
       <Item class="ModuleScript" referent="15">
+        <Properties>
+          <string name="Name">Traps</string>
+          <string name="Source"><![CDATA[--[[
+	Traps : les pièges à poser dans sa base (partagé serveur + joueurs).
+	Ils s'achètent avec des PIÈCES (jamais avec des Robux), une fois pour toutes,
+	sur leur emplacement dans l'allée de la base (bouton E). Prix et réglages : Config.Traps.
+
+	Ils ne touchent jamais le propriétaire de la base, seulement les intrus :
+	  - Peau de banane : l'intrus glisse, reste étourdi et lâche le fantôme volé.
+	    Elle met un moment à revenir après avoir servi.
+	  - Toile d'araignée : l'intrus qui la traverse marche au ralenti quelques secondes.
+	  - Alarme : sonne dès qu'un intrus entre dans la base, et le propriétaire est
+	    prévenu même s'il est loin.
+
+	Position = place dans la base (repère de la base : -Z = vers l'entrée, X = côtés).
+]]
+
+local Traps = {}
+
+Traps.List = {
+	{
+		Id = "Banana",
+		Icon = "🍌",
+		Name = { fr = "Peau de banane", en = "Banana peel" },
+		Desc = { fr = "Le voleur glisse, tombe et lâche le fantôme volé.", en = "The thief slips, falls and drops the stolen ghost." },
+		Position = Vector3.new(0, 0, -3),
+		Radius = 2.6, -- distance pour glisser
+	},
+	{
+		Id = "Web",
+		Icon = "🕸️",
+		Name = { fr = "Toile d'araignée", en = "Spider web" },
+		Desc = { fr = "Les intrus qui la traversent marchent au ralenti.", en = "Intruders who cross it walk in slow motion." },
+		Position = Vector3.new(0, 0, 5),
+		HalfSize = Vector2.new(6, 1.8), -- la toile couvre l'allée en largeur
+	},
+	{
+		Id = "Alarm",
+		Icon = "🚨",
+		Name = { fr = "Alarme", en = "Alarm" },
+		Desc = { fr = "Sonne dès qu'un intrus entre dans ta base, même si tu es loin.", en = "Rings as soon as an intruder enters your base, even if you are far away." },
+		Position = Vector3.new(0, 0, 11.5),
+	},
+}
+
+Traps.ById = {}
+for order, trap in Traps.List do
+	trap.Order = order
+	Traps.ById[trap.Id] = trap
+end
+
+function Traps.get(id: any)
+	return if type(id) == "string" then Traps.ById[id] else nil
+end
+
+---------------------------------------------------------------- Modèles 3D
+
+local function part(model: Instance, shape: Enum.PartType?, size: Vector3, cf: CFrame, color: Color3, extra: { [string]: any }?)
+	local p = Instance.new("Part")
+	if shape then
+		p.Shape = shape
+	end
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = Enum.Material.SmoothPlastic
+	p.Name = "Look"
+	if extra then
+		local writable: any = p
+		for key, value in extra do
+			writable[key] = value
+		end
+	end
+	p.Parent = model
+	return p
+end
+
+local FLAT = CFrame.Angles(0, 0, math.rad(90)) -- cylindre posé à plat
+
+local Builders = {}
+
+function Builders.Banana(model: Model, at: CFrame)
+	local yellow = Color3.fromRGB(255, 220, 60)
+	part(model, Enum.PartType.Cylinder, Vector3.new(0.35, 1.4, 1.4), at * CFrame.new(0, 0.18, 0) * FLAT, yellow)
+	-- les trois bouts de peau étalés
+	for i = 0, 2 do
+		local angle = math.rad(i * 120 + 20)
+		part(model, nil, Vector3.new(0.7, 0.18, 1.6), at * CFrame.Angles(0, angle, 0) * CFrame.new(0, 0.1, 1.1), yellow)
+		part(model, nil, Vector3.new(0.4, 0.2, 0.3), at * CFrame.Angles(0, angle, 0) * CFrame.new(0, 0.12, 1.85), Color3.fromRGB(120, 80, 30))
+	end
+end
+
+function Builders.Web(model: Model, at: CFrame)
+	local white = Color3.fromRGB(245, 245, 255)
+	-- fils qui traversent l'allée, et quelques cercles
+	for i = -2, 2 do
+		part(model, nil, Vector3.new(12, 0.06, 0.12), at * CFrame.new(0, 0.05, i * 0.8) * CFrame.Angles(0, math.rad(i * 6), 0), white, { Transparency = 0.15 })
+	end
+	for _, x in { -4.5, -1.5, 1.5, 4.5 } do
+		part(model, nil, Vector3.new(0.12, 0.06, 3.6), at * CFrame.new(x, 0.06, 0), white, { Transparency = 0.15 })
+	end
+	part(model, Enum.PartType.Cylinder, Vector3.new(0.04, 3.4, 3.4), at * CFrame.new(0, 0.04, 0) * FLAT, white, { Transparency = 0.6 })
+	-- une petite araignée au milieu
+	part(model, Enum.PartType.Ball, Vector3.one * 0.7, at * CFrame.new(0.4, 0.3, 0.2), Color3.fromRGB(40, 30, 50))
+end
+
+function Builders.Alarm(model: Model, at: CFrame)
+	part(model, Enum.PartType.Cylinder, Vector3.new(4.5, 0.35, 0.35), at * CFrame.new(0, 2.25, 0) * FLAT, Color3.fromRGB(80, 80, 95))
+	part(model, Enum.PartType.Cylinder, Vector3.new(0.3, 1.6, 1.6), at * CFrame.new(0, 0.15, 0) * FLAT, Color3.fromRGB(60, 60, 70))
+	local siren = part(model, Enum.PartType.Ball, Vector3.one * 1.3, at * CFrame.new(0, 4.9, 0), Color3.fromRGB(200, 40, 50), {
+		Material = Enum.Material.Neon,
+		Name = "Siren",
+	})
+	local light = Instance.new("PointLight")
+	light.Name = "SirenLight"
+	light.Color = Color3.fromRGB(255, 40, 40)
+	light.Range = 24
+	light.Brightness = 3
+	light.Enabled = false
+	light.Parent = siren
+end
+
+--[[
+	Fabrique un piège à la position "at" (repère du monde) :
+	  - "Spot" : l'emplacement d'achat (visible tant que le piège n'est pas acheté)
+	  - les pièces "Look" : le piège lui-même (cachées tant qu'il n'est pas acheté)
+]]
+function Traps.build(id: string, at: CFrame): Model
+	local trap = Traps.ById[id]
+	local model = Instance.new("Model")
+	model.Name = "Trap_" .. id
+	model:SetAttribute("TrapId", id)
+	local spot = part(model, Enum.PartType.Cylinder, Vector3.new(0.12, 3.6, 3.6), at * CFrame.new(0, 0.06, 0) * FLAT, Color3.fromRGB(150, 150, 165), {
+		Name = "Spot",
+		Transparency = 0.35,
+		Material = Enum.Material.Neon,
+	})
+	model.PrimaryPart = spot
+	local builder = Builders[trap.Id]
+	if builder then
+		builder(model, at)
+	end
+	return model
+end
+
+return Traps
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="16">
         <Properties>
           <string name="Name">Weapons</string>
           <string name="Source"><![CDATA[--[[
@@ -3007,7 +3201,7 @@ return Weapons
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="16">
+      <Item class="ModuleScript" referent="17">
         <Properties>
           <string name="Name">Wheel</string>
           <string name="Source"><![CDATA[--[[
@@ -3178,11 +3372,11 @@ return Wheel
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="17">
+  <Item class="ServerScriptService" referent="18">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="18">
+    <Item class="Script" referent="19">
       <Properties>
         <string name="Name">Main</string>
         <token name="RunContext">0</token>
@@ -3220,6 +3414,7 @@ local MonsterService = require(Services:WaitForChild("MonsterService"))
 local NightService = require(Services:WaitForChild("NightService"))
 local RebirthService = require(Services:WaitForChild("RebirthService"))
 local StealService = require(Services:WaitForChild("StealService"))
+local TrapService = require(Services:WaitForChild("TrapService"))
 local WeaponService = require(Services:WaitForChild("WeaponService"))
 local WheelService = require(Services:WaitForChild("WheelService"))
 
@@ -3235,6 +3430,7 @@ EconomyService.start()
 GhostService.start()
 StealService.start()
 WeaponService.start()
+TrapService.start()
 MonsterService.start()
 NightService.start()
 WheelService.start()
@@ -3269,6 +3465,7 @@ local function onPlayerAdded(player: Player)
 	MonetizationService.setup(player) -- Game Passes (x2 pièces, verrou+, armes)
 	WeaponService.setup(player) -- la Batte et les armes achetées, à chaque apparition
 	WheelService.setup(player) -- tours de Roue de la Fortune
+	TrapService.setup(player) -- pièges achetés pour sa base
 	RebirthService.setup(player) -- aura des rebirths
 	EconomyService.setup(player)
 	IndexService.setup(player) -- collection (avant le cadeau, pour ne pas afficher 2 messages)
@@ -3297,6 +3494,7 @@ end
 local function onPlayerRemoving(player: Player)
 	StealService.onPlayerRemoving(player)
 	WheelService.onPlayerRemoving(player) -- gain de la roue pas encore donné
+	TrapService.release(player) -- sa base redevient vide
 	EconomyService.onPlayerRemoving(player)
 	BaseService.release(player)
 	Guard.clear(player)
@@ -3319,11 +3517,11 @@ end
 ]]></string>
       </Properties>
     </Item>
-    <Item class="Folder" referent="19">
+    <Item class="Folder" referent="20">
       <Properties>
         <string name="Name">Services</string>
       </Properties>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">AnnounceService</string>
           <string name="Source"><![CDATA[--[[
@@ -3369,7 +3567,7 @@ return AnnounceService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">BaseService</string>
           <string name="Source"><![CDATA[--[[
@@ -4026,7 +4224,7 @@ return BaseService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">CodeService</string>
           <string name="Source"><![CDATA[--[[
@@ -4130,7 +4328,7 @@ return CodeService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">DataService</string>
           <string name="Source"><![CDATA[--[[
@@ -4199,6 +4397,7 @@ local function template()
 		IndexComplete = false, -- bonus permanent du Fantômédex complet
 		RedeemedCodes = {}, -- codes promo déjà utilisés : ["BOUH2026"] = true
 		Missions = {}, -- missions du jour : { Day, List, BonusDone }
+		Traps = {}, -- pièges achetés : ["Banana"] = true
 		Spins = 0, -- tours de Roue de la Fortune achetés et pas encore utilisés
 		BoostUntil = 0, -- fin du bonus "x2 revenus" de la roue (temps Unix)
 	}
@@ -4411,7 +4610,7 @@ return DataService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">EconomyService</string>
           <string name="Source"><![CDATA[--[[
@@ -4851,7 +5050,7 @@ return EconomyService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="25">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">GhostService</string>
           <string name="Source"><![CDATA[--[[
@@ -5105,7 +5304,7 @@ return GhostService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="26">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">Guard</string>
           <string name="Source"><![CDATA[--[[
@@ -5164,7 +5363,7 @@ return Guard
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="28">
         <Properties>
           <string name="Name">Hooks</string>
           <string name="Source"><![CDATA[--[[
@@ -5174,7 +5373,8 @@ return Guard
 	des autres. Utilisé par les missions du jour.
 
 	Événements : Buy (joueur, fantôme), Sell, Steal, Bonk, Lock, Earn (joueur, pièces),
-	NightOutside (joueur, secondes passées dehors pendant la nuit)
+	NightOutside (joueur, secondes passées dehors pendant la nuit), Trap (propriétaire
+	dont un piège a attrapé quelqu'un), Rebirth (joueur, nombre de rebirths)
 ]]
 
 local Hooks = {}
@@ -5196,7 +5396,7 @@ return Hooks
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="28">
+      <Item class="ModuleScript" referent="29">
         <Properties>
           <string name="Name">IndexService</string>
           <string name="Source"><![CDATA[--[[
@@ -5308,7 +5508,7 @@ return IndexService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="29">
+      <Item class="ModuleScript" referent="30">
         <Properties>
           <string name="Name">LeaderboardService</string>
           <string name="Source"><![CDATA[--[[
@@ -5437,7 +5637,7 @@ return LeaderboardService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="30">
+      <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">MapBuilder</string>
           <string name="Source"><![CDATA[--[[
@@ -5457,6 +5657,7 @@ local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Traps = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Traps"))
 
 local MapBuilder = {}
 
@@ -5749,6 +5950,22 @@ function MapBuilder.buildBase(index: number, parent: Instance): Model
 			CastShadow = false,
 			Parent = lockStation,
 		})
+	end
+
+	-- Les pièges dans l'allée : on voit l'emplacement d'achat, le piège apparaît une fois acheté
+	local trapsFolder = Instance.new("Folder")
+	trapsFolder.Name = "Traps"
+	trapsFolder.Parent = model
+	for _, trap in Traps.List do
+		local trapModel = Traps.build(trap.Id, origin * CFrame.new(trap.Position))
+		for _, p in trapModel:GetDescendants() do
+			if p:IsA("BasePart") and p.Name ~= "Spot" then
+				p:SetAttribute("TrapLook", true)
+				p:SetAttribute("BaseTransparency", p.Transparency)
+				p.Transparency = 1
+			end
+		end
+		trapModel.Parent = trapsFolder
 	end
 
 	-- Ascenseur vers l'étage 2 (au fond, à droite du bouton de verrou)
@@ -6323,7 +6540,7 @@ return MapBuilder
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="31">
+      <Item class="ModuleScript" referent="32">
         <Properties>
           <string name="Name">MissionService</string>
           <string name="Source"><![CDATA[--[[
@@ -6491,7 +6708,7 @@ return MissionService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="32">
+      <Item class="ModuleScript" referent="33">
         <Properties>
           <string name="Name">MonetizationService</string>
           <string name="Source"><![CDATA[--[[
@@ -6695,7 +6912,7 @@ return MonetizationService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="33">
+      <Item class="ModuleScript" referent="34">
         <Properties>
           <string name="Name">MonsterService</string>
           <string name="Source"><![CDATA[--[[
@@ -6982,7 +7199,7 @@ return MonsterService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="34">
+      <Item class="ModuleScript" referent="35">
         <Properties>
           <string name="Name">NightService</string>
           <string name="Source"><![CDATA[--[[
@@ -7224,7 +7441,7 @@ return NightService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="35">
+      <Item class="ModuleScript" referent="36">
         <Properties>
           <string name="Name">RebirthService</string>
           <string name="Source"><![CDATA[--[[
@@ -7247,6 +7464,7 @@ local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local GhostService = require(script.Parent.GhostService)
 local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
 local StealService = require(script.Parent.StealService)
 
 local RebirthService = {}
@@ -7323,6 +7541,7 @@ local function onRebirth(player: Player)
 	BaseService.refreshSlots(player)
 	EconomyService.refresh(player)
 	applyAura(player)
+	Hooks.fire("Rebirth", player, data.Rebirths)
 
 	local mult = EconomyService.rebirthMultiplier(data.Rebirths)
 	AnnounceService.notify(player, "RebirthDone", { mult = mult }, "good")
@@ -7346,7 +7565,7 @@ return RebirthService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="36">
+      <Item class="ModuleScript" referent="37">
         <Properties>
           <string name="Name">StealService</string>
           <string name="Source"><![CDATA[--[[
@@ -7395,6 +7614,7 @@ type Carry = {
 local carries: { [Player]: Carry } = {}
 local holdStarts: { [Player]: { BaseIndex: number, Slot: number, Time: number } } = {}
 local stunnedUntil: { [Player]: number } = {}
+local slowedUntil: { [Player]: { Until: number, Speed: number } } = {}
 
 local function setSpeed(player: Player, speed: number)
 	local humanoid = Guard.humanoid(player)
@@ -7407,7 +7627,12 @@ local function normalSpeedFor(player: Player): number
 	if (stunnedUntil[player] or 0) > os.clock() then
 		return 4
 	end
-	return if carries[player] then Config.CarrierWalkSpeed else Config.NormalWalkSpeed
+	local speed = if carries[player] then Config.CarrierWalkSpeed else Config.NormalWalkSpeed
+	local slow = slowedUntil[player]
+	if slow and slow.Until > os.clock() then
+		speed = math.min(speed, slow.Speed)
+	end
+	return speed
 end
 
 local function flat(v: Vector3): Vector3
@@ -7435,7 +7660,7 @@ local function clearCarry(carry: Carry)
 	setSpeed(carry.Thief, normalSpeedFor(carry.Thief))
 end
 
--- Le fantôme rentre chez son propriétaire. reason = "Timeout", "Caught", "Bonk", "Monster", "Died", "Left", "Cheat", "NoSpace"
+-- Le fantôme rentre chez son propriétaire. reason = "Timeout", "Caught", "Bonk", "Monster", "Died", "Left", "Cheat", "NoSpace", "Trap"
 function StealService.failCarry(thief: Player, reason: string, by: Player?)
 	local carry = carries[thief]
 	if not carry then
@@ -7462,6 +7687,8 @@ function StealService.failCarry(thief: Player, reason: string, by: Player?)
 		end
 	elseif reason == "Monster" then
 		AnnounceService.notify(thief, "StealFailMonster", params, "bad")
+	elseif reason == "Trap" then
+		AnnounceService.notify(thief, "StealFailTrap", params, "bad")
 	elseif reason == "NoSpace" then
 		AnnounceService.notify(thief, "StealFailNoSpace", params, "bad")
 	end
@@ -7608,6 +7835,17 @@ function StealService.stun(player: Player, seconds: number)
 	end)
 end
 
+-- Ralentit un joueur (toile d'araignée) pendant "seconds" secondes
+function StealService.slow(player: Player, speed: number, seconds: number)
+	slowedUntil[player] = { Until = os.clock() + seconds, Speed = speed }
+	setSpeed(player, normalSpeedFor(player))
+	task.delay(seconds, function()
+		if player.Parent then
+			setSpeed(player, normalSpeedFor(player))
+		end
+	end)
+end
+
 function StealService.isStunned(player: Player): boolean
 	return (stunnedUntil[player] or 0) > os.clock()
 end
@@ -7678,6 +7916,7 @@ end
 function StealService.onPlayerRemoving(player: Player)
 	holdStarts[player] = nil
 	stunnedUntil[player] = nil
+	slowedUntil[player] = nil
 	-- Le voleur part : le fantôme rentre chez lui
 	if carries[player] then
 		StealService.failCarry(player, "Left")
@@ -7719,7 +7958,254 @@ return StealService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="37">
+      <Item class="ModuleScript" referent="38">
+        <Properties>
+          <string name="Name">TrapService</string>
+          <string name="Source"><![CDATA[--[[
+	TrapService : les pièges des bases (peau de banane, toile d'araignée, alarme).
+	  - achetés avec des pièces sur leur emplacement, dans sa propre base
+	  - gardés pour toujours (et après un rebirth, sauf si Config.RebirthKeepsTraps = false)
+	  - le serveur regarde plusieurs fois par seconde qui marche dessus : seuls les
+	    intrus sont touchés, jamais le propriétaire
+	Les réglages sont dans Config.Traps, les textes et modèles dans Traps.luau.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Format = require(Shared:WaitForChild("Format"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local Traps = require(Shared:WaitForChild("Traps"))
+
+local AnnounceService = require(script.Parent.AnnounceService)
+local BaseService = require(script.Parent.BaseService)
+local DataService = require(script.Parent.DataService)
+local EconomyService = require(script.Parent.EconomyService)
+local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
+local StealService = require(script.Parent.StealService)
+
+local TrapService = {}
+
+local TICK = 0.15
+local BUY_RANGE = 12 -- distance max à l'emplacement pour acheter (le bouton s'active à 9)
+local GROUND_HEIGHT = 6 -- les pièges sont au rez-de-chaussée
+
+local bananaReadyAt: { [any]: number } = {} -- par base
+local alarmReadyAt: { [any]: number } = {} -- par base
+local webUntil: { [Player]: number } = {} -- pour ne pas re-ralentir en boucle
+
+local function now(): number
+	return os.clock()
+end
+
+local function trapModel(base, id: string): Model?
+	local folder = base.Model:FindFirstChild("Traps")
+	return folder and folder:FindFirstChild("Trap_" .. id) :: Model?
+end
+
+-- Montre ou cache un piège (owned = acheté, ready = prêt à resservir)
+local function show(base, id: string, owned: boolean, ready: boolean)
+	local model = trapModel(base, id)
+	if not model then
+		return
+	end
+	model:SetAttribute("Owned", owned)
+	for _, p in model:GetDescendants() do
+		if p:IsA("BasePart") then
+			if p.Name == "Spot" then
+				p.Transparency = if owned then 1 else 0.35
+			elseif p:GetAttribute("TrapLook") then
+				p.Transparency = if owned and ready then p:GetAttribute("BaseTransparency") or 0 else 1
+			end
+		end
+	end
+end
+
+local function ownedTraps(player: Player): { [string]: boolean }
+	local data = DataService.get(player)
+	return if data and type(data.Traps) == "table" then data.Traps else {}
+end
+
+-- Met la base d'un joueur à jour (à son arrivée, après un achat, un rebirth...)
+function TrapService.refresh(player: Player)
+	local base = BaseService.getBase(player)
+	if not base then
+		return
+	end
+	local owned = ownedTraps(player)
+	for _, trap in Traps.List do
+		show(base, trap.Id, owned[trap.Id] == true, (bananaReadyAt[base] or 0) <= now() or trap.Id ~= "Banana")
+	end
+end
+
+-- Le joueur s'en va : sa base redevient vide
+function TrapService.release(player: Player)
+	local base = BaseService.getBase(player)
+	if not base then
+		return
+	end
+	for _, trap in Traps.List do
+		show(base, trap.Id, false, true)
+	end
+	bananaReadyAt[base] = nil
+	alarmReadyAt[base] = nil
+end
+
+---------------------------------------------------------------- Achat
+
+local function onBuy(player: Player, trapId: any)
+	if not Guard.rate(player, "BuyTrap", 0.5) then
+		return
+	end
+	local trap = Traps.get(trapId)
+	local data = DataService.get(player)
+	local base = BaseService.getBase(player)
+	if not trap or not data or not base then
+		return
+	end
+	data.Traps = data.Traps or {}
+	if data.Traps[trap.Id] then
+		AnnounceService.notify(player, "TrapOwned", nil, "info")
+		return
+	end
+	-- il faut être devant l'emplacement, dans sa base
+	local root = Guard.root(player)
+	local model = trapModel(base, trap.Id)
+	local spot = model and model.PrimaryPart
+	if not root or not spot or (root.Position - spot.Position).Magnitude > BUY_RANGE then
+		return
+	end
+	local price = Config.Traps[trap.Id].Price
+	if not EconomyService.trySpend(player, price) then
+		AnnounceService.notify(player, "NotEnoughCoins", { coins = Format.short(price) }, "bad")
+		return
+	end
+	data.Traps[trap.Id] = true
+	TrapService.refresh(player)
+	AnnounceService.notify(player, "TrapBought", { trap = trap.Id }, "good")
+	AnnounceService.effect("Placed", { Position = spot.Position })
+end
+
+---------------------------------------------------------------- Déclenchement
+
+local function slip(base, owner: Player, intruder: Player, root: BasePart)
+	local settings = Config.Traps.Banana
+	bananaReadyAt[base] = now() + settings.Cooldown
+	show(base, "Banana", true, false)
+	task.delay(settings.Cooldown, function()
+		if BaseService.getBase(owner) == base and ownedTraps(owner).Banana then
+			show(base, "Banana", true, true)
+		end
+	end)
+	if StealService.isCarrying(intruder) then
+		StealService.failCarry(intruder, "Trap", owner)
+	end
+	StealService.cancelHold(intruder)
+	StealService.stun(intruder, settings.Stun)
+	AnnounceService.effect("Slip", { Position = root.Position, TargetId = intruder.UserId })
+	AnnounceService.effect("Knockback", { Direction = Vector3.new(0, 0, 0), Power = 0 }, intruder)
+	AnnounceService.notify(intruder, "TrapSlipped", nil, "bad")
+	AnnounceService.notify(owner, "TrapCaught", { player = intruder.DisplayName, trap = "Banana" }, "good")
+	Hooks.fire("Trap", owner, 1)
+end
+
+local function web(owner: Player, intruder: Player, root: BasePart)
+	local settings = Config.Traps.Web
+	webUntil[intruder] = now() + settings.SlowTime
+	StealService.cancelHold(intruder)
+	StealService.slow(intruder, settings.Speed, settings.SlowTime)
+	AnnounceService.effect("Web", { Position = root.Position })
+	AnnounceService.notify(intruder, "TrapWebbed", nil, "bad")
+	AnnounceService.notify(owner, "TrapCaught", { player = intruder.DisplayName, trap = "Web" }, "good")
+	Hooks.fire("Trap", owner, 1)
+end
+
+local function alarm(base, owner: Player, intruder: Player)
+	local settings = Config.Traps.Alarm
+	alarmReadyAt[base] = now() + settings.Cooldown
+	base.Model:SetAttribute("AlarmUntil", workspace:GetServerTimeNow() + settings.RingTime)
+	AnnounceService.notify(owner, "AlarmOwner", { player = intruder.DisplayName }, "bad")
+	AnnounceService.effect("Alarm", { Position = base.Origin.Position }, owner)
+	AnnounceService.notify(intruder, "AlarmIntruder", nil, "info")
+	AnnounceService.effect("AlarmNear", { Position = base.Origin.Position })
+end
+
+local function check()
+	local t = now()
+	for _, base in BaseService.allBases() do
+		local owner = base.Owner
+		if owner then
+			local owned = ownedTraps(owner)
+			if owned.Banana or owned.Web or owned.Alarm then
+				for _, intruder in Players:GetPlayers() do
+					if intruder ~= owner then
+						local root = Guard.root(intruder)
+						if root and BaseService.isInside(base, root.Position) then
+							local localPos = base.Origin:PointToObjectSpace(root.Position)
+							local onGround = localPos.Y < GROUND_HEIGHT
+							if owned.Alarm and (alarmReadyAt[base] or 0) <= t then
+								alarm(base, owner, intruder)
+							end
+							local banana = Traps.ById.Banana
+							local dx, dz = localPos.X - banana.Position.X, localPos.Z - banana.Position.Z
+							if owned.Banana and onGround and (bananaReadyAt[base] or 0) <= t and dx * dx + dz * dz <= banana.Radius ^ 2 then
+								slip(base, owner, intruder, root)
+							end
+							local webTrap = Traps.ById.Web
+							if
+								owned.Web
+								and onGround
+								and (webUntil[intruder] or 0) <= t
+								and math.abs(localPos.X - webTrap.Position.X) <= webTrap.HalfSize.X
+								and math.abs(localPos.Z - webTrap.Position.Z) <= webTrap.HalfSize.Y
+							then
+								web(owner, intruder, root)
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+-- Rebirth : on garde les pièges, ou pas (Config.RebirthKeepsTraps)
+function TrapService.onRebirth(player: Player)
+	if not Config.RebirthKeepsTraps then
+		local data = DataService.get(player)
+		if data then
+			data.Traps = {}
+		end
+	end
+	TrapService.refresh(player)
+end
+
+function TrapService.setup(player: Player)
+	TrapService.refresh(player)
+end
+
+function TrapService.start()
+	Remotes.get("BuyTrap").OnServerEvent:Connect(onBuy)
+	Hooks.on("Rebirth", TrapService.onRebirth)
+	Players.PlayerRemoving:Connect(function(player)
+		webUntil[player] = nil
+	end)
+	task.spawn(function()
+		while true do
+			task.wait(TICK)
+			check()
+		end
+	end)
+end
+
+return TrapService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="39">
         <Properties>
           <string name="Name">WeaponService</string>
           <string name="Source"><![CDATA[--[[
@@ -7907,7 +8393,7 @@ return WeaponService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="38">
+      <Item class="ModuleScript" referent="40">
         <Properties>
           <string name="Name">WheelService</string>
           <string name="Source"><![CDATA[--[[
@@ -8076,15 +8562,15 @@ return WheelService
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="39">
+  <Item class="StarterPlayer" referent="41">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="40">
+    <Item class="StarterPlayerScripts" referent="42">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="41">
+      <Item class="LocalScript" referent="43">
         <Properties>
           <string name="Name">Client</string>
           <string name="Source"><![CDATA[--[[
@@ -8133,11 +8619,11 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="42">
+      <Item class="Folder" referent="44">
         <Properties>
           <string name="Name">Controllers</string>
         </Properties>
-        <Item class="ModuleScript" referent="43">
+        <Item class="ModuleScript" referent="45">
           <Properties>
             <string name="Name">AnimView</string>
             <string name="Source"><![CDATA[--[[
@@ -8325,7 +8811,7 @@ return AnimView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="44">
+        <Item class="ModuleScript" referent="46">
           <Properties>
             <string name="Name">Announce</string>
             <string name="Source"><![CDATA[--[[
@@ -8457,7 +8943,7 @@ return Announce
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="45">
+        <Item class="ModuleScript" referent="47">
           <Properties>
             <string name="Name">BaseView</string>
             <string name="Source"><![CDATA[--[[
@@ -8468,6 +8954,7 @@ return Announce
 	  - la barrière du verrou : on peut la traverser dans SA base, pas chez les autres
 	  - les pièces qui attendent au-dessus de chaque plaque verte
 	  - l'ascenseur et l'achat de l'étage 2
+	  - les pièges : prix et bouton d'achat sur leur emplacement, sirène qui clignote
 ]]
 
 local Players = game:GetService("Players")
@@ -8480,6 +8967,7 @@ local Format = require(Shared:WaitForChild("Format"))
 local GhostData = require(Shared:WaitForChild("GhostData"))
 local GhostFactory = require(Shared:WaitForChild("GhostFactory"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Traps = require(Shared:WaitForChild("Traps"))
 
 local Effects = require(script.Parent.Effects)
 local Labels = require(script.Parent.Labels)
@@ -8634,7 +9122,11 @@ local function setupLockButton(baseModel: Model)
 	baseModel:GetAttributeChangedSignal("OwnerUserId"):Connect(refresh)
 	refresh()
 	-- panneau au-dessus du poste de verrouillage, au fond de la base
-	local tag = Labels.simple(button, "🚧 " .. Lang.t("LockStation"), UI.Colors.Bad, Vector3.new(0, 5, 0), 6)
+	-- (le bouton est un cylindre tourné : on vise "en haut" dans le repère du monde)
+	local labelPoint = Instance.new("Attachment")
+	labelPoint.Position = button.CFrame:PointToObjectSpace(button.Position + Vector3.new(0, 5, 0))
+	labelPoint.Parent = button
+	local tag = Labels.simple(labelPoint, "🚧 " .. Lang.t("LockStation"), UI.Colors.Bad, Vector3.zero, 6)
 	tag.MaxDistance = 50
 end
 
@@ -8682,6 +9174,65 @@ local function setupElevator(baseModel: Model)
 	baseModel:GetAttributeChangedSignal("Floors"):Connect(refresh)
 	baseModel:GetAttributeChangedSignal("OwnerUserId"):Connect(refresh)
 	refresh()
+end
+
+---------------------------------------------------------------- Pièges
+
+local sirens: { { Model: Model, Siren: BasePart, Light: PointLight? } } = {}
+
+local function setupTraps(baseModel: Model)
+	local folder = baseModel:WaitForChild("Traps")
+	for _, trap in Traps.List do
+		local model = folder:WaitForChild("Trap_" .. trap.Id) :: Model
+		local spot = model:WaitForChild("Spot") :: BasePart
+		local price = Config.Traps[trap.Id].Price
+		-- le disque est couché : on place des points d'attache au-dessus, dans le repère du monde
+		local labelPoint = Instance.new("Attachment")
+		labelPoint.Position = spot.CFrame:PointToObjectSpace(spot.Position + Vector3.new(0, 3.2, 0))
+		labelPoint.Parent = spot
+		local tag = Labels.simple(labelPoint, trap.Icon .. " " .. Lang.t("TrapLabel", { name = Lang.pick(trap.Name), coins = "🪙 " .. Format.short(price) }), UI.Colors.Gold, Vector3.zero, 7)
+		tag.MaxDistance = 35
+		local attachment = Instance.new("Attachment")
+		attachment.Position = spot.CFrame:PointToObjectSpace(spot.Position + Vector3.new(0, 2, 0))
+		attachment.Parent = spot
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = Lang.t("TrapBuy")
+		prompt.ObjectText = trap.Icon .. " 🪙 " .. Format.short(price)
+		prompt.HoldDuration = 0.5
+		prompt.MaxActivationDistance = 9
+		prompt.RequiresLineOfSight = false
+		prompt.AutoLocalize = Lang.autoLocalize
+		prompt.Parent = attachment
+		prompt.Triggered:Connect(function()
+			Effects.sound("Click")
+			Remotes.get("BuyTrap"):FireServer(trap.Id)
+		end)
+		local function refresh()
+			local available = isMine(baseModel) and model:GetAttribute("Owned") ~= true
+			prompt.Enabled = available
+			tag.Enabled = available
+		end
+		model:GetAttributeChangedSignal("Owned"):Connect(refresh)
+		baseModel:GetAttributeChangedSignal("OwnerUserId"):Connect(refresh)
+		refresh()
+		local siren = model:FindFirstChild("Siren", true)
+		if siren and siren:IsA("BasePart") then
+			table.insert(sirens, { Model = baseModel, Siren = siren, Light = siren:FindFirstChildOfClass("PointLight") })
+		end
+	end
+end
+
+-- La sirène clignote pendant que l'alarme sonne
+local function updateSirens()
+	local now = workspace:GetServerTimeNow()
+	for _, entry in sirens do
+		local ringing = now < (entry.Model:GetAttribute("AlarmUntil") or 0)
+		local on = ringing and math.floor(now * 6) % 2 == 0
+		entry.Siren.Color = if on then Color3.fromRGB(255, 60, 60) else Color3.fromRGB(200, 40, 50)
+		if entry.Light then
+			entry.Light.Enabled = on
+		end
+	end
 end
 
 ---------------------------------------------------------------- Socles
@@ -8834,6 +9385,7 @@ local function setupBase(baseModel: Model)
 	task.spawn(setupSign, baseModel)
 	task.spawn(setupLockButton, baseModel)
 	task.spawn(setupElevator, baseModel)
+	task.spawn(setupTraps, baseModel)
 	setupBarrier(baseModel)
 	local pedestals = baseModel:WaitForChild("Pedestals")
 	for _, ped in pedestals:GetChildren() do
@@ -8856,6 +9408,7 @@ function BaseView.start()
 
 	-- Animation douce des fantômes proches (les lointains restent immobiles : économie de batterie)
 	RunService.RenderStepped:Connect(function()
+		updateSirens()
 		local camera = workspace.CurrentCamera
 		if not camera then
 			return
@@ -8886,7 +9439,7 @@ return BaseView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="46">
+        <Item class="ModuleScript" referent="48">
           <Properties>
             <string name="Name">CarryView</string>
             <string name="Source"><![CDATA[--[[
@@ -9077,7 +9630,7 @@ return CarryView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="47">
+        <Item class="ModuleScript" referent="49">
           <Properties>
             <string name="Name">CenterView</string>
             <string name="Source"><![CDATA[--[[
@@ -9282,7 +9835,7 @@ return CenterView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="48">
+        <Item class="ModuleScript" referent="50">
           <Properties>
             <string name="Name">Effects</string>
             <string name="Source"><![CDATA[--[[
@@ -9568,6 +10121,31 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 			Effects.shake(0.8, 0.3)
 		end
 	end,
+	Slip = function(data)
+		if data.Position then
+			Effects.stars(data.Position + Vector3.new(0, 2, 0))
+			if isNear(data.Position, 80) then
+				Effects.sound("Slip")
+			end
+		end
+	end,
+	Web = function(data)
+		if data.Position and isNear(data.Position, 60) then
+			Effects.poof(data.Position, Color3.fromRGB(240, 240, 255))
+			Effects.sound("Web")
+		end
+	end,
+	-- Mon alarme sonne (je peux être loin de ma base)
+	Alarm = function()
+		Effects.sound("Alarm")
+		Effects.shake(0.5, 0.4)
+	end,
+	-- L'alarme d'une base proche sonne
+	AlarmNear = function(data)
+		if data.Position and isNear(data.Position, 70) then
+			Effects.sound("Alarm")
+		end
+	end,
 	MonsterSummon = function()
 		Effects.sound("MonsterSummon")
 		Effects.shake(0.6, 0.5)
@@ -9636,7 +10214,7 @@ return Effects
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="49">
+        <Item class="ModuleScript" referent="51">
           <Properties>
             <string name="Name">HUD</string>
             <string name="Source"><![CDATA[--[[
@@ -10004,7 +10582,7 @@ return HUD
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="50">
+        <Item class="ModuleScript" referent="52">
           <Properties>
             <string name="Name">Labels</string>
             <string name="Source"><![CDATA[--[[
@@ -10104,7 +10682,7 @@ return Labels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="51">
+        <Item class="ModuleScript" referent="53">
           <Properties>
             <string name="Name">Lang</string>
             <string name="Source"><![CDATA[--[[
@@ -10120,6 +10698,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local GhostData = require(Shared:WaitForChild("GhostData"))
 local Monsters = require(Shared:WaitForChild("Monsters"))
 local Strings = require(Shared:WaitForChild("Strings"))
+local Traps = require(Shared:WaitForChild("Traps"))
 local Weapons = require(Shared:WaitForChild("Weapons"))
 
 local Lang = {}
@@ -10184,6 +10763,11 @@ function Lang.weaponName(id: string): string
 	return if weapon then Lang.pick(weapon.Name) else tostring(id)
 end
 
+function Lang.trapName(id: string): string
+	local trap = Traps.get(id)
+	return if trap then Lang.pick(trap.Name) else tostring(id)
+end
+
 function Lang.rarityName(rarity: string): string
 	return Strings.format(Lang.code, "Rarity_" .. rarity)
 end
@@ -10202,6 +10786,8 @@ function Lang.t(key: string, params: { [string]: any }?): string
 				resolved[name] = Lang.monsterName(value)
 			elseif name == "weapon" then
 				resolved[name] = Lang.weaponName(value)
+			elseif name == "trap" then
+				resolved[name] = Lang.trapName(value)
 			else
 				resolved[name] = value
 			end
@@ -10214,7 +10800,7 @@ return Lang
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="52">
+        <Item class="ModuleScript" referent="54">
           <Properties>
             <string name="Name">LeaderboardView</string>
             <string name="Source"><![CDATA[--[[
@@ -10334,7 +10920,7 @@ return LeaderboardView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="53">
+        <Item class="ModuleScript" referent="55">
           <Properties>
             <string name="Name">MonsterView</string>
             <string name="Source"><![CDATA[--[[
@@ -10508,7 +11094,7 @@ return MonsterView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="54">
+        <Item class="ModuleScript" referent="56">
           <Properties>
             <string name="Name">NightView</string>
             <string name="Source"><![CDATA[--[[
@@ -10657,7 +11243,7 @@ return NightView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="55">
+        <Item class="ModuleScript" referent="57">
           <Properties>
             <string name="Name">Panels</string>
             <string name="Source"><![CDATA[--[[
@@ -11659,7 +12245,7 @@ return Panels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="56">
+        <Item class="ModuleScript" referent="58">
           <Properties>
             <string name="Name">PathView</string>
             <string name="Source"><![CDATA[--[[
@@ -11828,7 +12414,7 @@ return PathView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="57">
+        <Item class="ModuleScript" referent="59">
           <Properties>
             <string name="Name">Tutorial</string>
             <string name="Source"><![CDATA[--[[
@@ -12069,7 +12655,7 @@ return Tutorial
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="58">
+        <Item class="ModuleScript" referent="60">
           <Properties>
             <string name="Name">UI</string>
             <string name="Source"><![CDATA[--[[
@@ -12258,7 +12844,7 @@ return UI
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="59">
+        <Item class="ModuleScript" referent="61">
           <Properties>
             <string name="Name">WeaponView</string>
             <string name="Source"><![CDATA[--[[
@@ -12494,13 +13080,13 @@ return WeaponView
       </Item>
     </Item>
   </Item>
-  <Item class="TextChatService" referent="60">
+  <Item class="TextChatService" referent="62">
     <Properties>
       <string name="Name">TextChatService</string>
       <token name="ChatVersion">1</token>
     </Properties>
   </Item>
-  <Item class="Workspace" referent="61">
+  <Item class="Workspace" referent="63">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>

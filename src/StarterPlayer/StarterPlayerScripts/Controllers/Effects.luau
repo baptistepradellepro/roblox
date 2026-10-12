@@ -281,6 +281,31 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 			Effects.shake(0.8, 0.3)
 		end
 	end,
+	Slip = function(data)
+		if data.Position then
+			Effects.stars(data.Position + Vector3.new(0, 2, 0))
+			if isNear(data.Position, 80) then
+				Effects.sound("Slip")
+			end
+		end
+	end,
+	Web = function(data)
+		if data.Position and isNear(data.Position, 60) then
+			Effects.poof(data.Position, Color3.fromRGB(240, 240, 255))
+			Effects.sound("Web")
+		end
+	end,
+	-- Mon alarme sonne (je peux être loin de ma base)
+	Alarm = function()
+		Effects.sound("Alarm")
+		Effects.shake(0.5, 0.4)
+	end,
+	-- L'alarme d'une base proche sonne
+	AlarmNear = function(data)
+		if data.Position and isNear(data.Position, 70) then
+			Effects.sound("Alarm")
+		end
+	end,
 	MonsterSummon = function()
 		Effects.sound("MonsterSummon")
 		Effects.shake(0.6, 0.5)

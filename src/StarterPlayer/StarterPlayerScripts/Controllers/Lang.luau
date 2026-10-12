@@ -11,6 +11,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local GhostData = require(Shared:WaitForChild("GhostData"))
 local Monsters = require(Shared:WaitForChild("Monsters"))
 local Strings = require(Shared:WaitForChild("Strings"))
+local Traps = require(Shared:WaitForChild("Traps"))
 local Weapons = require(Shared:WaitForChild("Weapons"))
 
 local Lang = {}
@@ -75,6 +76,11 @@ function Lang.weaponName(id: string): string
 	return if weapon then Lang.pick(weapon.Name) else tostring(id)
 end
 
+function Lang.trapName(id: string): string
+	local trap = Traps.get(id)
+	return if trap then Lang.pick(trap.Name) else tostring(id)
+end
+
 function Lang.rarityName(rarity: string): string
 	return Strings.format(Lang.code, "Rarity_" .. rarity)
 end
@@ -93,6 +99,8 @@ function Lang.t(key: string, params: { [string]: any }?): string
 				resolved[name] = Lang.monsterName(value)
 			elseif name == "weapon" then
 				resolved[name] = Lang.weaponName(value)
+			elseif name == "trap" then
+				resolved[name] = Lang.trapName(value)
 			else
 				resolved[name] = value
 			end

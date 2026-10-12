@@ -212,8 +212,24 @@ floorPrompt.Triggered:Fire()
 Sched.advance(0.3)
 check(aData.Floors == 2, "étage acheté depuis le bouton")
 check(findText(floorTag, "⬆️") ~= nil and not floorPrompt.Enabled, "l'ascenseur affiche 'Étage 2'")
-local lockTag = aliceBase.Model.LockButton:FindFirstChildOfClass("BillboardGui")
+local lockTag = find(aliceBase.Model.LockButton, function(d)
+	return d.ClassName == "BillboardGui"
+end)
 check(lockTag and findText(lockTag, "VERROU") ~= nil, "panneau 'VERROU' au fond de la base")
+check(lockTag and lockTag.Adornee and lockTag.Adornee.ClassName == "Attachment" and lockTag.Adornee.WorldPosition.Y > aliceBase.Model.LockButton.Position.Y + 4, "le panneau est bien au-dessus du bouton")
+-- pièges : prix et bouton d'achat sur chaque emplacement
+local bananaTrap = aliceBase.Model.Traps:FindFirstChild("Trap_Banana")
+local bananaPrompt = find(bananaTrap, function(d)
+	return d.ClassName == "ProximityPrompt"
+end)
+check(bananaPrompt and bananaPrompt.Enabled, "bouton pour poser la peau de banane")
+check(findText(bananaTrap, "Peau de banane : 🪙 2.5K") ~= nil, "prix du piège affiché")
+aData.Coins = 100000
+Fake.moveTo(alice, bananaTrap.Spot.Position + Vector3.new(0, 3, 2))
+bananaPrompt.Triggered:Fire(alice)
+Sched.advance(0.5)
+check(aData.Traps and aData.Traps.Banana, "peau de banane achetée depuis le bouton")
+check(not bananaPrompt.Enabled, "plus de bouton une fois posé")
 
 section("Écran du classement")
 local LeaderboardServiceSim = Fake.require("ServerScriptService.Services.LeaderboardService")
