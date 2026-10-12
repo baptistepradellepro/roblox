@@ -39,12 +39,28 @@ local function now(): number
 	return workspace:GetServerTimeNow()
 end
 
-function GhostService.isEventActive(): boolean
-	if Config.ForceHalloween then
-		return true
-	end
+-- Les événements en cours : { Halloween = true/false, Winter = true/false }
+function GhostService.activeEvents(): { [string]: boolean }
 	local t = os.time()
-	return t >= Config.HalloweenStart and t < Config.HalloweenEnd
+	return {
+		Halloween = Config.ForceHalloween == true or (t >= Config.HalloweenStart and t < Config.HalloweenEnd),
+		Winter = Config.ForceWinter == true or (t >= Config.WinterStart and t < Config.WinterEnd),
+	}
+end
+
+function GhostService.isEventActive(): boolean
+	return GhostService.activeEvents().Halloween
+end
+
+-- La rareté limitée du moment ("Halloween", "Frost") ou nil
+function GhostService.eventRarity(): string?
+	local events = GhostService.activeEvents()
+	if events.Winter then
+		return "Frost"
+	elseif events.Halloween then
+		return "Halloween"
+	end
+	return nil
 end
 
 function GhostService.isNight(): boolean
@@ -81,7 +97,7 @@ function GhostService.spawn(ghostId: string?)
 		end
 		ghostKey = ghostId
 	else
-		local rarity = Rarities.roll(rng:NextNumber(), GhostService.isNight(), GhostService.isEventActive())
+		local rarity = Rarities.roll(rng:NextNumber(), GhostService.isNight(), GhostService.activeEvents())
 		local ghost = GhostData.pick(rarity, rng:NextNumber())
 		-- parfois une variante Dorée (x3) ou Arc-en-ciel (x5)
 		local mutation = GhostData.rollMutation(rng:NextNumber(), GhostService.isNight(), GhostService.mutationBoost)
@@ -103,8 +119,12 @@ function GhostService.spawn(ghostId: string?)
 		AnnounceService.announce("AnnRainbowSpawn", { ghost = ghostKey }, "rainbow")
 	elseif ghost.Rarity == "Mythic" then
 		AnnounceService.announce("AnnMythicSpawn", { ghost = ghostKey }, "mythic")
+	elseif ghost.Rarity == "Secret" then
+		AnnounceService.announce("AnnSecretSpawn", { ghost = ghostKey }, "secret")
 	elseif ghost.Rarity == "Halloween" then
 		AnnounceService.announce("AnnHalloweenSpawn", { ghost = ghostKey }, "halloween")
+	elseif ghost.Rarity == "Frost" then
+		AnnounceService.announce("AnnFrostSpawn", { ghost = ghostKey }, "frost")
 	end
 end
 

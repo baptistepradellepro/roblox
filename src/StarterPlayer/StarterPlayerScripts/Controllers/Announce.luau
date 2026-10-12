@@ -22,6 +22,8 @@ local KIND_COLORS = {
 	steal = Color3.fromRGB(255, 90, 90),
 	mythic = Rarities.color("Mythic"),
 	halloween = Rarities.color("Halloween"),
+	secret = Rarities.color("Secret"),
+	frost = Rarities.color("Frost"),
 	legendary = Rarities.color("Legendary"),
 	rainbow = Color3.fromRGB(255, 110, 230),
 	rebirth = Color3.fromRGB(120, 255, 200),
@@ -33,6 +35,8 @@ local KIND_ICONS = {
 	steal = "🦹",
 	mythic = "🌟",
 	halloween = "🎃",
+	secret = "❔",
+	frost = "❄️",
 	legendary = "✨",
 	rainbow = "🌈",
 	rebirth = "♻️",
@@ -117,8 +121,12 @@ function Announce.start()
 		local text = Lang.t(key, params)
 		Announce.show(text, kind)
 		chatMessage(text, KIND_COLORS[kind] or KIND_COLORS.info)
-		if kind == "mythic" or kind == "halloween" or kind == "rainbow" then
+		if kind == "mythic" or kind == "halloween" or kind == "rainbow" or kind == "frost" then
 			Effects.sound("Mythic")
+		elseif kind == "secret" then
+			-- un Secret : grosse fanfare et tout l'écran tremble
+			Effects.sound("Secret")
+			Effects.shake(2, 1.5)
 		end
 	end)
 end

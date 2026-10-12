@@ -4,7 +4,7 @@ Usage : python3 tools/preview_ghosts.py ghosts.json sortie.png
 import json, math, sys
 from PIL import Image, ImageDraw, ImageFont
 
-RARITY_COLORS = {"Common": (190,196,210), "Rare": (70,160,255), "Epic": (175,90,255),
+RARITY_COLORS = {"Common": (190,196,210), "Rare": (70,160,255), "Epic": (175,90,255), "Secret": (225,240,255), "Frost": (120,210,255),
                  "Legendary": (255,190,40), "Mythic": (255,60,130), "Halloween": (255,125,20)}
 
 def local_points(shape, sx, sy, sz):

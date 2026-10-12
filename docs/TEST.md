@@ -86,6 +86,14 @@ Pour ne pas attendre 8 minutes, mets `Config.DayDuration = 30` pendant les tests
 - **Week-end x2** : du vendredi 17h UTC au dimanche 23h UTC, une pastille "Week-end x2 !" apparaît sous les pièces et les revenus doublent. `Config.WeekendBoost.Enabled = false` pour le couper.
 - **Classement** : le grand écran au-dessus du milieu du chemin affiche le top 10 des voleurs de la semaine. Dans Studio sans accès aux API, il montre les vols de la partie en cours. Il se met à jour toutes les minutes.
 
+## Tester la rareté Secrète
+
+Trois fantômes Secrets (Glitchou, L'Ombre Qui Rit, Cristalou), au-dessus des Mythiques. Ils apparaissent environ une fois toutes les quelques heures par serveur, un peu plus souvent la nuit. Quand l'un d'eux sort du portail, tout le serveur reçoit « UN FANTÔME SECRET EST APPARU ! » avec une fanfare, et l'écran tremble.
+
+Dans le Fantômédex, un Secret pas encore trouvé n'a même pas de silhouette : juste un ❔. La série Secret est en bonus, pas besoin de l'avoir pour compléter le Fantômédex.
+
+Pour en voir un sans attendre, dans la barre de commande de Studio (Affichage > Barre de commande), pendant que le jeu tourne côté serveur : `require(game.ServerScriptService.Services.GhostService).spawn("Glitchou")`.
+
 ## Tester les missions du jour
 
 Bouton 📋 à gauche. Chaque joueur a 3 missions par jour : une facile, une moyenne, une difficile (par exemple "Achète 3 fantômes", "Vends 2 fantômes", "Vole un fantôme à un autre joueur"). La barre avance toute seule, et quand une mission est finie les pièces arrivent directement avec un message "Mission réussie". Les 3 réussies donnent un bonus. Les missions changent à minuit UTC (2h du matin à Paris en été, 1h en hiver).

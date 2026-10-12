@@ -14,6 +14,8 @@ Strings.fr = {
 	Rarity_Legendary = "Légendaire",
 	Rarity_Mythic = "Mythique",
 	Rarity_Halloween = "Halloween",
+	Rarity_Secret = "Secret",
+	Rarity_Frost = "Givré",
 
 	-- Boutons et invites
 	Buy = "Acheter",
@@ -79,6 +81,9 @@ Strings.fr = {
 	AnnSteal = "{thief} a volé {ghost} à {owner} !",
 	AnnMythicSpawn = "Un fantôme MYTHIQUE apparaît : {ghost} !",
 	AnnHalloweenSpawn = "Un fantôme HALLOWEEN apparaît : {ghost} !",
+	AnnSecretSpawn = "UN FANTÔME SECRET EST APPARU : {ghost} !",
+	AnnFrostSpawn = "Un fantôme GIVRÉ apparaît : {ghost} !",
+	IndexSecretHidden = "Personne ne sait à quoi il ressemble...",
 	AnnRainbowSpawn = "Un fantôme ARC-EN-CIEL apparaît : {ghost} !",
 	AnnBigBuy = "{player} a attrapé {ghost} !",
 	AnnRebirth = "{player} a fait son rebirth n°{count} !",
@@ -283,6 +288,8 @@ Strings.en = {
 	Rarity_Legendary = "Legendary",
 	Rarity_Mythic = "Mythic",
 	Rarity_Halloween = "Halloween",
+	Rarity_Secret = "Secret",
+	Rarity_Frost = "Frosty",
 
 	Buy = "Buy",
 	Steal = "Steal",
@@ -344,6 +351,9 @@ Strings.en = {
 	AnnSteal = "{thief} stole {ghost} from {owner}!",
 	AnnMythicSpawn = "A MYTHIC ghost appeared: {ghost}!",
 	AnnHalloweenSpawn = "A HALLOWEEN ghost appeared: {ghost}!",
+	AnnSecretSpawn = "A SECRET GHOST HAS APPEARED: {ghost}!",
+	AnnFrostSpawn = "A FROSTY ghost appeared: {ghost}!",
+	IndexSecretHidden = "Nobody knows what it looks like...",
 	AnnRainbowSpawn = "A RAINBOW ghost appeared: {ghost}!",
 	AnnBigBuy = "{player} grabbed {ghost}!",
 	AnnRebirth = "{player} just did rebirth #{count}!",

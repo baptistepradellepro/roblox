@@ -96,6 +96,16 @@ Ce qui reste juste pour les joueurs qui ne paient pas :
 - les monstres payants ne prennent jamais de pièces et n'entrent pas dans les bases. Seul avantage pour l'acheteur : le monstre ne le poursuit pas pendant 30 à 45 secondes ;
 - la roue donne des pièces, des fantômes ou un bonus de revenus, qu'on peut aussi obtenir en jouant.
 
+## 5 bis. Badges (facultatif)
+
+Les badges s'affichent sur le profil des joueurs, leurs amis les voient : c'est de la pub gratuite. Le jeu en prévoit 7 : Bienvenue, Premier vol, Premier Mythique, Premier Secret, Premier rebirth, Fantômédex complet et Défis de la semaine.
+
+1. Creator Hub > Creations > Steal a Ghost > Engagement > Badges > Create a Badge.
+2. Une image carrée (512×512), un nom, une description.
+3. Copie l'ID du badge dans `Config.Badges`, à la ligne qui correspond.
+
+Roblox laisse créer quelques badges gratuitement chaque jour, les suivants coûtent des Robux : vérifie le prix affiché avant de valider. Tant qu'un ID vaut 0, le badge est simplement ignoré.
+
 ## 6. Codes promo
 
 Les codes sont dans `Config.Codes` (fichier `Config.luau`). Avant de publier, remplace les codes d'exemple par les tiens : si ton dépôt GitHub est public, n'importe qui peut les lire dans le fichier.

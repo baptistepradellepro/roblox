@@ -142,8 +142,11 @@ Config.IndexRewards = {
 	Legendary = 400000,
 	Mythic = 5000000,
 	Halloween = 2000000,
+	Secret = 50000000,
+	Frost = 2000000,
 }
--- Bonus permanent quand tous les fantômes (hors Halloween) sont trouvés : +10 % de revenus
+-- Bonus permanent quand tous les fantômes sont trouvés (sans compter Halloween, Givré
+-- et Secret, qui sont des séries en plus) : +10 % de revenus
 Config.IndexCompleteBonus = 0.10
 
 -- ===== Codes promo =====
@@ -163,6 +166,13 @@ Config.HalloweenStart = 1790812800
 Config.HalloweenEnd = 1793664000
 Config.ForceHalloween = false -- mets true pour tester les fantômes Halloween hors période
 
+-- ===== Hiver Hanté =====
+-- 1796083200 = 1er déc. 2026, 1799107200 = 5 janv. 2027 (temps Unix, UTC)
+-- Pendant l'événement : fantômes Givrés la nuit, neige sur la map, Bonhomme Grelot la nuit.
+Config.WinterStart = 1796083200
+Config.WinterEnd = 1799107200
+Config.ForceWinter = false -- mets true pour tester l'hiver hors période
+
 -- ===== Monétisation (mets 0 tant que tu ne les as pas créés) =====
 -- La liste complète des articles, avec les prix conseillés, est dans Shop.luau.
 -- Dans Studio, un article dont l'ID vaut 0 est donné gratuitement quand on clique dessus
@@ -181,6 +191,17 @@ Config.Products = {
 	MonsterBat = 0, -- ID du Developer Product "Lâcher la Chauve-Souris Turbo"
 	MonsterSpider = 0, -- ID du Developer Product "Lâcher Mamie Toile"
 }
+-- Badges Roblox (Creator Hub > ton jeu > Engagement > Badges). 0 = pas encore créé.
+Config.Badges = {
+	Welcome = 0, -- "Bienvenue dans Steal a Ghost" (première partie)
+	FirstSteal = 0, -- premier vol réussi
+	FirstMythic = 0, -- premier fantôme Mythique
+	FirstSecret = 0, -- premier fantôme Secret
+	FirstRebirth = 0, -- premier rebirth
+	IndexComplete = 0, -- Fantômédex complet
+	WeeklyChallenges = 0, -- les 3 défis d'une semaine
+}
+
 -- Icônes de la boutique (facultatif). Pour mettre tes propres images :
 -- Creator Hub > Développement > Décalcomanies (Decals) > importe l'image, copie son ID,
 -- et colle "rbxassetid://ID" ci-dessous. Vide = l'emoji habituel.
@@ -275,7 +296,7 @@ return Format
 
 	Pour chaque fantôme :
 	  Id       : nom interne (sans espace ni accent, ne JAMAIS le changer après publication)
-	  Rarity   : Common, Rare, Epic, Legendary, Mythic ou Halloween
+	  Rarity   : Common, Rare, Epic, Legendary, Mythic, Secret, Halloween ou Frost (Givré)
 	  Price    : prix d'achat en pièces
 	  Income   : pièces gagnées par seconde quand il est posé sur un socle
 	  Name     : nom affiché en français (fr) et en anglais (en)
@@ -488,6 +509,26 @@ GhostData.List = {
 		Look = { Body = "Pizza", Color = { 255, 205, 70 }, Accent = { 200, 40, 40 }, Face = "Happy", Accessories = { "Pepperoni" } },
 	},
 
+	-- ===================== SECRETS (presque introuvables) =====================
+	{
+		Id = "Glitchou", Rarity = "Secret", Price = 25000000, Income = 18000,
+		Name = { fr = "Glitchou", en = "Glitchy" },
+		Gag = { fr = "Il bugue tellement qu'il est sorti du jeu... puis il est revenu.", en = "He glitches so much he left the game... then came back." },
+		Look = { Body = "Block", Size = { 3, 3.6, 1.6 }, Color = { 40, 255, 220 }, Accent = { 255, 40, 200 }, Material = "Neon", Face = "Blank", Accessories = { "LoadingRing" } },
+	},
+	{
+		Id = "OmbreQuiRit", Rarity = "Secret", Price = 60000000, Income = 40000,
+		Name = { fr = "L'Ombre Qui Rit", en = "The Laughing Shadow" },
+		Gag = { fr = "Personne ne l'a jamais vue de près. Sauf toi, maintenant.", en = "Nobody has ever seen it up close. Except you, now." },
+		Look = { Body = "Sheet", Color = { 22, 18, 32 }, Accent = { 255, 255, 255 }, Face = "Blank", Accessories = { "Cape" } },
+	},
+	{
+		Id = "Cristalou", Rarity = "Secret", Price = 150000000, Income = 100000,
+		Name = { fr = "Cristalou", en = "Crystaloo" },
+		Gag = { fr = "Fragile ? Lui ? Il a survécu à mille ans de Nuits Hantées.", en = "Fragile? Him? He survived a thousand years of Haunted Nights." },
+		Look = { Body = "Blob", Color = { 170, 230, 255 }, Accent = { 255, 255, 255 }, Material = "Glass", Transparency = 0.25, Reflectance = 0.2, Face = "Happy", Accessories = { "Crown" } },
+	},
+
 	-- ===================== HALLOWEEN (édition limitée) =====================
 	{
 		Id = "CitrouilleToupie", Rarity = "Halloween", Price = 750000, Income = 1000,
@@ -512,6 +553,32 @@ GhostData.List = {
 		Name = { fr = "Bonbon Hurleur", en = "Howling Candy" },
 		Gag = { fr = "Crie quand on veut le manger.", en = "Screams when you try to eat it." },
 		Look = { Body = "Candy", Color = { 255, 90, 180 }, Accent = { 255, 230, 120 }, Face = "Shocked", Accessories = {} },
+	},
+
+	-- ===================== GIVRÉ (Hiver Hanté, édition limitée) =====================
+	{
+		Id = "BonhommeBouh", Rarity = "Frost", Price = 800000, Income = 1050,
+		Name = { fr = "Bonhomme Bouh", en = "Snow Boo" },
+		Gag = { fr = "Il fond de peur dès qu'il fait plus de zéro degré.", en = "He melts with fear above zero degrees." },
+		Look = { Body = "Blob", Color = { 245, 250, 255 }, Accent = { 40, 40, 50 }, Face = "Happy", Accessories = { "TopHat" } },
+	},
+	{
+		Id = "GlaconGrognon", Rarity = "Frost", Price = 1000000, Income = 1350,
+		Name = { fr = "Glaçon Grognon", en = "Grumpy Ice Cube" },
+		Gag = { fr = "Il a toujours froid, et il le fait savoir.", en = "He's always cold, and he lets everyone know." },
+		Look = { Body = "Block", Size = { 3, 3, 3 }, Color = { 170, 225, 255 }, Accent = { 230, 250, 255 }, Material = "Glass", Transparency = 0.2, Face = "Angry", Accessories = {} },
+	},
+	{
+		Id = "MoufleFantome", Rarity = "Frost", Price = 1300000, Income = 1700,
+		Name = { fr = "Moufle Fantôme", en = "Ghost Mitten" },
+		Gag = { fr = "Elle a perdu sa jumelle dans la neige en 1987.", en = "Lost her twin in the snow back in 1987." },
+		Look = { Body = "Sock", Color = { 220, 60, 70 }, Accent = { 255, 255, 255 }, Face = "Shy", Accessories = { "Pompom" } },
+	},
+	{
+		Id = "RenneFrissonnant", Rarity = "Frost", Price = 1600000, Income = 2100,
+		Name = { fr = "Renne Frissonnant", en = "Shivering Reindeer" },
+		Gag = { fr = "Son nez brille pour retrouver son chemin dans le brouillard.", en = "His nose glows to find his way through the fog." },
+		Look = { Body = "Sheet", Color = { 150, 100, 60 }, Accent = { 255, 40, 40 }, Face = "Happy", Accessories = { "Antenna" } },
 	},
 }
 
@@ -2042,13 +2109,15 @@ return Monsters
         <Properties>
           <string name="Name">Rarities</string>
           <string name="Source"><![CDATA[--[[
-	Rarities : les 6 raretés, leurs couleurs et leurs chances d'apparition.
+	Rarities : les raretés, leurs couleurs et leurs chances d'apparition.
 	DayWeight / NightWeight = "poids" : plus le nombre est grand, plus c'est fréquent.
+	Event = la rareté n'apparaît que pendant cet événement (et seulement la nuit).
+	Bonus = série en plus : pas besoin de l'avoir pour compléter le Fantômédex.
 ]]
 
 local Rarities = {}
 
-Rarities.Order = { "Common", "Rare", "Epic", "Legendary", "Mythic", "Halloween" }
+Rarities.Order = { "Common", "Rare", "Epic", "Legendary", "Mythic", "Secret", "Halloween", "Frost" }
 
 Rarities.Info = {
 	Common = { Rank = 1, Color = { 190, 196, 210 }, Scale = 0.85, DayWeight = 55, NightWeight = 38 },
@@ -2056,8 +2125,11 @@ Rarities.Info = {
 	Epic = { Rank = 3, Color = { 175, 90, 255 }, Scale = 1.15, DayWeight = 11, NightWeight = 16 },
 	Legendary = { Rank = 4, Color = { 255, 190, 40 }, Scale = 1.3, DayWeight = 3.6, NightWeight = 8 },
 	Mythic = { Rank = 5, Color = { 255, 60, 130 }, Scale = 1.6, DayWeight = 0.4, NightWeight = 4 },
-	-- Halloween : seulement la nuit, et seulement pendant l'événement
-	Halloween = { Rank = 6, Color = { 255, 125, 20 }, Scale = 1.4, DayWeight = 0, NightWeight = 4, EventOnly = true },
+	-- Secret : presque jamais (environ une fois toutes les quelques heures par serveur)
+	Secret = { Rank = 7, Color = { 225, 240, 255 }, Scale = 1.8, DayWeight = 0.012, NightWeight = 0.05, Bonus = true },
+	-- Halloween et Givré : seulement la nuit, et seulement pendant leur événement
+	Halloween = { Rank = 6, Color = { 255, 125, 20 }, Scale = 1.4, DayWeight = 0, NightWeight = 4, EventOnly = true, Event = "Halloween" },
+	Frost = { Rank = 6, Color = { 120, 210, 255 }, Scale = 1.4, DayWeight = 0, NightWeight = 4, EventOnly = true, Event = "Winter" },
 }
 
 function Rarities.rank(rarity: string): number
@@ -2071,13 +2143,15 @@ function Rarities.color(rarity: string): Color3
 end
 
 -- Tire une rareté au hasard. roll = nombre entre 0 et 1.
-function Rarities.roll(roll: number, isNight: boolean, eventActive: boolean): string
+-- events = les événements en cours, ex. { Halloween = true } (true seul = Halloween)
+function Rarities.roll(roll: number, isNight: boolean, events: any): string
+	local active = if type(events) == "table" then events else { Halloween = events == true }
 	local total = 0
 	local weights = {}
 	for _, name in Rarities.Order do
 		local info = Rarities.Info[name]
 		local w = if isNight then info.NightWeight else info.DayWeight
-		if info.EventOnly and not eventActive then
+		if info.EventOnly and not active[info.Event] then
 			w = 0
 		end
 		weights[name] = w
@@ -2324,6 +2398,7 @@ local Sounds = {
 	WheelTick = { Id = PING, Volume = 0.2, Pitch = 2.8 },
 	WheelWin = { Id = PING, Volume = 0.8, Jingle = { 1, 1.5, 2, 1.5, 2, 2.5 } },
 	MonsterSummon = { Id = SWOOSH, Volume = 1, Pitch = 0.3 },
+	Secret = { Id = PING, Volume = 1, Jingle = { 0.8, 1, 1.26, 1.5, 2, 2.52, 3, 4 } },
 	Alarm = { Id = PING, Volume = 0.8, Jingle = { 2, 1.5, 2, 1.5, 2, 1.5 } },
 	Slip = { Id = SWOOSH, Volume = 0.9, Pitch = 1.4 },
 	Web = { Id = SWOOSH, Volume = 0.6, Pitch = 0.5 },
@@ -2356,6 +2431,8 @@ Strings.fr = {
 	Rarity_Legendary = "Légendaire",
 	Rarity_Mythic = "Mythique",
 	Rarity_Halloween = "Halloween",
+	Rarity_Secret = "Secret",
+	Rarity_Frost = "Givré",
 
 	-- Boutons et invites
 	Buy = "Acheter",
@@ -2421,6 +2498,9 @@ Strings.fr = {
 	AnnSteal = "{thief} a volé {ghost} à {owner} !",
 	AnnMythicSpawn = "Un fantôme MYTHIQUE apparaît : {ghost} !",
 	AnnHalloweenSpawn = "Un fantôme HALLOWEEN apparaît : {ghost} !",
+	AnnSecretSpawn = "UN FANTÔME SECRET EST APPARU : {ghost} !",
+	AnnFrostSpawn = "Un fantôme GIVRÉ apparaît : {ghost} !",
+	IndexSecretHidden = "Personne ne sait à quoi il ressemble...",
 	AnnRainbowSpawn = "Un fantôme ARC-EN-CIEL apparaît : {ghost} !",
 	AnnBigBuy = "{player} a attrapé {ghost} !",
 	AnnRebirth = "{player} a fait son rebirth n°{count} !",
@@ -2625,6 +2705,8 @@ Strings.en = {
 	Rarity_Legendary = "Legendary",
 	Rarity_Mythic = "Mythic",
 	Rarity_Halloween = "Halloween",
+	Rarity_Secret = "Secret",
+	Rarity_Frost = "Frosty",
 
 	Buy = "Buy",
 	Steal = "Steal",
@@ -2686,6 +2768,9 @@ Strings.en = {
 	AnnSteal = "{thief} stole {ghost} from {owner}!",
 	AnnMythicSpawn = "A MYTHIC ghost appeared: {ghost}!",
 	AnnHalloweenSpawn = "A HALLOWEEN ghost appeared: {ghost}!",
+	AnnSecretSpawn = "A SECRET GHOST HAS APPEARED: {ghost}!",
+	AnnFrostSpawn = "A FROSTY ghost appeared: {ghost}!",
+	IndexSecretHidden = "Nobody knows what it looks like...",
 	AnnRainbowSpawn = "A RAINBOW ghost appeared: {ghost}!",
 	AnnBigBuy = "{player} grabbed {ghost}!",
 	AnnRebirth = "{player} just did rebirth #{count}!",
@@ -3498,6 +3583,7 @@ Remotes.setup()
 
 local Services = script.Parent:WaitForChild("Services")
 local AnnounceService = require(Services:WaitForChild("AnnounceService"))
+local AwardService = require(Services:WaitForChild("AwardService"))
 local BaseService = require(Services:WaitForChild("BaseService"))
 local CodeService = require(Services:WaitForChild("CodeService"))
 local DataService = require(Services:WaitForChild("DataService"))
@@ -3538,6 +3624,7 @@ MonetizationService.start()
 CodeService.start()
 LeaderboardService.start()
 MissionService.start()
+AwardService.start()
 EconomyService.giveGhostCallback = GhostService.giveGhost
 BaseService.onGhostPlaced = IndexService.discover -- chaque nouveau fantôme entre dans le Fantômédex
 
@@ -3565,6 +3652,7 @@ local function onPlayerAdded(player: Player)
 	WeaponService.setup(player) -- la Batte et les armes achetées, à chaque apparition
 	WheelService.setup(player) -- tours de Roue de la Fortune
 	TrapService.setup(player) -- pièges achetés pour sa base
+	AwardService.setup(player) -- badge de bienvenue
 	RebirthService.setup(player) -- aura des rebirths
 	EconomyService.setup(player)
 	IndexService.setup(player) -- collection (avant le cadeau, pour ne pas afficher 2 messages)
@@ -3667,6 +3755,81 @@ return AnnounceService
         </Properties>
       </Item>
       <Item class="ModuleScript" referent="22">
+        <Properties>
+          <string name="Name">AwardService</string>
+          <string name="Source"><![CDATA[--[[
+	AwardService : les badges Roblox, affichés sur le profil des joueurs (leurs amis
+	les voient, c'est une bonne pub gratuite).
+	Chaque badge se crée sur le Creator Hub (ton jeu > Engagement > Badges), puis son
+	ID va dans Config.Badges. Tant qu'un ID vaut 0, le badge est ignoré.
+	Un badge n'est demandé qu'une fois par joueur (on le note dans sa sauvegarde).
+]]
+
+local BadgeService = game:GetService("BadgeService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local GhostData = require(Shared:WaitForChild("GhostData"))
+
+local DataService = require(script.Parent.DataService)
+local Hooks = require(script.Parent.Hooks)
+
+local AwardService = {}
+
+-- Donne un badge (une seule fois). key = nom dans Config.Badges
+function AwardService.award(player: Player, key: string)
+	local badgeId = Config.Badges[key]
+	local data = DataService.get(player)
+	if not badgeId or badgeId == 0 or not data then
+		return
+	end
+	data.Badges = data.Badges or {}
+	if data.Badges[key] then
+		return
+	end
+	local ok, err = pcall(function()
+		BadgeService:AwardBadge(player.UserId, badgeId)
+	end)
+	if ok then
+		data.Badges[key] = true
+	else
+		warn("[AwardService] Badge " .. key .. " non donné : " .. tostring(err))
+	end
+end
+
+function AwardService.setup(player: Player)
+	AwardService.award(player, "Welcome")
+end
+
+function AwardService.start()
+	Hooks.on("Steal", function(player: Player)
+		AwardService.award(player, "FirstSteal")
+	end)
+	Hooks.on("Discover", function(player: Player, ghostId: string)
+		local ghost = GhostData.get(ghostId)
+		if ghost and ghost.Rarity == "Mythic" then
+			AwardService.award(player, "FirstMythic")
+		elseif ghost and ghost.Rarity == "Secret" then
+			AwardService.award(player, "FirstSecret")
+		end
+	end)
+	Hooks.on("Rebirth", function(player: Player)
+		AwardService.award(player, "FirstRebirth")
+	end)
+	Hooks.on("IndexComplete", function(player: Player)
+		AwardService.award(player, "IndexComplete")
+	end)
+	Hooks.on("WeeklyBonus", function(player: Player)
+		AwardService.award(player, "WeeklyChallenges")
+	end)
+end
+
+return AwardService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">BaseService</string>
           <string name="Source"><![CDATA[--[[
@@ -4323,7 +4486,7 @@ return BaseService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">CodeService</string>
           <string name="Source"><![CDATA[--[[
@@ -4427,7 +4590,7 @@ return CodeService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">DataService</string>
           <string name="Source"><![CDATA[--[[
@@ -4498,6 +4661,7 @@ local function template()
 		Missions = {}, -- missions du jour : { Day, List, BonusDone }
 		Weekly = {}, -- défis de la semaine : { Week, List, BonusDone }
 		Traps = {}, -- pièges achetés : ["Banana"] = true
+		Badges = {}, -- badges Roblox déjà donnés : ["FirstSteal"] = true
 		Spins = 0, -- tours de Roue de la Fortune achetés et pas encore utilisés
 		BoostUntil = 0, -- fin du bonus "x2 revenus" de la roue (temps Unix)
 	}
@@ -4710,7 +4874,7 @@ return DataService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="25">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">EconomyService</string>
           <string name="Source"><![CDATA[--[[
@@ -5150,7 +5314,7 @@ return EconomyService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="26">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">GhostService</string>
           <string name="Source"><![CDATA[--[[
@@ -5194,12 +5358,28 @@ local function now(): number
 	return workspace:GetServerTimeNow()
 end
 
-function GhostService.isEventActive(): boolean
-	if Config.ForceHalloween then
-		return true
-	end
+-- Les événements en cours : { Halloween = true/false, Winter = true/false }
+function GhostService.activeEvents(): { [string]: boolean }
 	local t = os.time()
-	return t >= Config.HalloweenStart and t < Config.HalloweenEnd
+	return {
+		Halloween = Config.ForceHalloween == true or (t >= Config.HalloweenStart and t < Config.HalloweenEnd),
+		Winter = Config.ForceWinter == true or (t >= Config.WinterStart and t < Config.WinterEnd),
+	}
+end
+
+function GhostService.isEventActive(): boolean
+	return GhostService.activeEvents().Halloween
+end
+
+-- La rareté limitée du moment ("Halloween", "Frost") ou nil
+function GhostService.eventRarity(): string?
+	local events = GhostService.activeEvents()
+	if events.Winter then
+		return "Frost"
+	elseif events.Halloween then
+		return "Halloween"
+	end
+	return nil
 end
 
 function GhostService.isNight(): boolean
@@ -5236,7 +5416,7 @@ function GhostService.spawn(ghostId: string?)
 		end
 		ghostKey = ghostId
 	else
-		local rarity = Rarities.roll(rng:NextNumber(), GhostService.isNight(), GhostService.isEventActive())
+		local rarity = Rarities.roll(rng:NextNumber(), GhostService.isNight(), GhostService.activeEvents())
 		local ghost = GhostData.pick(rarity, rng:NextNumber())
 		-- parfois une variante Dorée (x3) ou Arc-en-ciel (x5)
 		local mutation = GhostData.rollMutation(rng:NextNumber(), GhostService.isNight(), GhostService.mutationBoost)
@@ -5258,8 +5438,12 @@ function GhostService.spawn(ghostId: string?)
 		AnnounceService.announce("AnnRainbowSpawn", { ghost = ghostKey }, "rainbow")
 	elseif ghost.Rarity == "Mythic" then
 		AnnounceService.announce("AnnMythicSpawn", { ghost = ghostKey }, "mythic")
+	elseif ghost.Rarity == "Secret" then
+		AnnounceService.announce("AnnSecretSpawn", { ghost = ghostKey }, "secret")
 	elseif ghost.Rarity == "Halloween" then
 		AnnounceService.announce("AnnHalloweenSpawn", { ghost = ghostKey }, "halloween")
+	elseif ghost.Rarity == "Frost" then
+		AnnounceService.announce("AnnFrostSpawn", { ghost = ghostKey }, "frost")
 	end
 end
 
@@ -5404,7 +5588,7 @@ return GhostService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="28">
         <Properties>
           <string name="Name">Guard</string>
           <string name="Source"><![CDATA[--[[
@@ -5463,7 +5647,7 @@ return Guard
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="28">
+      <Item class="ModuleScript" referent="29">
         <Properties>
           <string name="Name">Hooks</string>
           <string name="Source"><![CDATA[--[[
@@ -5474,7 +5658,9 @@ return Guard
 
 	Événements : Buy (joueur, fantôme), Sell, Steal, Bonk, Lock, Earn (joueur, pièces),
 	NightOutside (joueur, secondes passées dehors pendant la nuit), Trap (propriétaire
-	dont un piège a attrapé quelqu'un), Rebirth (joueur, nombre de rebirths)
+	dont un piège a attrapé quelqu'un), Rebirth (joueur, nombre de rebirths),
+	Discover (joueur, fantôme nouveau dans le Fantômédex), IndexComplete (joueur),
+	WeeklyBonus (joueur qui a fini les 3 défis de la semaine)
 ]]
 
 local Hooks = {}
@@ -5496,7 +5682,7 @@ return Hooks
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="29">
+      <Item class="ModuleScript" referent="30">
         <Properties>
           <string name="Name">IndexService</string>
           <string name="Source"><![CDATA[--[[
@@ -5519,6 +5705,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local AnnounceService = require(script.Parent.AnnounceService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
+local Hooks = require(script.Parent.Hooks)
 
 local IndexService = {}
 
@@ -5561,11 +5748,13 @@ local function checkRewards(player: Player, data)
 	end
 	if not data.IndexComplete then
 		for _, rarity in Rarities.Order do
-			if not Rarities.Info[rarity].EventOnly and not data.IndexRewards[rarity] then
+			local info = Rarities.Info[rarity]
+			if not info.EventOnly and not info.Bonus and not data.IndexRewards[rarity] then
 				return
 			end
 		end
 		data.IndexComplete = true
+		Hooks.fire("IndexComplete", player)
 		EconomyService.refresh(player)
 		AnnounceService.notify(player, "IndexCompleteDone", { percent = math.floor(Config.IndexCompleteBonus * 100) }, "good")
 		AnnounceService.announce("AnnIndexComplete", { player = player.DisplayName }, "legendary")
@@ -5583,6 +5772,7 @@ function IndexService.discover(player: Player, ghostKey: string, silent: boolean
 	if not silent then
 		AnnounceService.notify(player, "IndexNew", { ghost = ghostId }, "info")
 	end
+	Hooks.fire("Discover", player, ghostId)
 	checkRewards(player, data)
 	IndexService.sync(player)
 end
@@ -5608,7 +5798,7 @@ return IndexService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="30">
+      <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">LeaderboardService</string>
           <string name="Source"><![CDATA[--[[
@@ -5737,7 +5927,7 @@ return LeaderboardService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="31">
+      <Item class="ModuleScript" referent="32">
         <Properties>
           <string name="Name">MapBuilder</string>
           <string name="Source"><![CDATA[--[[
@@ -6640,7 +6830,7 @@ return MapBuilder
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="32">
+      <Item class="ModuleScript" referent="33">
         <Properties>
           <string name="Name">MissionService</string>
           <string name="Source"><![CDATA[--[[
@@ -6792,6 +6982,7 @@ local function giveWeeklyBonus(player: Player)
 		AnnounceService.notify(player, "WeeklyAllDoneCoins", { ghost = key, coins = Format.short(coins) }, "good")
 	end
 	AnnounceService.announce("AnnWeekly", { player = player.DisplayName }, "rebirth")
+	Hooks.fire("WeeklyBonus", player)
 	AnnounceService.effect("Gift", {}, player)
 end
 
@@ -6915,7 +7106,7 @@ return MissionService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="33">
+      <Item class="ModuleScript" referent="34">
         <Properties>
           <string name="Name">MonetizationService</string>
           <string name="Source"><![CDATA[--[[
@@ -7119,7 +7310,7 @@ return MonetizationService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="34">
+      <Item class="ModuleScript" referent="35">
         <Properties>
           <string name="Name">MonsterService</string>
           <string name="Source"><![CDATA[--[[
@@ -7406,7 +7597,7 @@ return MonsterService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="35">
+      <Item class="ModuleScript" referent="36">
         <Properties>
           <string name="Name">NightService</string>
           <string name="Source"><![CDATA[--[[
@@ -7586,8 +7777,9 @@ local function runNight()
 	AnnounceService.effect("NightStart", { Theme = theme })
 
 	-- un fantôme spécial garanti au début de chaque nuit
-	if GhostService.isEventActive() then
-		local list = GhostData.ByRarity.Halloween
+	local eventRarity = GhostService.eventRarity()
+	if eventRarity then
+		local list = GhostData.ByRarity[eventRarity]
 		GhostService.spawn(list[math.random(1, #list)].Id)
 	else
 		local list = GhostData.ByRarity.Legendary
@@ -7648,7 +7840,7 @@ return NightService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="36">
+      <Item class="ModuleScript" referent="37">
         <Properties>
           <string name="Name">RebirthService</string>
           <string name="Source"><![CDATA[--[[
@@ -7772,7 +7964,7 @@ return RebirthService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="37">
+      <Item class="ModuleScript" referent="38">
         <Properties>
           <string name="Name">StealService</string>
           <string name="Source"><![CDATA[--[[
@@ -8165,7 +8357,7 @@ return StealService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="38">
+      <Item class="ModuleScript" referent="39">
         <Properties>
           <string name="Name">TrapService</string>
           <string name="Source"><![CDATA[--[[
@@ -8412,7 +8604,7 @@ return TrapService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="39">
+      <Item class="ModuleScript" referent="40">
         <Properties>
           <string name="Name">WeaponService</string>
           <string name="Source"><![CDATA[--[[
@@ -8600,7 +8792,7 @@ return WeaponService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="40">
+      <Item class="ModuleScript" referent="41">
         <Properties>
           <string name="Name">WheelService</string>
           <string name="Source"><![CDATA[--[[
@@ -8769,15 +8961,15 @@ return WheelService
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="41">
+  <Item class="StarterPlayer" referent="42">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="42">
+    <Item class="StarterPlayerScripts" referent="43">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="43">
+      <Item class="LocalScript" referent="44">
         <Properties>
           <string name="Name">Client</string>
           <string name="Source"><![CDATA[--[[
@@ -8826,11 +9018,11 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="44">
+      <Item class="Folder" referent="45">
         <Properties>
           <string name="Name">Controllers</string>
         </Properties>
-        <Item class="ModuleScript" referent="45">
+        <Item class="ModuleScript" referent="46">
           <Properties>
             <string name="Name">AnimView</string>
             <string name="Source"><![CDATA[--[[
@@ -9018,7 +9210,7 @@ return AnimView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="46">
+        <Item class="ModuleScript" referent="47">
           <Properties>
             <string name="Name">Announce</string>
             <string name="Source"><![CDATA[--[[
@@ -9045,6 +9237,8 @@ local KIND_COLORS = {
 	steal = Color3.fromRGB(255, 90, 90),
 	mythic = Rarities.color("Mythic"),
 	halloween = Rarities.color("Halloween"),
+	secret = Rarities.color("Secret"),
+	frost = Rarities.color("Frost"),
 	legendary = Rarities.color("Legendary"),
 	rainbow = Color3.fromRGB(255, 110, 230),
 	rebirth = Color3.fromRGB(120, 255, 200),
@@ -9056,6 +9250,8 @@ local KIND_ICONS = {
 	steal = "🦹",
 	mythic = "🌟",
 	halloween = "🎃",
+	secret = "❔",
+	frost = "❄️",
 	legendary = "✨",
 	rainbow = "🌈",
 	rebirth = "♻️",
@@ -9140,8 +9336,12 @@ function Announce.start()
 		local text = Lang.t(key, params)
 		Announce.show(text, kind)
 		chatMessage(text, KIND_COLORS[kind] or KIND_COLORS.info)
-		if kind == "mythic" or kind == "halloween" or kind == "rainbow" then
+		if kind == "mythic" or kind == "halloween" or kind == "rainbow" or kind == "frost" then
 			Effects.sound("Mythic")
+		elseif kind == "secret" then
+			-- un Secret : grosse fanfare et tout l'écran tremble
+			Effects.sound("Secret")
+			Effects.shake(2, 1.5)
 		end
 	end)
 end
@@ -9150,7 +9350,7 @@ return Announce
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="47">
+        <Item class="ModuleScript" referent="48">
           <Properties>
             <string name="Name">BaseView</string>
             <string name="Source"><![CDATA[--[[
@@ -9646,7 +9846,7 @@ return BaseView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="48">
+        <Item class="ModuleScript" referent="49">
           <Properties>
             <string name="Name">CarryView</string>
             <string name="Source"><![CDATA[--[[
@@ -9837,7 +10037,7 @@ return CarryView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="49">
+        <Item class="ModuleScript" referent="50">
           <Properties>
             <string name="Name">CenterView</string>
             <string name="Source"><![CDATA[--[[
@@ -10042,7 +10242,7 @@ return CenterView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="50">
+        <Item class="ModuleScript" referent="51">
           <Properties>
             <string name="Name">Effects</string>
             <string name="Source"><![CDATA[--[[
@@ -10421,7 +10621,7 @@ return Effects
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="51">
+        <Item class="ModuleScript" referent="52">
           <Properties>
             <string name="Name">HUD</string>
             <string name="Source"><![CDATA[--[[
@@ -10789,7 +10989,7 @@ return HUD
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="52">
+        <Item class="ModuleScript" referent="53">
           <Properties>
             <string name="Name">Labels</string>
             <string name="Source"><![CDATA[--[[
@@ -10889,7 +11089,7 @@ return Labels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="53">
+        <Item class="ModuleScript" referent="54">
           <Properties>
             <string name="Name">Lang</string>
             <string name="Source"><![CDATA[--[[
@@ -11007,7 +11207,7 @@ return Lang
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="54">
+        <Item class="ModuleScript" referent="55">
           <Properties>
             <string name="Name">LeaderboardView</string>
             <string name="Source"><![CDATA[--[[
@@ -11127,7 +11327,7 @@ return LeaderboardView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="55">
+        <Item class="ModuleScript" referent="56">
           <Properties>
             <string name="Name">MonsterView</string>
             <string name="Source"><![CDATA[--[[
@@ -11301,7 +11501,7 @@ return MonsterView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="56">
+        <Item class="ModuleScript" referent="57">
           <Properties>
             <string name="Name">NightView</string>
             <string name="Source"><![CDATA[--[[
@@ -11450,7 +11650,7 @@ return NightView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="57">
+        <Item class="ModuleScript" referent="58">
           <Properties>
             <string name="Name">Panels</string>
             <string name="Source"><![CDATA[--[[
@@ -12078,6 +12278,7 @@ end
 
 local function buildIndex(): Frame
 	local panel, body = makePanel("Index", "📖 " .. Lang.t("IndexTitle"), UI.Colors.Purple)
+	panel.Size = UDim2.fromOffset(700, 470)
 
 	-- Progression par rareté en haut
 	local chips = UI.new("Frame", {
@@ -12095,7 +12296,7 @@ local function buildIndex(): Frame
 	local chipLabels = {}
 	for order, rarity in Rarities.Order do
 		local chip = UI.new("Frame", {
-			Size = UDim2.fromOffset(88, 30),
+			Size = UDim2.new(1 / #Rarities.Order, -4, 1, 0),
 			BackgroundColor3 = UI.Colors.Panel,
 			LayoutOrder = order,
 			Parent = chips,
@@ -12104,12 +12305,12 @@ local function buildIndex(): Frame
 			Size = UDim2.new(1, -8, 1, -6),
 			Position = UDim2.fromOffset(4, 3),
 			TextColor3 = Rarities.color(rarity),
-			MaxTextSize = 16,
+			MaxTextSize = 14,
 			Parent = chip,
 		})
 	end
 
-	-- Grille des 32 fantômes (construite à la première ouverture)
+	-- Grille de tous les fantômes (construite à la première ouverture)
 	local grid = UI.new("ScrollingFrame", {
 		Name = "Grid",
 		Position = UDim2.fromOffset(0, 36),
@@ -12181,6 +12382,16 @@ local function buildIndex(): Frame
 				MaxTextSize = 16,
 				Parent = tile,
 			})
+			-- les Secrets pas encore trouvés : pas même une silhouette, juste un "?"
+			local mystery = UI.label({
+				Name = "Mystery",
+				Size = UDim2.new(1, -8, 0, 80),
+				Position = UDim2.fromOffset(4, 4),
+				Text = "❔",
+				MaxTextSize = 56,
+				Visible = false,
+				Parent = tile,
+			})
 			tile.Activated:Connect(function()
 				Effects.sound("Click")
 				selected = ghost.Id
@@ -12188,7 +12399,7 @@ local function buildIndex(): Frame
 					refresh()
 				end
 			end)
-			tiles[ghost.Id] = { Viewport = viewport, Name = name }
+			tiles[ghost.Id] = { Viewport = viewport, Name = name, Mystery = mystery, Secret = ghost.Rarity == "Secret" }
 		end
 	end
 
@@ -12215,6 +12426,9 @@ local function buildIndex(): Frame
 			-- pas encore trouvé : silhouette noire et "???"
 			tile.Viewport.ImageColor3 = if found then Color3.new(1, 1, 1) else Color3.new(0, 0, 0)
 			tile.Name.Text = if found then Lang.ghostName(ghostId) else Lang.t("IndexUnknown")
+			local hidden = tile.Secret and not found
+			tile.Viewport.Visible = not hidden
+			tile.Mystery.Visible = hidden
 		end
 		local percent = math.floor(Config.IndexCompleteBonus * 100)
 		if selected then
@@ -12222,6 +12436,8 @@ local function buildIndex(): Frame
 			if isFound(selected) then
 				info.Text = Lang.t("IndexCard", { ghost = selected, gag = Lang.ghostGag(selected) })
 					.. "  (+" .. Format.short(ghost.Income) .. "/s)"
+			elseif ghost.Rarity == "Secret" then
+				info.Text = Lang.rarityName(ghost.Rarity) .. " : " .. Lang.t("IndexSecretHidden")
 			else
 				info.Text = Lang.rarityName(ghost.Rarity) .. " : " .. Lang.t("IndexUnknownHint")
 			end
@@ -12495,7 +12711,7 @@ return Panels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="58">
+        <Item class="ModuleScript" referent="59">
           <Properties>
             <string name="Name">PathView</string>
             <string name="Source"><![CDATA[--[[
@@ -12664,7 +12880,7 @@ return PathView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="59">
+        <Item class="ModuleScript" referent="60">
           <Properties>
             <string name="Name">Tutorial</string>
             <string name="Source"><![CDATA[--[[
@@ -12905,7 +13121,7 @@ return Tutorial
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="60">
+        <Item class="ModuleScript" referent="61">
           <Properties>
             <string name="Name">UI</string>
             <string name="Source"><![CDATA[--[[
@@ -13094,7 +13310,7 @@ return UI
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="61">
+        <Item class="ModuleScript" referent="62">
           <Properties>
             <string name="Name">WeaponView</string>
             <string name="Source"><![CDATA[--[[
@@ -13330,13 +13546,13 @@ return WeaponView
       </Item>
     </Item>
   </Item>
-  <Item class="TextChatService" referent="62">
+  <Item class="TextChatService" referent="63">
     <Properties>
       <string name="Name">TextChatService</string>
       <token name="ChatVersion">1</token>
     </Properties>
   </Item>
-  <Item class="Workspace" referent="63">
+  <Item class="Workspace" referent="64">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>

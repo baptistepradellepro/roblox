@@ -18,6 +18,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local AnnounceService = require(script.Parent.AnnounceService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
+local Hooks = require(script.Parent.Hooks)
 
 local IndexService = {}
 
@@ -60,11 +61,13 @@ local function checkRewards(player: Player, data)
 	end
 	if not data.IndexComplete then
 		for _, rarity in Rarities.Order do
-			if not Rarities.Info[rarity].EventOnly and not data.IndexRewards[rarity] then
+			local info = Rarities.Info[rarity]
+			if not info.EventOnly and not info.Bonus and not data.IndexRewards[rarity] then
 				return
 			end
 		end
 		data.IndexComplete = true
+		Hooks.fire("IndexComplete", player)
 		EconomyService.refresh(player)
 		AnnounceService.notify(player, "IndexCompleteDone", { percent = math.floor(Config.IndexCompleteBonus * 100) }, "good")
 		AnnounceService.announce("AnnIndexComplete", { player = player.DisplayName }, "legendary")
@@ -82,6 +85,7 @@ function IndexService.discover(player: Player, ghostKey: string, silent: boolean
 	if not silent then
 		AnnounceService.notify(player, "IndexNew", { ghost = ghostId }, "info")
 	end
+	Hooks.fire("Discover", player, ghostId)
 	checkRewards(player, data)
 	IndexService.sync(player)
 end

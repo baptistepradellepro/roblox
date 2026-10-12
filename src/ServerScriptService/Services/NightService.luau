@@ -175,8 +175,9 @@ local function runNight()
 	AnnounceService.effect("NightStart", { Theme = theme })
 
 	-- un fantôme spécial garanti au début de chaque nuit
-	if GhostService.isEventActive() then
-		local list = GhostData.ByRarity.Halloween
+	local eventRarity = GhostService.eventRarity()
+	if eventRarity then
+		local list = GhostData.ByRarity[eventRarity]
 		GhostService.spawn(list[math.random(1, #list)].Id)
 	else
 		local list = GhostData.ByRarity.Legendary

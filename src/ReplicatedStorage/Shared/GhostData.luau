@@ -3,7 +3,7 @@
 
 	Pour chaque fantôme :
 	  Id       : nom interne (sans espace ni accent, ne JAMAIS le changer après publication)
-	  Rarity   : Common, Rare, Epic, Legendary, Mythic ou Halloween
+	  Rarity   : Common, Rare, Epic, Legendary, Mythic, Secret, Halloween ou Frost (Givré)
 	  Price    : prix d'achat en pièces
 	  Income   : pièces gagnées par seconde quand il est posé sur un socle
 	  Name     : nom affiché en français (fr) et en anglais (en)
@@ -216,6 +216,26 @@ GhostData.List = {
 		Look = { Body = "Pizza", Color = { 255, 205, 70 }, Accent = { 200, 40, 40 }, Face = "Happy", Accessories = { "Pepperoni" } },
 	},
 
+	-- ===================== SECRETS (presque introuvables) =====================
+	{
+		Id = "Glitchou", Rarity = "Secret", Price = 25000000, Income = 18000,
+		Name = { fr = "Glitchou", en = "Glitchy" },
+		Gag = { fr = "Il bugue tellement qu'il est sorti du jeu... puis il est revenu.", en = "He glitches so much he left the game... then came back." },
+		Look = { Body = "Block", Size = { 3, 3.6, 1.6 }, Color = { 40, 255, 220 }, Accent = { 255, 40, 200 }, Material = "Neon", Face = "Blank", Accessories = { "LoadingRing" } },
+	},
+	{
+		Id = "OmbreQuiRit", Rarity = "Secret", Price = 60000000, Income = 40000,
+		Name = { fr = "L'Ombre Qui Rit", en = "The Laughing Shadow" },
+		Gag = { fr = "Personne ne l'a jamais vue de près. Sauf toi, maintenant.", en = "Nobody has ever seen it up close. Except you, now." },
+		Look = { Body = "Sheet", Color = { 22, 18, 32 }, Accent = { 255, 255, 255 }, Face = "Blank", Accessories = { "Cape" } },
+	},
+	{
+		Id = "Cristalou", Rarity = "Secret", Price = 150000000, Income = 100000,
+		Name = { fr = "Cristalou", en = "Crystaloo" },
+		Gag = { fr = "Fragile ? Lui ? Il a survécu à mille ans de Nuits Hantées.", en = "Fragile? Him? He survived a thousand years of Haunted Nights." },
+		Look = { Body = "Blob", Color = { 170, 230, 255 }, Accent = { 255, 255, 255 }, Material = "Glass", Transparency = 0.25, Reflectance = 0.2, Face = "Happy", Accessories = { "Crown" } },
+	},
+
 	-- ===================== HALLOWEEN (édition limitée) =====================
 	{
 		Id = "CitrouilleToupie", Rarity = "Halloween", Price = 750000, Income = 1000,
@@ -240,6 +260,32 @@ GhostData.List = {
 		Name = { fr = "Bonbon Hurleur", en = "Howling Candy" },
 		Gag = { fr = "Crie quand on veut le manger.", en = "Screams when you try to eat it." },
 		Look = { Body = "Candy", Color = { 255, 90, 180 }, Accent = { 255, 230, 120 }, Face = "Shocked", Accessories = {} },
+	},
+
+	-- ===================== GIVRÉ (Hiver Hanté, édition limitée) =====================
+	{
+		Id = "BonhommeBouh", Rarity = "Frost", Price = 800000, Income = 1050,
+		Name = { fr = "Bonhomme Bouh", en = "Snow Boo" },
+		Gag = { fr = "Il fond de peur dès qu'il fait plus de zéro degré.", en = "He melts with fear above zero degrees." },
+		Look = { Body = "Blob", Color = { 245, 250, 255 }, Accent = { 40, 40, 50 }, Face = "Happy", Accessories = { "TopHat" } },
+	},
+	{
+		Id = "GlaconGrognon", Rarity = "Frost", Price = 1000000, Income = 1350,
+		Name = { fr = "Glaçon Grognon", en = "Grumpy Ice Cube" },
+		Gag = { fr = "Il a toujours froid, et il le fait savoir.", en = "He's always cold, and he lets everyone know." },
+		Look = { Body = "Block", Size = { 3, 3, 3 }, Color = { 170, 225, 255 }, Accent = { 230, 250, 255 }, Material = "Glass", Transparency = 0.2, Face = "Angry", Accessories = {} },
+	},
+	{
+		Id = "MoufleFantome", Rarity = "Frost", Price = 1300000, Income = 1700,
+		Name = { fr = "Moufle Fantôme", en = "Ghost Mitten" },
+		Gag = { fr = "Elle a perdu sa jumelle dans la neige en 1987.", en = "Lost her twin in the snow back in 1987." },
+		Look = { Body = "Sock", Color = { 220, 60, 70 }, Accent = { 255, 255, 255 }, Face = "Shy", Accessories = { "Pompom" } },
+	},
+	{
+		Id = "RenneFrissonnant", Rarity = "Frost", Price = 1600000, Income = 2100,
+		Name = { fr = "Renne Frissonnant", en = "Shivering Reindeer" },
+		Gag = { fr = "Son nez brille pour retrouver son chemin dans le brouillard.", en = "His nose glows to find his way through the fog." },
+		Look = { Body = "Sheet", Color = { 150, 100, 60 }, Accent = { 255, 40, 40 }, Face = "Happy", Accessories = { "Antenna" } },
 	},
 }
 

@@ -6,7 +6,9 @@
 
 	Événements : Buy (joueur, fantôme), Sell, Steal, Bonk, Lock, Earn (joueur, pièces),
 	NightOutside (joueur, secondes passées dehors pendant la nuit), Trap (propriétaire
-	dont un piège a attrapé quelqu'un), Rebirth (joueur, nombre de rebirths)
+	dont un piège a attrapé quelqu'un), Rebirth (joueur, nombre de rebirths),
+	Discover (joueur, fantôme nouveau dans le Fantômédex), IndexComplete (joueur),
+	WeeklyBonus (joueur qui a fini les 3 défis de la semaine)
 ]]
 
 local Hooks = {}

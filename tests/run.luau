@@ -45,7 +45,20 @@ check(Format.time(3725) == "1:02:05", "Time en heures -> " .. Format.time(3725))
 ---------------------------------------------------------------- Raretés
 local Rarities = loadModule(SHARED .. "Rarities.luau")
 check(Rarities.roll(0, false, false) == "Common", "roll(0) = Commun")
-check(Rarities.roll(0.99999, false, false) == "Mythic", "roll(~1) de jour sans event = Mythique")
+check(Rarities.roll(0.99999, false, false) == "Secret", "roll(~1) de jour sans event = Secret")
+check(Rarities.roll(0.99999, true, { Winter = true }) == "Frost", "roll(~1) la nuit pendant l'Hiver Hanté = Givré")
+-- Secret : rarissime (moins d'une chance sur 5 000 de jour)
+local dayTotal, nightTotal = 0, 0
+for _, name in Rarities.Order do
+	local info = Rarities.Info[name]
+	dayTotal += if info.EventOnly then 0 else info.DayWeight
+	nightTotal += if info.EventOnly then 0 else info.NightWeight
+end
+local secretDay = Rarities.Info.Secret.DayWeight / dayTotal
+local secretNight = Rarities.Info.Secret.NightWeight / nightTotal
+check(secretDay < 1 / 5000 and secretDay > 1 / 20000, string.format("Secret de jour : 1 sur %.0f", 1 / secretDay))
+check(secretNight < 1 / 1000, string.format("Secret la nuit : 1 sur %.0f", 1 / secretNight))
+
 check(Rarities.roll(0.99999, true, true) == "Halloween", "roll(~1) la nuit pendant l'event = Halloween")
 local sawHalloween = false
 for i = 0, 1000 do
@@ -184,6 +197,11 @@ for key, fr in Strings.fr do
 end
 for key in Strings.en do
 	check(Strings.fr[key] ~= nil, "clé française manquante : " .. key)
+end
+for _, name in Rarities.Order do
+	check(Strings.fr["Rarity_" .. name] and Strings.en["Rarity_" .. name], "nom de rareté : " .. name)
+	check(GhostData.ByRarity[name] and #GhostData.ByRarity[name] >= 3, "au moins 3 fantômes : " .. name)
+	check(Config.IndexRewards[name] ~= nil, "récompense du Fantômédex : " .. name)
 end
 check(Strings.format("fr", "Sold", { coins = "1.2K" }) == "Vendu pour 1.2K pièces", "format de texte")
 check(Strings.format("en", "AnnSteal", { thief = "A", ghost = "B", owner = "C" }) == "A stole B from C!", "format anglais")

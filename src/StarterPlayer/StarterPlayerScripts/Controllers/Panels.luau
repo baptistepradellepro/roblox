@@ -623,6 +623,7 @@ end
 
 local function buildIndex(): Frame
 	local panel, body = makePanel("Index", "📖 " .. Lang.t("IndexTitle"), UI.Colors.Purple)
+	panel.Size = UDim2.fromOffset(700, 470)
 
 	-- Progression par rareté en haut
 	local chips = UI.new("Frame", {
@@ -640,7 +641,7 @@ local function buildIndex(): Frame
 	local chipLabels = {}
 	for order, rarity in Rarities.Order do
 		local chip = UI.new("Frame", {
-			Size = UDim2.fromOffset(88, 30),
+			Size = UDim2.new(1 / #Rarities.Order, -4, 1, 0),
 			BackgroundColor3 = UI.Colors.Panel,
 			LayoutOrder = order,
 			Parent = chips,
@@ -649,12 +650,12 @@ local function buildIndex(): Frame
 			Size = UDim2.new(1, -8, 1, -6),
 			Position = UDim2.fromOffset(4, 3),
 			TextColor3 = Rarities.color(rarity),
-			MaxTextSize = 16,
+			MaxTextSize = 14,
 			Parent = chip,
 		})
 	end
 
-	-- Grille des 32 fantômes (construite à la première ouverture)
+	-- Grille de tous les fantômes (construite à la première ouverture)
 	local grid = UI.new("ScrollingFrame", {
 		Name = "Grid",
 		Position = UDim2.fromOffset(0, 36),
@@ -726,6 +727,16 @@ local function buildIndex(): Frame
 				MaxTextSize = 16,
 				Parent = tile,
 			})
+			-- les Secrets pas encore trouvés : pas même une silhouette, juste un "?"
+			local mystery = UI.label({
+				Name = "Mystery",
+				Size = UDim2.new(1, -8, 0, 80),
+				Position = UDim2.fromOffset(4, 4),
+				Text = "❔",
+				MaxTextSize = 56,
+				Visible = false,
+				Parent = tile,
+			})
 			tile.Activated:Connect(function()
 				Effects.sound("Click")
 				selected = ghost.Id
@@ -733,7 +744,7 @@ local function buildIndex(): Frame
 					refresh()
 				end
 			end)
-			tiles[ghost.Id] = { Viewport = viewport, Name = name }
+			tiles[ghost.Id] = { Viewport = viewport, Name = name, Mystery = mystery, Secret = ghost.Rarity == "Secret" }
 		end
 	end
 
@@ -760,6 +771,9 @@ local function buildIndex(): Frame
 			-- pas encore trouvé : silhouette noire et "???"
 			tile.Viewport.ImageColor3 = if found then Color3.new(1, 1, 1) else Color3.new(0, 0, 0)
 			tile.Name.Text = if found then Lang.ghostName(ghostId) else Lang.t("IndexUnknown")
+			local hidden = tile.Secret and not found
+			tile.Viewport.Visible = not hidden
+			tile.Mystery.Visible = hidden
 		end
 		local percent = math.floor(Config.IndexCompleteBonus * 100)
 		if selected then
@@ -767,6 +781,8 @@ local function buildIndex(): Frame
 			if isFound(selected) then
 				info.Text = Lang.t("IndexCard", { ghost = selected, gag = Lang.ghostGag(selected) })
 					.. "  (+" .. Format.short(ghost.Income) .. "/s)"
+			elseif ghost.Rarity == "Secret" then
+				info.Text = Lang.rarityName(ghost.Rarity) .. " : " .. Lang.t("IndexSecretHidden")
 			else
 				info.Text = Lang.rarityName(ghost.Rarity) .. " : " .. Lang.t("IndexUnknownHint")
 			end

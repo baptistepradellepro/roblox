@@ -17,6 +17,7 @@ Remotes.setup()
 
 local Services = script.Parent:WaitForChild("Services")
 local AnnounceService = require(Services:WaitForChild("AnnounceService"))
+local AwardService = require(Services:WaitForChild("AwardService"))
 local BaseService = require(Services:WaitForChild("BaseService"))
 local CodeService = require(Services:WaitForChild("CodeService"))
 local DataService = require(Services:WaitForChild("DataService"))
@@ -57,6 +58,7 @@ MonetizationService.start()
 CodeService.start()
 LeaderboardService.start()
 MissionService.start()
+AwardService.start()
 EconomyService.giveGhostCallback = GhostService.giveGhost
 BaseService.onGhostPlaced = IndexService.discover -- chaque nouveau fantôme entre dans le Fantômédex
 
@@ -84,6 +86,7 @@ local function onPlayerAdded(player: Player)
 	WeaponService.setup(player) -- la Batte et les armes achetées, à chaque apparition
 	WheelService.setup(player) -- tours de Roue de la Fortune
 	TrapService.setup(player) -- pièges achetés pour sa base
+	AwardService.setup(player) -- badge de bienvenue
 	RebirthService.setup(player) -- aura des rebirths
 	EconomyService.setup(player)
 	IndexService.setup(player) -- collection (avant le cadeau, pour ne pas afficher 2 messages)

@@ -700,6 +700,14 @@ ClassMethods.HttpService = {
 	end,
 }
 
+Fake.awardedBadges = {}
+ClassMethods.BadgeService = {
+	AwardBadge = function(_, userId, badgeId)
+		table.insert(Fake.awardedBadges, { UserId = userId, BadgeId = badgeId })
+		return true
+	end,
+}
+
 Fake.restrictedRandomItems = {}
 ClassMethods.PolicyService = {
 	GetPolicyInfoForPlayerAsync = function(_, player)

@@ -58,6 +58,10 @@ Config.Products.CoinPack = 999
 Config.Products.Spin1 = 1001
 Config.GamePasses.DoubleCoins = 555
 Config.GamePasses.WeaponBroom = 556
+Config.Badges.Welcome = 9000
+Config.Badges.FirstSteal = 9001
+Config.Badges.FirstMythic = 9002
+Config.Badges.FirstSecret = 9003
 
 Fake.runServer()
 Sched.advance(1)
@@ -937,6 +941,36 @@ check(math.abs(alice:GetAttribute("Multiplier") - multBefore * (1 + Config.Index
 local rewardsBefore = aData.Coins
 IndexService.discover(alice, GhostData.ByRarity.Common[1].Id)
 check(aData.Coins - rewardsBefore < Config.IndexRewards.Common, "une série n'est récompensée qu'une fois")
+
+section("Rareté Secrète et badges")
+local function badgeCount(player, badgeId: number): number
+	local n = 0
+	for _, award in Fake.awardedBadges do
+		if award.UserId == player.UserId and award.BadgeId == badgeId then
+			n += 1
+		end
+	end
+	return n
+end
+check(badgeCount(alice, 9000) == 1 and badgeCount(bob, 9000) == 1, "badge de bienvenue pour chaque joueur")
+check(badgeCount(bob, 9001) == 1, "badge du premier vol pour Bob, une seule fois")
+check(bData.Badges.FirstSteal == true, "badge noté dans la sauvegarde")
+m = mark()
+GhostService.spawn("Glitchou")
+check(announced("AnnSecretSpawn", m), "un fantôme Secret est annoncé à tout le serveur")
+local secretHolder
+for _, h in RS.PathGhosts:GetChildren() do
+	if h:GetAttribute("GhostId") == "Glitchou" then
+		secretHolder = h
+	end
+end
+check(secretHolder ~= nil, "le Secret marche sur le chemin")
+check(badgeCount(chloe, 9002) == 0, "pas de badge Mythique sans Mythique")
+GhostService.giveGhost(chloe, "MegaBouhCosmique")
+GhostService.giveGhost(chloe, "Cristalou")
+Sched.advance(0.1)
+check(badgeCount(chloe, 9002) == 1 and badgeCount(chloe, 9003) == 1, "badges du premier Mythique et du premier Secret")
+check(cData.Discovered.Cristalou == true, "le Secret entre dans le Fantômédex")
 
 section("Codes promo")
 Sched.advance(1.1)

@@ -1,4 +1,4 @@
--- Exporte la géométrie des 32 fantômes en JSON (pour tools/preview_ghosts.py)
+-- Exporte la géométrie de tous les fantômes en JSON (pour tools/preview_ghosts.py)
 local fs = require("@lune/fs")
 local serde = require("@lune/serde")
 local process = require("@lune/process")

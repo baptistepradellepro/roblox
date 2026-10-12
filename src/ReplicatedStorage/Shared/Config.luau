@@ -118,8 +118,11 @@ Config.IndexRewards = {
 	Legendary = 400000,
 	Mythic = 5000000,
 	Halloween = 2000000,
+	Secret = 50000000,
+	Frost = 2000000,
 }
--- Bonus permanent quand tous les fantômes (hors Halloween) sont trouvés : +10 % de revenus
+-- Bonus permanent quand tous les fantômes sont trouvés (sans compter Halloween, Givré
+-- et Secret, qui sont des séries en plus) : +10 % de revenus
 Config.IndexCompleteBonus = 0.10
 
 -- ===== Codes promo =====
@@ -139,6 +142,13 @@ Config.HalloweenStart = 1790812800
 Config.HalloweenEnd = 1793664000
 Config.ForceHalloween = false -- mets true pour tester les fantômes Halloween hors période
 
+-- ===== Hiver Hanté =====
+-- 1796083200 = 1er déc. 2026, 1799107200 = 5 janv. 2027 (temps Unix, UTC)
+-- Pendant l'événement : fantômes Givrés la nuit, neige sur la map, Bonhomme Grelot la nuit.
+Config.WinterStart = 1796083200
+Config.WinterEnd = 1799107200
+Config.ForceWinter = false -- mets true pour tester l'hiver hors période
+
 -- ===== Monétisation (mets 0 tant que tu ne les as pas créés) =====
 -- La liste complète des articles, avec les prix conseillés, est dans Shop.luau.
 -- Dans Studio, un article dont l'ID vaut 0 est donné gratuitement quand on clique dessus
@@ -157,6 +167,17 @@ Config.Products = {
 	MonsterBat = 0, -- ID du Developer Product "Lâcher la Chauve-Souris Turbo"
 	MonsterSpider = 0, -- ID du Developer Product "Lâcher Mamie Toile"
 }
+-- Badges Roblox (Creator Hub > ton jeu > Engagement > Badges). 0 = pas encore créé.
+Config.Badges = {
+	Welcome = 0, -- "Bienvenue dans Steal a Ghost" (première partie)
+	FirstSteal = 0, -- premier vol réussi
+	FirstMythic = 0, -- premier fantôme Mythique
+	FirstSecret = 0, -- premier fantôme Secret
+	FirstRebirth = 0, -- premier rebirth
+	IndexComplete = 0, -- Fantômédex complet
+	WeeklyChallenges = 0, -- les 3 défis d'une semaine
+}
+
 -- Icônes de la boutique (facultatif). Pour mettre tes propres images :
 -- Creator Hub > Développement > Décalcomanies (Decals) > importe l'image, copie son ID,
 -- et colle "rbxassetid://ID" ci-dessous. Vide = l'emoji habituel.

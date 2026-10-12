@@ -66,6 +66,7 @@ local function template()
 		Missions = {}, -- missions du jour : { Day, List, BonusDone }
 		Weekly = {}, -- défis de la semaine : { Week, List, BonusDone }
 		Traps = {}, -- pièges achetés : ["Banana"] = true
+		Badges = {}, -- badges Roblox déjà donnés : ["FirstSteal"] = true
 		Spins = 0, -- tours de Roue de la Fortune achetés et pas encore utilisés
 		BoostUntil = 0, -- fin du bonus "x2 revenus" de la roue (temps Unix)
 	}

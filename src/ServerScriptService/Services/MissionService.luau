@@ -147,6 +147,7 @@ local function giveWeeklyBonus(player: Player)
 		AnnounceService.notify(player, "WeeklyAllDoneCoins", { ghost = key, coins = Format.short(coins) }, "good")
 	end
 	AnnounceService.announce("AnnWeekly", { player = player.DisplayName }, "rebirth")
+	Hooks.fire("WeeklyBonus", player)
 	AnnounceService.effect("Gift", {}, player)
 end
 
