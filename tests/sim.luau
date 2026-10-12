@@ -158,7 +158,7 @@ end
 local holders = RS.PathGhosts:GetChildren()
 local target = holders[1]
 local boughtId = target:GetAttribute("GhostId")
-Fake.moveTo(alice, pathPosition(target))
+place(alice, pathPosition(target))
 local m = mark()
 Fake.fire(alice, "BuyGhost", target.Name)
 check(aData.Slots["2"] == boughtId, "le fantôme acheté est sur le socle 2")
@@ -170,13 +170,24 @@ check(aData.Coins == 10_000_000 - GhostData.get(boughtId).Price, "le prix est re
 local other = RS.PathGhosts:GetChildren()[1]
 Sched.advance(0.3) -- anti-spam : une demande d'achat toutes les 0,25 s maximum
 m = mark()
-Fake.moveTo(alice, pathPosition(other) + Vector3.new(0, 0, 60))
+place(alice, pathPosition(other) + Vector3.new(0, 0, 60))
 Fake.fire(alice, "BuyGhost", other.Name)
 check(notified(alice, "TooFar", m) and other.Parent ~= nil, "achat refusé de trop loin")
 
+-- anti-triche : juste après s'être téléporté tout seul, pas d'achat pendant 2 s
+Sched.advance(1.2)
+Fake.moveTo(alice, pathPosition(other))
+Sched.advance(0.3)
+m = mark()
+Fake.fire(alice, "BuyGhost", other.Name)
+check(notified(alice, "TooFar", m) and other.Parent ~= nil, "téléporté à côté d'un fantôme : achat refusé")
+Sched.advance(2)
+place(alice, pathPosition(other) + Vector3.new(0, 0, 60))
+Sched.advance(0.3)
+
 bData.Coins = 0
 m = mark()
-Fake.moveTo(bob, pathPosition(other))
+place(bob, pathPosition(other))
 Fake.fire(bob, "BuyGhost", other.Name)
 check(notified(bob, "NotEnoughCoins", m) and other.Parent ~= nil, "achat refusé sans argent")
 Sched.advance(0.3)
@@ -198,7 +209,7 @@ check(goldHolder ~= nil, "un Caquetôme Doré apparaît sur le chemin")
 Sched.advance(0.3)
 local coinsGold = aData.Coins
 local incomeBefore = alice:GetAttribute("Income")
-Fake.moveTo(alice, pathPosition(goldHolder))
+place(alice, pathPosition(goldHolder))
 Fake.fire(alice, "BuyGhost", goldHolder.Name)
 check(coinsGold - aData.Coins == GhostData.get("Caquetome").Price * 3, "le Doré coûte 3 fois plus")
 check(alice:GetAttribute("Income") - incomeBefore == GhostData.get("Caquetome").Income * 3, "et rapporte 3 fois plus")
@@ -223,7 +234,7 @@ Fake.moveTo(alice, pedestalPos(alice, 2))
 Fake.fire(alice, "SellGhost", 2)
 check(aData.Slots["2"] == nil, "fantôme vendu")
 local sale = math.floor(GhostData.get(boughtId).Price * Config.SellRatio)
-check(aData.Coins >= coinsBefore + sale and aData.Coins <= coinsBefore + sale + GhostData.incomeOf(boughtId) * 3 + 1, "50 % du prix remboursé")
+check(aData.Coins >= coinsBefore + sale and aData.Coins <= coinsBefore + sale + GhostData.incomeOf(boughtId) * 8 + 1, "50 % du prix remboursé")
 Sched.advance(0.4)
 Fake.fire(alice, "SellGhost", 99)
 Sched.advance(0.4)
@@ -247,7 +258,7 @@ check(fullHolder ~= nil, "un fantôme sur le chemin pour tester la base pleine")
 if fullHolder then
 	Sched.advance(0.3)
 	m = mark()
-	Fake.moveTo(alice, pathPosition(fullHolder))
+	place(alice, pathPosition(fullHolder))
 	Fake.fire(alice, "BuyGhost", fullHolder.Name)
 	check(notified(alice, "NoFreePedestalFloor", m) and fullHolder.Parent ~= nil, "base pleine : le jeu propose l'étage 2")
 end
@@ -1125,7 +1136,7 @@ for _, h in RS.PathGhosts:GetChildren() do
 end
 aData.Coins += 10000
 Sched.advance(0.3)
-Fake.moveTo(alice, pathPosition(rareHolder))
+place(alice, pathPosition(rareHolder))
 Fake.fire(alice, "BuyGhost", rareHolder.Name)
 check(aData.Missions.List[3].Done, "mission 'Achète un Rare ou mieux' réussie")
 local rareSlot

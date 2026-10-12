@@ -5403,6 +5403,7 @@ return EconomyService
 	la distance, l'argent et la place libre.
 ]]
 
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -5540,6 +5541,37 @@ function GhostService.giveGhost(player: Player, ghostId: string): number?
 	return slot
 end
 
+-- Anti-triche : un joueur qui vient de se téléporter tout seul ne peut pas acheter
+-- tout de suite (sinon un tricheur rafle chaque Mythique annoncé sur le chemin).
+-- On compare au temps écoulé depuis son dernier vrai mouvement : un petit gel du
+-- réseau sur téléphone ne compte pas.
+type MoveSample = { Pos: Vector3, Time: number, Character: Model? }
+local moveSamples: { [Player]: MoveSample } = {}
+local jumpedAt: { [Player]: number } = {}
+
+local function sampleMoves()
+	local t = os.clock()
+	for _, player in Players:GetPlayers() do
+		local root = Guard.root(player)
+		if root then
+			local pos = Vector3.new(root.Position.X, 0, root.Position.Z)
+			local prev = moveSamples[player]
+			if prev and prev.Character == player.Character and not Guard.teleportedWithin(player, 1) then
+				local moved = (pos - prev.Pos).Magnitude
+				if moved > 0.05 then
+					local speed = moved / math.min(math.max(t - prev.Time, 0.05), 1)
+					if speed > Config.NormalWalkSpeed * 2.5 + 10 then
+						jumpedAt[player] = t
+					end
+					moveSamples[player] = { Pos = pos, Time = t, Character = player.Character }
+				end
+			else
+				moveSamples[player] = { Pos = pos, Time = t, Character = player.Character }
+			end
+		end
+	end
+end
+
 local function onBuy(player: Player, uid: any)
 	if typeof(uid) ~= "string" or #uid > 12 then
 		return
@@ -5563,7 +5595,8 @@ local function onBuy(player: Player, uid: any)
 		return
 	end
 	-- marge de 6 studs pour la latence réseau
-	if (root.Position - GhostService.positionOf(entry, now())).Magnitude > Config.BuyRange + 6 then
+	local teleported = (jumpedAt[player] or -math.huge) > os.clock() - 2
+	if teleported or (root.Position - GhostService.positionOf(entry, now())).Magnitude > Config.BuyRange + 6 then
 		AnnounceService.notify(player, "TooFar", nil, "bad")
 		return
 	end
@@ -5646,6 +5679,16 @@ function GhostService.start()
 			task.wait(30)
 			Guard.safely("Events", publishEvents)
 		end
+	end)
+	task.spawn(function()
+		while true do
+			task.wait(0.25)
+			Guard.safely("MoveWatch", sampleMoves)
+		end
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		moveSamples[player] = nil
+		jumpedAt[player] = nil
 	end)
 
 	-- Boucle d'apparition
