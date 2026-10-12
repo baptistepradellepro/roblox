@@ -136,19 +136,22 @@ local function onSwing(player: Player, weaponId: any)
 			end
 		end
 	end
-	if #targets == 0 then
-		AnnounceService.effect("Swing", { Position = root.Position, Weapon = weapon.Id })
-		return
-	end
 	table.sort(targets, function(a, b)
 		return a.Dist < b.Dist
 	end)
-	if not weapon.Sweep then
+	if not weapon.Sweep and #targets > 1 then
 		targets = { targets[1] }
 	end
+	-- tout le monde voit le geste (et le rayon de l'aspirateur vers la cible)
+	AnnounceService.effect("Swing", {
+		PlayerId = player.UserId,
+		Position = root.Position,
+		Weapon = weapon.Id,
+		Target = if targets[1] then targets[1].Root.Position else nil,
+	})
 	for _, target in targets do
 		local other = target.Player
-		AnnounceService.effect("Bonk", { Position = target.Root.Position, Weapon = weapon.Id })
+		AnnounceService.effect("Bonk", { Position = target.Root.Position, Weapon = weapon.Id, TargetId = other.UserId })
 		if target.Thief then
 			StealService.failCarry(other, "Bonk", player)
 			Hooks.fire("Bonk", player, 1)
@@ -169,7 +172,20 @@ function WeaponService.onPassOwned(player: Player)
 	WeaponService.giveTools(player)
 end
 
+-- Quand on porte un fantôme volé, on range ses armes (on ne peut pas frapper)
+local function stowWhenCarrying(player: Player)
+	if player:GetAttribute("CarryGhost") then
+		local humanoid = Guard.humanoid(player)
+		if humanoid then
+			humanoid:UnequipTools()
+		end
+	end
+end
+
 function WeaponService.setup(player: Player)
+	player:GetAttributeChangedSignal("CarryGhost"):Connect(function()
+		stowWhenCarrying(player)
+	end)
 	player.CharacterAdded:Connect(function()
 		-- le sac est recréé à chaque apparition
 		task.defer(WeaponService.giveTools, player)

@@ -32,16 +32,6 @@ Shop.Items = {
 		Name = { fr = "x2 Pièces", en = "x2 Coins" },
 		Desc = { fr = "Double tous tes revenus, pour toujours", en = "Double all your income, forever" },
 	},
-	{
-		Key = "LongLock",
-		Kind = "Pass",
-		Category = "Passes",
-		Icon = "🔒",
-		Robux = 79,
-		Attribute = "LongLock",
-		Name = { fr = "Verrou+", en = "Lock+" },
-		Desc = { fr = "Verrou de {long} s au lieu de {normal} s", en = "{long} s lock instead of {normal} s" },
-	},
 	-- Armes (les infos viennent de Weapons.luau)
 	{ Key = "WeaponHammer", Kind = "Pass", Category = "Weapons", Weapon = "MarteauPouet", Robux = 99, Attribute = "Weapon_MarteauPouet" },
 	{ Key = "WeaponBroom", Kind = "Pass", Category = "Weapons", Weapon = "BalaiSorciere", Robux = 149, Attribute = "Weapon_BalaiSorciere" },

@@ -3,7 +3,8 @@
 	  - donne une base libre à chaque joueur qui arrive
 	  - gère les socles (quel fantôme est posé où) et l'étage 2 achetable
 	  - l'ascenseur entre le rez-de-chaussée et l'étage
-	  - gère le verrou (45 s, recharge 2 min) et le bouclier débutant
+	  - gère le verrou (45 s, recharge 2 min, seulement avec le bouton au fond de la base)
+	    et le bouclier débutant (45 s aussi)
 	  - la barrière du verrou bloque tout le monde sauf le propriétaire (groupes de collision)
 	  - fait apparaître le joueur dans sa base
 
@@ -424,11 +425,20 @@ local function unlock(base: Base)
 	setBarrier(base, false)
 end
 
+-- Distance max au bouton du verrou (le bouton s'active à 9 studs, + marge pour la latence)
+local LOCK_BUTTON_RANGE = 14
+
 -- Le joueur demande à verrouiller sa base. Renvoie (ok, cléDeMessage, paramètres)
 function BaseService.lock(player: Player): (boolean, string?, { [string]: any }?)
 	local base = byPlayer[player]
 	if not base then
 		return false, "NotAllowed"
+	end
+	-- on verrouille seulement avec le bouton au fond de SA base
+	local root = Guard.root(player)
+	local button = base.Model:FindFirstChild("LockButton") :: BasePart?
+	if not root or not button or (root.Position - button.Position).Magnitude > LOCK_BUTTON_RANGE then
+		return false, "LockGoToButton"
 	end
 	local t = now()
 	if BaseService.isLocked(base) then
@@ -437,8 +447,7 @@ function BaseService.lock(player: Player): (boolean, string?, { [string]: any }?
 	if t < base.LockReadyAt then
 		return false, "LockNotReady", { time = Format.time(base.LockReadyAt - t) }
 	end
-	local duration = if player:GetAttribute("LongLock") then Config.LockDurationPass else Config.LockDuration
-	applyLock(base, duration, false)
+	applyLock(base, Config.LockDuration, false)
 	return true, "LockOn"
 end
 

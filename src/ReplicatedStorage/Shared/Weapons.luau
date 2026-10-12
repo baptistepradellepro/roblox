@@ -19,6 +19,7 @@ local Weapons = {}
 Weapons.List = {
 	{
 		Id = "Batte",
+		Length = 3.2, -- longueur de l'arme (pour la traînée)
 		Icon = "🏏",
 		Name = { fr = "Batte", en = "Bat" },
 		Desc = { fr = "Offerte. Un bon coup et le voleur lâche tout !", en = "Free. One good hit and the thief drops everything!" },
@@ -32,6 +33,7 @@ Weapons.List = {
 	},
 	{
 		Id = "MarteauPouet",
+		Length = 3.3, -- longueur de l'arme (pour la traînée)
 		Icon = "🔨",
 		Name = { fr = "Marteau Pouet Géant", en = "Giant Squeaky Hammer" },
 		Desc = { fr = "Plus loin, plus fort, et ça fait POUET.", en = "Longer reach, stronger, and it goes SQUEAK." },
@@ -45,6 +47,7 @@ Weapons.List = {
 	},
 	{
 		Id = "BalaiSorciere",
+		Length = 4.9, -- longueur de l'arme (pour la traînée)
 		Icon = "🧹",
 		Name = { fr = "Balai de Sorcière", en = "Witch Broom" },
 		Desc = { fr = "Un grand coup de balai : touche tous les voleurs autour.", en = "A big sweep: hits every thief around you." },
@@ -59,6 +62,7 @@ Weapons.List = {
 	},
 	{
 		Id = "AspiraFantome",
+		Length = 3.5, -- longueur de l'arme (pour la traînée)
 		Icon = "🌀",
 		Name = { fr = "Aspira-Fantôme", en = "Ghost Vacuum" },
 		Desc = { fr = "Aspire le fantôme volé de très loin.", en = "Sucks the stolen ghost back from far away." },
@@ -191,6 +195,25 @@ function Weapons.buildTool(id: string): Tool
 	handle.CFrame = CFrame.new()
 	local builder = Builders[weapon.Id] or Builders.Batte
 	builder(tool, handle)
+	-- traînée colorée allumée pendant les coups (voir AnimView)
+	local base = Instance.new("Attachment")
+	base.Name = "TrailBase"
+	base.Position = Vector3.new(0, 0, 0.2)
+	base.Parent = handle
+	local tip = Instance.new("Attachment")
+	tip.Name = "TrailTip"
+	tip.Position = Vector3.new(0, 0, weapon.Length or 3)
+	tip.Parent = handle
+	local trail = Instance.new("Trail")
+	trail.Name = "SwingTrail"
+	trail.Attachment0 = base
+	trail.Attachment1 = tip
+	trail.Color = ColorSequence.new(Color3.fromRGB(weapon.Color[1], weapon.Color[2], weapon.Color[3]))
+	trail.Transparency = NumberSequence.new(0.3, 1)
+	trail.Lifetime = 0.22
+	trail.LightEmission = 0.6
+	trail.Enabled = false
+	trail.Parent = handle
 	-- la main tient le manche, l'arme pointe vers l'avant de la main
 	tool.Grip = CFrame.new(0, 0, -1.2)
 	tool:SetAttribute("BaseGrip", tool.Grip)

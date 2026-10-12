@@ -6,7 +6,7 @@ Ouvre la fenêtre Sortie : onglet Affichage (View) > Sortie (Output). Les erreur
 
 Deux réglages pratiques pendant les tests, dans `Config.luau` (pense à les remettre ensuite) :
 
-- `Config.NewPlayerShield = 10` au lieu de 120 : sinon chaque joueur est protégé contre le vol pendant 2 minutes à son arrivée, et tu attends longtemps avant de pouvoir tester un vol.
+- `Config.NewPlayerShield = 10` au lieu de 45 : sinon chaque joueur est protégé contre le vol pendant 45 secondes à son arrivée, et tu attends avant de pouvoir tester un vol.
 - `Config.ForceLanguage = "en"` pour voir le jeu en anglais (ou `"fr"`), au lieu de la langue de ton Roblox.
 
 Si tu utilises le fichier `.rbxlx`, tu peux faire ces changements directement dans Studio : Explorateur > ReplicatedStorage > Shared > Config (double-clic pour l'ouvrir).
@@ -19,14 +19,14 @@ Clique sur Jouer (Play) ou F5. Tu dois voir :
 2. Une allée au milieu, 5 socles à gauche et 5 à droite. Un Drap Mou sur ton premier socle et le message "Cadeau ! Voici ton premier fantôme".
 3. Devant chaque socle occupé, une plaque verte avec un petit compteur de pièces qui monte.
 4. Le compteur de pièces en haut qui monte doucement (1 pièce par seconde : c'est le petit revenu de base, pour ne jamais rester bloqué à zéro).
-5. Le bouton bouclier à droite avec un compte à rebours de 2:00 (protection débutant).
+5. Sous les pièces, la pastille « 🛡️ Protégée : 45s » (protection débutant : la porte de ta base est fermée aux autres pendant 45 secondes). Ensuite elle devient « 🔒 Verrou prêt ».
 
 Ensuite :
 
 - **Acheter** : va sur le chemin au milieu, approche-toi d'un fantôme et appuie sur E (ou touche le bouton sur mobile). Il apparaît sur un de tes socles dans un petit nuage, et le prix est retiré.
 - **Récupérer** : les fantômes ne versent plus leurs pièces directement sur ton compte. Elles s'empilent sur la plaque verte devant leur socle. Marche sur la plaque : les pièces passent sur ton compte avec un "+X" qui s'envole. Sous ton compteur, la pastille "💰 X à récupérer" te dit combien t'attend dans ta base.
 - **Vendre** : sur un de tes socles, maintiens E pendant 1 seconde. Tu récupères la moitié du prix, plus les pièces qui attendaient sur sa plaque.
-- **Verrouiller** : attends la fin du bouclier, puis va au fond de ta base. Le poste de verrouillage est entouré d'une barrière rouge et blanche, avec le panneau "🚧 VERROU". Appuie sur E devant le gros bouton rouge (ou sur le bouton 🔒 à droite de l'écran). Une barrière à barreaux ferme l'entrée pendant 45 secondes. Toi, tu la traverses et tu la vois presque transparente, les autres sont bloqués. Ensuite le bouton recharge pendant 2 minutes.
+- **Verrouiller** : attends la fin du bouclier, puis va au fond de ta base. Le poste de verrouillage est entouré d'une barrière rouge et blanche, avec le panneau "🚧 VERROU". Appuie sur E devant le gros bouton rouge. C'est le seul moyen de verrouiller : pas de bouton à l'écran, et le serveur refuse si tu n'es pas devant ce bouton (« Va au bouton du verrou, au fond de ta base ! »). Une barrière à barreaux ferme l'entrée pendant 45 secondes, toujours (il n'y a plus de Game Pass pour la rallonger). Toi, tu la traverses et tu la vois presque transparente, les autres sont bloqués. Ensuite le verrou recharge pendant 2 minutes : la pastille sous les pièces affiche le temps restant.
 - **Base pleine** : quand tes 10 socles sont pris et que tu essaies d'acheter, le message "Base pleine ! Achète l'étage 2 ou vends un fantôme." s'affiche.
 
 ## Tester l'étage 2
@@ -55,7 +55,7 @@ Scénarios à vérifier :
 2. **Récupération** : recommence un vol, puis avec Player1 cours toucher Player2. Le fantôme retourne sur son socle.
 3. **Coup de batte** (3 joueurs) : pendant que Player2 vole, approche Player3 de lui. Un gros bouton rouge 🏏 « Tape ! » apparaît à droite (ou touche Q sur PC, ou clic avec la batte en main). Des étoiles, Player2 lâche le fantôme, recule et reste étourdi une seconde et demie.
 4. **Trop lent** : vole un fantôme et attends 45 secondes sans rentrer. Il retourne chez son propriétaire.
-5. **Base verrouillée** : verrouille la base de Player1, puis essaie d'entrer avec Player2. La barrière bloque, et si tu passes quand même tu es renvoyé dehors.
+5. **Base verrouillée** : verrouille la base de Player1 (avec le bouton au fond de sa base), puis essaie d'entrer avec Player2. La barrière bloque, et si tu passes quand même tu es renvoyé dehors.
 6. **Départ pendant un vol** : pendant que Player2 porte le fantôme de Player1, ferme la fenêtre de Player1. Player2 reçoit le fantôme directement.
 
 Les joueurs de test de Studio ne sont pas "amis" entre eux, donc le bonus amis (+10 %) ne s'affiche pas ici. Il marchera dans le vrai jeu.
@@ -108,6 +108,19 @@ Tant que tu n'as pas créé les articles sur le Creator Hub (IDs à 0 dans `Conf
 - Le gros bouton rouge « Tape ! » à droite apparaît tout seul quand un voleur est à portée. Il prend ta meilleure arme en main et frappe. C'est le plus pratique sur téléphone.
 - Les armes Robux (onglet ⚔️, gratuites dans Studio) : **Marteau Pouet Géant** (plus loin, plus fort), **Balai de Sorcière** (touche tous les voleurs autour), **Aspira-Fantôme** (de très loin). Elles arrivent tout de suite dans le sac après l'achat, et à chaque réapparition.
 - Les réglages (portée, recharge, étourdissement) sont dans `Weapons.luau`.
+
+## Les animations
+
+Pas besoin de fichier d'animation : le jeu fait bouger les bras et le buste des personnages par le code. Tout le monde voit les gestes des autres.
+
+- **Batte** : on arme à droite, puis grand coup vers la gauche en tournant le buste, avec une traînée de couleur derrière l'arme.
+- **Marteau Pouet Géant** : le marteau monte au-dessus de la tête et s'écrase devant.
+- **Balai de Sorcière** : un tour complet sur soi-même, balai tendu.
+- **Aspira-Fantôme** : l'aspirateur secoue et tire en arrière, et un rayon vert part vers le voleur.
+- **Coup reçu** : le personnage part en arrière, bras en l'air, puis se redresse.
+- **Voleur** : il porte le fantôme au-dessus de sa tête, les deux bras levés. Ses armes sont rangées pendant le vol.
+
+À tester à 2 joueurs (Serveur local) pour voir les gestes de l'autre. Ça marche avec les avatars R15 (par défaut) et R6.
 
 ## Tester la Roue de la Fortune
 

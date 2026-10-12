@@ -16,6 +16,8 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local Sounds = require(Shared:WaitForChild("Sounds"))
 local Weapons = require(Shared:WaitForChild("Weapons"))
 
+local AnimView = require(script.Parent.AnimView)
+
 local Effects = {}
 
 local player = Players.LocalPlayer
@@ -259,16 +261,16 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 				Effects.sound(if weapon then weapon.Sound else "Bonk")
 			end
 		end
+		AnimView.hitByUserId(data.TargetId)
 	end,
 	Swing = function(data)
-		if data.Position and isNear(data.Position, 50) then
-			local character = player.Character
-			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-			-- mon propre coup a déjà fait son bruit
-			if not root or (root.Position - data.Position).Magnitude > 3 then
-				Effects.sound("Swing")
-			end
+		local mine = data.PlayerId == player.UserId
+		-- mon propre coup est déjà animé et a déjà fait son bruit (tout de suite, sans attendre)
+		if not mine and data.Position and isNear(data.Position, 50) then
+			Effects.sound("Swing")
 		end
+		local target = if typeof(data.Target) == "Vector3" then data.Target else nil
+		AnimView.swingByUserId(data.PlayerId, data.Weapon, target, not mine, true)
 	end,
 	-- J'ai pris un coup : je recule (c'est mon écran qui bouge mon personnage)
 	Knockback = function(data)

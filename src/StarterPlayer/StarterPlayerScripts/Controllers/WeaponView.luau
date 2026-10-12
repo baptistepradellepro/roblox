@@ -15,6 +15,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Weapons = require(Shared:WaitForChild("Weapons"))
 
+local AnimView = require(script.Parent.AnimView)
 local Effects = require(script.Parent.Effects)
 local HUD = require(script.Parent.HUD)
 local Lang = require(script.Parent.Lang)
@@ -114,19 +115,6 @@ local function targetInRange(range: number): boolean
 	return false
 end
 
--- Petit coup de l'arme, tout de suite à l'écran (le serveur le montre aux autres)
-local function swingLocally(tool: Tool)
-	local base = tool:GetAttribute("BaseGrip")
-	if typeof(base) == "CFrame" then
-		tool.Grip = base * CFrame.Angles(math.rad(-75), 0, 0)
-		task.delay(0.18, function()
-			if tool.Parent then
-				tool.Grip = base
-			end
-		end)
-	end
-end
-
 function WeaponView.swing(tool: Tool?)
 	local chosen = tool or bestTool()
 	local weapon = Weapons.get(if chosen then chosen:GetAttribute("WeaponId") else "Batte") or Weapons.ById.Batte
@@ -142,8 +130,9 @@ function WeaponView.swing(tool: Tool?)
 		if humanoid and chosen.Parent ~= character then
 			humanoid:EquipTool(chosen)
 		end
-		swingLocally(chosen)
 	end
+	-- le geste tout de suite sur mon écran ; le serveur le montre aux autres
+	AnimView.swing(player.Character, weapon.Id, nil, true, false)
 	Effects.sound("Swing")
 	Remotes.get("Bonk"):FireServer(weapon.Id)
 end

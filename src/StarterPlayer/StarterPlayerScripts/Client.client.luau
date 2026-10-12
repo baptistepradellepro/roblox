@@ -15,6 +15,7 @@ end
 
 -- L'ordre compte : le HUD doit exister avant les modules qui y ajoutent des boutons
 local ORDER = {
+	"AnimView",
 	"Effects",
 	"HUD",
 	"Announce",

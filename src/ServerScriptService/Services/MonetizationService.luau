@@ -1,6 +1,6 @@
 --[[
 	MonetizationService : tout ce qui s'achète avec des Robux (liste dans Shop.luau).
-	  - Game Passes : x2 Pièces, Verrou+, et les armes (Marteau Pouet, Balai, Aspira-Fantôme)
+	  - Game Passes : x2 Pièces et les armes (Marteau Pouet, Balai, Aspira-Fantôme)
 	  - Developer Products : pack de pièces, tours de Roue de la Fortune, monstres à lâcher
 
 	Le joueur clique sur "Acheter" : le serveur vérifie, puis ouvre la fenêtre Robux.

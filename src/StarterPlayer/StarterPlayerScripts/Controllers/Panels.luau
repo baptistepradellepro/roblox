@@ -478,7 +478,7 @@ local function buildShop(): Frame
 		order += 1
 		if item.Category == "Passes" then
 			itemCard(pages.Passes, order, item, item.Icon, Lang.pick(item.Name), function()
-				return Strings.fill(Lang.pick(item.Desc), { long = Config.LockDurationPass, normal = Config.LockDuration })
+				return Lang.pick(item.Desc)
 			end)
 		elseif item.Category == "Coins" then
 			itemCard(pages.Coins, order, item, item.Icon, Lang.pick(item.Name), function()

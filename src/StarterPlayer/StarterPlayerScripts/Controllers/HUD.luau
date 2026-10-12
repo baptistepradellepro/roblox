@@ -101,8 +101,7 @@ end
 local coinLabel: TextLabel
 local incomeLabel: TextLabel
 local friendLabel: TextLabel
-local lockButton: TextButton
-local lockIcon: TextLabel
+local lockPill: Frame
 local lockText: TextLabel
 local carryBanner: TextLabel
 local shownCoins = 0
@@ -242,19 +241,6 @@ local function buildColumns()
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		}),
 	})
-
-	lockButton, lockIcon, lockText = UI.bigButton({
-		Name = "Lock",
-		Icon = "🔒",
-		Text = Lang.t("LockReady"),
-		Color = UI.Colors.Good,
-		LayoutOrder = 1,
-		Parent = HUD.rightColumn,
-	})
-	lockButton.Activated:Connect(function()
-		Effects.sound("Click")
-		Remotes.get("RequestLock"):FireServer()
-	end)
 end
 
 ---------------------------------------------------------------- Mise à jour
@@ -274,27 +260,24 @@ local function updateCoins()
 	friendLabel.Text = "👥 " .. Lang.t("FriendsBonus", { percent = math.floor(friends * 100 + 0.5) })
 end
 
+-- Pastille d'état du verrou (on verrouille avec le bouton au fond de sa base, pas ici)
 local function updateLock(now: number)
 	local base = myBase()
 	if not base then
-		lockButton.Visible = false
+		lockPill.Visible = false
 		return
 	end
-	lockButton.Visible = true
+	lockPill.Visible = true
 	local lockedUntil = base:GetAttribute("LockedUntil") or 0
 	local readyAt = base:GetAttribute("LockReadyAt") or 0
 	if now < lockedUntil then
-		lockButton.BackgroundColor3 = UI.Colors.Info
-		lockIcon.Text = if base:GetAttribute("Shield") then "🛡️" else "🔒"
-		lockText.Text = Lang.t("LockedFor", { time = Format.time(lockedUntil - now) })
+		local key = if base:GetAttribute("Shield") then "ShieldPill" else "LockPillOn"
+		local icon = if base:GetAttribute("Shield") then "🛡️ " else "🔒 "
+		lockText.Text = icon .. Lang.t(key, { time = Format.time(lockedUntil - now) })
 	elseif now < readyAt then
-		lockButton.BackgroundColor3 = UI.Colors.Gray
-		lockIcon.Text = "⏳"
-		lockText.Text = Format.time(readyAt - now)
+		lockText.Text = "⏳ " .. Lang.t("LockPillCooldown", { time = Format.time(readyAt - now) })
 	else
-		lockButton.BackgroundColor3 = UI.Colors.Good
-		lockIcon.Text = "🔒"
-		lockText.Text = Lang.t("LockReady")
+		lockText.Text = "🔒 " .. Lang.t("LockPillReady")
 	end
 end
 
@@ -314,6 +297,11 @@ function HUD.start()
 	HUD.gui = gui
 	buildTopBar()
 	buildColumns()
+
+	-- Pastille d'état du verrou
+	lockPill = HUD.pill(UI.Colors.Info, -1)
+	lockPill.Name = "LockPill"
+	lockText = lockPill:FindFirstChild("Text") :: TextLabel
 
 	-- Pastille "pièces à récupérer" (sur les plaques vertes de ta base)
 	local storedPill = HUD.pill(UI.Colors.Good, 0)

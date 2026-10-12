@@ -74,9 +74,8 @@ Config.RecoverRange = 6 -- le propriétaire touche le voleur = fantôme récupé
 
 -- ===== Verrou de base =====
 Config.LockDuration = 45
-Config.LockDurationPass = 75 -- avec le Game Pass "Verrou+"
 Config.LockCooldown = 120 -- recharge après la fin du verrou
-Config.NewPlayerShield = 120 -- protection automatique à l'arrivée
+Config.NewPlayerShield = 45 -- protection automatique à l'arrivée (porte fermée 45 s, comme le verrou)
 
 -- ===== Nuit Hantée =====
 Config.DayDuration = 480 -- 8 min de jour...
@@ -161,7 +160,6 @@ Config.ForceHalloween = false -- mets true pour tester les fantômes Halloween h
 -- (pour tester). Dans le vrai jeu, il affiche "Bientôt".
 Config.GamePasses = {
 	DoubleCoins = 0, -- ID du Game Pass "x2 Pièces"
-	LongLock = 0, -- ID du Game Pass "Verrou+"
 	WeaponHammer = 0, -- ID du Game Pass "Marteau Pouet Géant"
 	WeaponBroom = 0, -- ID du Game Pass "Balai de Sorcière"
 	WeaponVacuum = 0, -- ID du Game Pass "Aspira-Fantôme"
@@ -2136,16 +2134,6 @@ Shop.Items = {
 		Name = { fr = "x2 Pièces", en = "x2 Coins" },
 		Desc = { fr = "Double tous tes revenus, pour toujours", en = "Double all your income, forever" },
 	},
-	{
-		Key = "LongLock",
-		Kind = "Pass",
-		Category = "Passes",
-		Icon = "🔒",
-		Robux = 79,
-		Attribute = "LongLock",
-		Name = { fr = "Verrou+", en = "Lock+" },
-		Desc = { fr = "Verrou de {long} s au lieu de {normal} s", en = "{long} s lock instead of {normal} s" },
-	},
 	-- Armes (les infos viennent de Weapons.luau)
 	{ Key = "WeaponHammer", Kind = "Pass", Category = "Weapons", Weapon = "MarteauPouet", Robux = 99, Attribute = "Weapon_MarteauPouet" },
 	{ Key = "WeaponBroom", Kind = "Pass", Category = "Weapons", Weapon = "BalaiSorciere", Robux = 149, Attribute = "Weapon_BalaiSorciere" },
@@ -2311,9 +2299,6 @@ Strings.fr = {
 	YourBase = "TA BASE",
 	BaseOf = "Base de {name}",
 	FreeBase = "Base libre",
-	LockedFor = "{time}",
-	LockReady = "Verrou",
-	LockCooldown = "Recharge {time}",
 	ThiefLabel = "VOLEUR !",
 
 	-- Notifications
@@ -2330,6 +2315,11 @@ Strings.fr = {
 	StarterGift = "Cadeau ! Voici ton premier fantôme",
 	LockOn = "Base verrouillée !",
 	LockNotReady = "Le verrou recharge encore ({time})",
+	LockGoToButton = "Va au bouton du verrou, au fond de ta base !",
+	LockPillReady = "Verrou prêt",
+	LockPillOn = "Verrouillée : {time}",
+	LockPillCooldown = "Verrou : {time}",
+	ShieldPill = "Protégée : {time}",
 	ShieldOn = "Bouclier débutant : personne ne peut te voler pendant {time}",
 	StealGo = "Cours jusqu'à ta base !",
 	StealAlert = "{thief} vole ton {ghost} ! Attrape-le !",
@@ -2544,9 +2534,6 @@ Strings.en = {
 	YourBase = "YOUR BASE",
 	BaseOf = "{name}'s base",
 	FreeBase = "Free base",
-	LockedFor = "{time}",
-	LockReady = "Lock",
-	LockCooldown = "Ready in {time}",
 	ThiefLabel = "THIEF!",
 
 	NotEnoughCoins = "Not enough coins!",
@@ -2562,6 +2549,11 @@ Strings.en = {
 	StarterGift = "Gift! Here's your first ghost",
 	LockOn = "Base locked!",
 	LockNotReady = "Lock still recharging ({time})",
+	LockGoToButton = "Go to the lock button at the back of your base!",
+	LockPillReady = "Lock ready",
+	LockPillOn = "Locked: {time}",
+	LockPillCooldown = "Lock: {time}",
+	ShieldPill = "Protected: {time}",
 	ShieldOn = "Newbie shield: nobody can steal from you for {time}",
 	StealGo = "Run back to your base!",
 	StealAlert = "{thief} is stealing your {ghost}! Catch them!",
@@ -2793,6 +2785,7 @@ local Weapons = {}
 Weapons.List = {
 	{
 		Id = "Batte",
+		Length = 3.2, -- longueur de l'arme (pour la traînée)
 		Icon = "🏏",
 		Name = { fr = "Batte", en = "Bat" },
 		Desc = { fr = "Offerte. Un bon coup et le voleur lâche tout !", en = "Free. One good hit and the thief drops everything!" },
@@ -2806,6 +2799,7 @@ Weapons.List = {
 	},
 	{
 		Id = "MarteauPouet",
+		Length = 3.3, -- longueur de l'arme (pour la traînée)
 		Icon = "🔨",
 		Name = { fr = "Marteau Pouet Géant", en = "Giant Squeaky Hammer" },
 		Desc = { fr = "Plus loin, plus fort, et ça fait POUET.", en = "Longer reach, stronger, and it goes SQUEAK." },
@@ -2819,6 +2813,7 @@ Weapons.List = {
 	},
 	{
 		Id = "BalaiSorciere",
+		Length = 4.9, -- longueur de l'arme (pour la traînée)
 		Icon = "🧹",
 		Name = { fr = "Balai de Sorcière", en = "Witch Broom" },
 		Desc = { fr = "Un grand coup de balai : touche tous les voleurs autour.", en = "A big sweep: hits every thief around you." },
@@ -2833,6 +2828,7 @@ Weapons.List = {
 	},
 	{
 		Id = "AspiraFantome",
+		Length = 3.5, -- longueur de l'arme (pour la traînée)
 		Icon = "🌀",
 		Name = { fr = "Aspira-Fantôme", en = "Ghost Vacuum" },
 		Desc = { fr = "Aspire le fantôme volé de très loin.", en = "Sucks the stolen ghost back from far away." },
@@ -2965,6 +2961,25 @@ function Weapons.buildTool(id: string): Tool
 	handle.CFrame = CFrame.new()
 	local builder = Builders[weapon.Id] or Builders.Batte
 	builder(tool, handle)
+	-- traînée colorée allumée pendant les coups (voir AnimView)
+	local base = Instance.new("Attachment")
+	base.Name = "TrailBase"
+	base.Position = Vector3.new(0, 0, 0.2)
+	base.Parent = handle
+	local tip = Instance.new("Attachment")
+	tip.Name = "TrailTip"
+	tip.Position = Vector3.new(0, 0, weapon.Length or 3)
+	tip.Parent = handle
+	local trail = Instance.new("Trail")
+	trail.Name = "SwingTrail"
+	trail.Attachment0 = base
+	trail.Attachment1 = tip
+	trail.Color = ColorSequence.new(Color3.fromRGB(weapon.Color[1], weapon.Color[2], weapon.Color[3]))
+	trail.Transparency = NumberSequence.new(0.3, 1)
+	trail.Lifetime = 0.22
+	trail.LightEmission = 0.6
+	trail.Enabled = false
+	trail.Parent = handle
 	-- la main tient le manche, l'arme pointe vers l'avant de la main
 	tool.Grip = CFrame.new(0, 0, -1.2)
 	tool:SetAttribute("BaseGrip", tool.Grip)
@@ -3345,7 +3360,8 @@ return AnnounceService
 	  - donne une base libre à chaque joueur qui arrive
 	  - gère les socles (quel fantôme est posé où) et l'étage 2 achetable
 	  - l'ascenseur entre le rez-de-chaussée et l'étage
-	  - gère le verrou (45 s, recharge 2 min) et le bouclier débutant
+	  - gère le verrou (45 s, recharge 2 min, seulement avec le bouton au fond de la base)
+	    et le bouclier débutant (45 s aussi)
 	  - la barrière du verrou bloque tout le monde sauf le propriétaire (groupes de collision)
 	  - fait apparaître le joueur dans sa base
 
@@ -3766,11 +3782,20 @@ local function unlock(base: Base)
 	setBarrier(base, false)
 end
 
+-- Distance max au bouton du verrou (le bouton s'active à 9 studs, + marge pour la latence)
+local LOCK_BUTTON_RANGE = 14
+
 -- Le joueur demande à verrouiller sa base. Renvoie (ok, cléDeMessage, paramètres)
 function BaseService.lock(player: Player): (boolean, string?, { [string]: any }?)
 	local base = byPlayer[player]
 	if not base then
 		return false, "NotAllowed"
+	end
+	-- on verrouille seulement avec le bouton au fond de SA base
+	local root = Guard.root(player)
+	local button = base.Model:FindFirstChild("LockButton") :: BasePart?
+	if not root or not button or (root.Position - button.Position).Magnitude > LOCK_BUTTON_RANGE then
+		return false, "LockGoToButton"
 	end
 	local t = now()
 	if BaseService.isLocked(base) then
@@ -3779,8 +3804,7 @@ function BaseService.lock(player: Player): (boolean, string?, { [string]: any }?
 	if t < base.LockReadyAt then
 		return false, "LockNotReady", { time = Format.time(base.LockReadyAt - t) }
 	end
-	local duration = if player:GetAttribute("LongLock") then Config.LockDurationPass else Config.LockDuration
-	applyLock(base, duration, false)
+	applyLock(base, Config.LockDuration, false)
 	return true, "LockOn"
 end
 
@@ -6455,7 +6479,7 @@ return MissionService
           <string name="Name">MonetizationService</string>
           <string name="Source"><![CDATA[--[[
 	MonetizationService : tout ce qui s'achète avec des Robux (liste dans Shop.luau).
-	  - Game Passes : x2 Pièces, Verrou+, et les armes (Marteau Pouet, Balai, Aspira-Fantôme)
+	  - Game Passes : x2 Pièces et les armes (Marteau Pouet, Balai, Aspira-Fantôme)
 	  - Developer Products : pack de pièces, tours de Roue de la Fortune, monstres à lâcher
 
 	Le joueur clique sur "Acheter" : le serveur vérifie, puis ouvre la fenêtre Robux.
@@ -7819,19 +7843,22 @@ local function onSwing(player: Player, weaponId: any)
 			end
 		end
 	end
-	if #targets == 0 then
-		AnnounceService.effect("Swing", { Position = root.Position, Weapon = weapon.Id })
-		return
-	end
 	table.sort(targets, function(a, b)
 		return a.Dist < b.Dist
 	end)
-	if not weapon.Sweep then
+	if not weapon.Sweep and #targets > 1 then
 		targets = { targets[1] }
 	end
+	-- tout le monde voit le geste (et le rayon de l'aspirateur vers la cible)
+	AnnounceService.effect("Swing", {
+		PlayerId = player.UserId,
+		Position = root.Position,
+		Weapon = weapon.Id,
+		Target = if targets[1] then targets[1].Root.Position else nil,
+	})
 	for _, target in targets do
 		local other = target.Player
-		AnnounceService.effect("Bonk", { Position = target.Root.Position, Weapon = weapon.Id })
+		AnnounceService.effect("Bonk", { Position = target.Root.Position, Weapon = weapon.Id, TargetId = other.UserId })
 		if target.Thief then
 			StealService.failCarry(other, "Bonk", player)
 			Hooks.fire("Bonk", player, 1)
@@ -7852,7 +7879,20 @@ function WeaponService.onPassOwned(player: Player)
 	WeaponService.giveTools(player)
 end
 
+-- Quand on porte un fantôme volé, on range ses armes (on ne peut pas frapper)
+local function stowWhenCarrying(player: Player)
+	if player:GetAttribute("CarryGhost") then
+		local humanoid = Guard.humanoid(player)
+		if humanoid then
+			humanoid:UnequipTools()
+		end
+	end
+end
+
 function WeaponService.setup(player: Player)
+	player:GetAttributeChangedSignal("CarryGhost"):Connect(function()
+		stowWhenCarrying(player)
+	end)
 	player.CharacterAdded:Connect(function()
 		-- le sac est recréé à chaque apparition
 		task.defer(WeaponService.giveTools, player)
@@ -8070,6 +8110,7 @@ end
 
 -- L'ordre compte : le HUD doit exister avant les modules qui y ajoutent des boutons
 local ORDER = {
+	"AnimView",
 	"Effects",
 	"HUD",
 	"Announce",
@@ -8103,6 +8144,311 @@ end
           <string name="Name">Controllers</string>
         </Properties>
         <Item class="ModuleScript" referent="43">
+          <Properties>
+            <string name="Name">AnimView</string>
+            <string name="Source"><![CDATA[--[[
+	AnimView : les gestes des personnages avec les objets, vus par tout le monde.
+	  - coup de batte (de côté), marteau (par-dessus la tête), balai (on tourne sur soi),
+	    aspirateur (recul + rayon vert vers le voleur)
+	  - le voleur porte le fantôme bras levés au-dessus de la tête
+	  - celui qui prend un coup part en arrière
+
+	Pas besoin de fichier d'animation : on fait pivoter les articulations du personnage
+	(épaules, bassin) par le code, image par image. Chaque joueur anime tous les
+	personnages qu'il voit, à partir des messages du serveur (Effect "Swing" et "Bonk").
+	Marche avec les avatars R15 et R6.
+]]
+
+local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Weapons = require(Shared:WaitForChild("Weapons"))
+
+local AnimView = {}
+
+local rad = math.rad
+
+---------------------------------------------------------------- Articulations
+
+type Layered = { Base: CFrame, Layers: { [string]: CFrame } }
+local layered: { [Motor6D]: Layered } = setmetatable({}, { __mode = "k" }) :: any
+
+local function findMotor(character: Model, names: { string }): Motor6D?
+	for _, name in names do
+		local found = character:FindFirstChild(name, true)
+		if found and found:IsA("Motor6D") then
+			return found
+		end
+	end
+	return nil
+end
+
+type Joints = { Right: Motor6D?, Left: Motor6D?, Root: Motor6D? }
+local jointCache: { [Model]: Joints } = setmetatable({}, { __mode = "k" }) :: any
+
+local function jointsOf(character: Model): Joints
+	local cached = jointCache[character]
+	-- on recherche si une articulation manque encore (personnage en train de charger)
+	if cached and cached.Right and cached.Left and cached.Root and cached.Right.Parent then
+		return cached
+	end
+	local joints = {
+		Right = findMotor(character, { "RightShoulder", "Right Shoulder" }),
+		Left = findMotor(character, { "LeftShoulder", "Left Shoulder" }),
+		Root = findMotor(character, { "Root", "RootJoint" }),
+	}
+	jointCache[character] = joints
+	return joints
+end
+
+-- Pose une rotation "layer" sur une articulation (nil = l'enlève).
+-- La rotation est exprimée dans les axes du torse : X à droite, Y en haut, -Z devant.
+local function setLayer(motor: Motor6D?, layer: string, rotation: CFrame?)
+	if not motor then
+		return
+	end
+	local state = layered[motor]
+	if not state then
+		if not rotation then
+			return
+		end
+		state = { Base = motor.C0, Layers = {} }
+		layered[motor] = state
+	end
+	state.Layers[layer] = rotation
+	local offset = CFrame.identity
+	for _, r in state.Layers do
+		offset *= r
+	end
+	local base = state.Base
+	motor.C0 = CFrame.new(base.Position) * offset * base.Rotation
+	if next(state.Layers) == nil then
+		layered[motor] = nil
+	end
+end
+
+---------------------------------------------------------------- Courbes
+
+-- Interpolation douce entre des images clés { {temps 0..1, angle en degrés}, ... }
+local function curve(keys: { { number } }, t: number): number
+	if t <= keys[1][1] then
+		return keys[1][2]
+	end
+	for i = 2, #keys do
+		local a, b = keys[i - 1], keys[i]
+		if t <= b[1] then
+			local k = (t - a[1]) / math.max(b[1] - a[1], 1e-6)
+			k = k * k * (3 - 2 * k)
+			return a[2] + (b[2] - a[2]) * k
+		end
+	end
+	return keys[#keys][2]
+end
+
+-- Chaque geste : durée, et les rotations à chaque instant (t va de 0 à 1)
+local MOVES = {
+	-- coup de batte : on arme à droite, on balaie vers la gauche
+	Batte = {
+		Duration = 0.45,
+		Pose = function(t: number)
+			local swing = curve({ { 0, 0 }, { 0.3, -70 }, { 0.55, 85 }, { 1, 0 } }, t)
+			local twist = curve({ { 0, 0 }, { 0.3, -20 }, { 0.55, 25 }, { 1, 0 } }, t)
+			return { Right = CFrame.Angles(0, rad(swing), 0), Root = CFrame.Angles(0, rad(twist), 0) }
+		end,
+	},
+	-- marteau : bras levé au-dessus de la tête, puis on écrase devant soi
+	MarteauPouet = {
+		Duration = 0.5,
+		Pose = function(t: number)
+			local lift = curve({ { 0, 0 }, { 0.4, 115 }, { 0.6, -40 }, { 1, 0 } }, t)
+			local bend = curve({ { 0, 0 }, { 0.4, 10 }, { 0.6, -18 }, { 1, 0 } }, t)
+			return { Right = CFrame.Angles(rad(lift), 0, 0), Root = CFrame.Angles(rad(bend), 0, 0) }
+		end,
+	},
+	-- balai : un grand tour sur soi-même
+	BalaiSorciere = {
+		Duration = 0.55,
+		Pose = function(t: number)
+			local spin = curve({ { 0, 0 }, { 0.15, -30 }, { 0.85, 360 }, { 1, 360 } }, t) % 360
+			local sweep = curve({ { 0, 0 }, { 0.15, -50 }, { 0.6, 40 }, { 1, 0 } }, t)
+			return { Right = CFrame.Angles(0, rad(sweep), 0), Root = CFrame.Angles(0, rad(spin), 0) }
+		end,
+	},
+	-- aspirateur : on tient fort, ça secoue et ça tire en arrière
+	AspiraFantome = {
+		Duration = 0.6,
+		Pose = function(t: number)
+			local shake = math.sin(t * 60) * 4 * (1 - t)
+			local recoil = curve({ { 0, 0 }, { 0.15, 18 }, { 0.8, 12 }, { 1, 0 } }, t)
+			return { Right = CFrame.Angles(rad(recoil + shake), rad(shake), 0), Root = CFrame.Angles(rad(-recoil * 0.4), 0, 0) }
+		end,
+	},
+	-- on prend un coup : on part en arrière
+	Hit = {
+		Duration = 0.4,
+		Pose = function(t: number)
+			local lean = curve({ { 0, 0 }, { 0.25, 28 }, { 1, 0 } }, t)
+			local arms = curve({ { 0, 0 }, { 0.25, 70 }, { 1, 0 } }, t)
+			return {
+				Root = CFrame.Angles(rad(lean), 0, 0),
+				Right = CFrame.Angles(rad(arms), 0, rad(-arms * 0.4)),
+				Left = CFrame.Angles(rad(arms), 0, rad(arms * 0.4)),
+			}
+		end,
+	},
+}
+
+type Playing = { Character: Model, Move: any, Start: number, Layer: string }
+local playing: { Playing } = {}
+
+local function play(character: Model?, moveName: string)
+	local move = MOVES[moveName]
+	if not character or not move then
+		return
+	end
+	local layer = if moveName == "Hit" then "hit" else "swing"
+	-- un nouveau geste du même type remplace l'ancien
+	for i = #playing, 1, -1 do
+		if playing[i].Character == character and playing[i].Layer == layer then
+			table.remove(playing, i)
+		end
+	end
+	table.insert(playing, { Character = character, Move = move, Start = os.clock(), Layer = layer })
+end
+
+---------------------------------------------------------------- Effets autour des gestes
+
+local function toolOf(character: Model, weaponId: string): Tool?
+	for _, child in character:GetChildren() do
+		if child:IsA("Tool") and child:GetAttribute("WeaponId") == weaponId then
+			return child
+		end
+	end
+	return nil
+end
+
+-- Traînée colorée derrière l'arme pendant le coup
+local function flashTrail(character: Model, weaponId: string, duration: number)
+	local tool = toolOf(character, weaponId)
+	local trail = tool and tool:FindFirstChild("SwingTrail", true) :: Trail?
+	if trail then
+		trail.Enabled = true
+		task.delay(duration, function()
+			trail.Enabled = false
+		end)
+	end
+end
+
+-- Rayon vert de l'aspirateur, de l'arme jusqu'au voleur (ou droit devant)
+local function vacuumBeam(character: Model, target: Vector3?)
+	local root = character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then
+		return
+	end
+	local weapon = Weapons.ById.AspiraFantome
+	local from = root.Position + root.CFrame.LookVector * 2 + Vector3.new(0, 0.6, 0)
+	local to = target or (from + root.CFrame.LookVector * weapon.Range)
+	local length = (to - from).Magnitude
+	if length < 0.5 then
+		return
+	end
+	local beam = Instance.new("Part")
+	beam.Name = "VacuumBeam"
+	beam.Anchored = true
+	beam.CanCollide = false
+	beam.CanQuery = false
+	beam.CanTouch = false
+	beam.CastShadow = false
+	beam.Material = Enum.Material.Neon
+	beam.Color = Color3.fromRGB(weapon.Color[1], weapon.Color[2], weapon.Color[3])
+	beam.Transparency = 0.35
+	beam.Shape = Enum.PartType.Cylinder
+	beam.Size = Vector3.new(length, 1.1, 1.1)
+	beam.CFrame = CFrame.lookAt((from + to) / 2, to) * CFrame.Angles(0, rad(90), 0)
+	beam.Parent = workspace
+	TweenService:Create(beam, TweenInfo.new(0.45), { Transparency = 1, Size = Vector3.new(length, 0.2, 0.2) }):Play()
+	Debris:AddItem(beam, 0.5)
+end
+
+---------------------------------------------------------------- API
+
+local function characterOf(userId: any): Model?
+	local other = type(userId) == "number" and Players:GetPlayerByUserId(userId)
+	return other and other.Character or nil
+end
+
+--[[
+	Un joueur frappe avec une arme.
+	  animate = joue le geste (mon propre coup est joué tout de suite, sans attendre le serveur)
+	  beam = dessine le rayon de l'aspirateur vers target (position du voleur visé, ou droit devant)
+]]
+function AnimView.swing(character: Model?, weaponId: string, target: Vector3?, animate: boolean, beam: boolean)
+	if not character then
+		return
+	end
+	local id = if MOVES[weaponId] then weaponId else "Batte"
+	if animate then
+		play(character, id)
+		flashTrail(character, weaponId, MOVES[id].Duration)
+	end
+	if beam and weaponId == "AspiraFantome" then
+		vacuumBeam(character, target)
+	end
+end
+
+function AnimView.swingByUserId(userId: any, weaponId: string, target: Vector3?, animate: boolean, beam: boolean)
+	AnimView.swing(characterOf(userId), weaponId, target, animate, beam)
+end
+
+function AnimView.hitByUserId(userId: any)
+	play(characterOf(userId), "Hit")
+end
+
+function AnimView.start()
+	RunService.RenderStepped:Connect(function()
+		local now = os.clock()
+		-- gestes en cours
+		for i = #playing, 1, -1 do
+			local entry = playing[i]
+			local t = (now - entry.Start) / entry.Move.Duration
+			local joints = if entry.Character.Parent then jointsOf(entry.Character) else nil
+			if t >= 1 or not joints then
+				if joints then
+					for _, motor in joints do
+						setLayer(motor, entry.Layer, nil)
+					end
+				end
+				table.remove(playing, i)
+			else
+				local pose = entry.Move.Pose(t)
+				for name, motor in joints do
+					setLayer(motor, entry.Layer, pose[name])
+				end
+			end
+		end
+		-- les voleurs portent le fantôme bras levés
+		for _, other in Players:GetPlayers() do
+			local character = other.Character
+			if character then
+				local joints = jointsOf(character)
+				local carrying = other:GetAttribute("CarryGhost") ~= nil
+				local wave = if carrying then math.sin(now * 6) * 6 else 0
+				setLayer(joints.Right, "carry", if carrying then CFrame.Angles(rad(165 + wave), 0, rad(-12)) else nil)
+				setLayer(joints.Left, "carry", if carrying then CFrame.Angles(rad(165 - wave), 0, rad(12)) else nil)
+			end
+		end
+	end)
+end
+
+return AnimView
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="44">
           <Properties>
             <string name="Name">Announce</string>
             <string name="Source"><![CDATA[--[[
@@ -8234,7 +8580,7 @@ return Announce
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="44">
+        <Item class="ModuleScript" referent="45">
           <Properties>
             <string name="Name">BaseView</string>
             <string name="Source"><![CDATA[--[[
@@ -8663,7 +9009,7 @@ return BaseView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="45">
+        <Item class="ModuleScript" referent="46">
           <Properties>
             <string name="Name">CarryView</string>
             <string name="Source"><![CDATA[--[[
@@ -8854,7 +9200,7 @@ return CarryView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="46">
+        <Item class="ModuleScript" referent="47">
           <Properties>
             <string name="Name">CenterView</string>
             <string name="Source"><![CDATA[--[[
@@ -9059,7 +9405,7 @@ return CenterView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="47">
+        <Item class="ModuleScript" referent="48">
           <Properties>
             <string name="Name">Effects</string>
             <string name="Source"><![CDATA[--[[
@@ -9079,6 +9425,8 @@ local Monsters = require(Shared:WaitForChild("Monsters"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Sounds = require(Shared:WaitForChild("Sounds"))
 local Weapons = require(Shared:WaitForChild("Weapons"))
+
+local AnimView = require(script.Parent.AnimView)
 
 local Effects = {}
 
@@ -9323,16 +9671,16 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 				Effects.sound(if weapon then weapon.Sound else "Bonk")
 			end
 		end
+		AnimView.hitByUserId(data.TargetId)
 	end,
 	Swing = function(data)
-		if data.Position and isNear(data.Position, 50) then
-			local character = player.Character
-			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-			-- mon propre coup a déjà fait son bruit
-			if not root or (root.Position - data.Position).Magnitude > 3 then
-				Effects.sound("Swing")
-			end
+		local mine = data.PlayerId == player.UserId
+		-- mon propre coup est déjà animé et a déjà fait son bruit (tout de suite, sans attendre)
+		if not mine and data.Position and isNear(data.Position, 50) then
+			Effects.sound("Swing")
 		end
+		local target = if typeof(data.Target) == "Vector3" then data.Target else nil
+		AnimView.swingByUserId(data.PlayerId, data.Weapon, target, not mine, true)
 	end,
 	-- J'ai pris un coup : je recule (c'est mon écran qui bouge mon personnage)
 	Knockback = function(data)
@@ -9412,7 +9760,7 @@ return Effects
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="48">
+        <Item class="ModuleScript" referent="49">
           <Properties>
             <string name="Name">HUD</string>
             <string name="Source"><![CDATA[--[[
@@ -9518,8 +9866,7 @@ end
 local coinLabel: TextLabel
 local incomeLabel: TextLabel
 local friendLabel: TextLabel
-local lockButton: TextButton
-local lockIcon: TextLabel
+local lockPill: Frame
 local lockText: TextLabel
 local carryBanner: TextLabel
 local shownCoins = 0
@@ -9659,19 +10006,6 @@ local function buildColumns()
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		}),
 	})
-
-	lockButton, lockIcon, lockText = UI.bigButton({
-		Name = "Lock",
-		Icon = "🔒",
-		Text = Lang.t("LockReady"),
-		Color = UI.Colors.Good,
-		LayoutOrder = 1,
-		Parent = HUD.rightColumn,
-	})
-	lockButton.Activated:Connect(function()
-		Effects.sound("Click")
-		Remotes.get("RequestLock"):FireServer()
-	end)
 end
 
 ---------------------------------------------------------------- Mise à jour
@@ -9691,27 +10025,24 @@ local function updateCoins()
 	friendLabel.Text = "👥 " .. Lang.t("FriendsBonus", { percent = math.floor(friends * 100 + 0.5) })
 end
 
+-- Pastille d'état du verrou (on verrouille avec le bouton au fond de sa base, pas ici)
 local function updateLock(now: number)
 	local base = myBase()
 	if not base then
-		lockButton.Visible = false
+		lockPill.Visible = false
 		return
 	end
-	lockButton.Visible = true
+	lockPill.Visible = true
 	local lockedUntil = base:GetAttribute("LockedUntil") or 0
 	local readyAt = base:GetAttribute("LockReadyAt") or 0
 	if now < lockedUntil then
-		lockButton.BackgroundColor3 = UI.Colors.Info
-		lockIcon.Text = if base:GetAttribute("Shield") then "🛡️" else "🔒"
-		lockText.Text = Lang.t("LockedFor", { time = Format.time(lockedUntil - now) })
+		local key = if base:GetAttribute("Shield") then "ShieldPill" else "LockPillOn"
+		local icon = if base:GetAttribute("Shield") then "🛡️ " else "🔒 "
+		lockText.Text = icon .. Lang.t(key, { time = Format.time(lockedUntil - now) })
 	elseif now < readyAt then
-		lockButton.BackgroundColor3 = UI.Colors.Gray
-		lockIcon.Text = "⏳"
-		lockText.Text = Format.time(readyAt - now)
+		lockText.Text = "⏳ " .. Lang.t("LockPillCooldown", { time = Format.time(readyAt - now) })
 	else
-		lockButton.BackgroundColor3 = UI.Colors.Good
-		lockIcon.Text = "🔒"
-		lockText.Text = Lang.t("LockReady")
+		lockText.Text = "🔒 " .. Lang.t("LockPillReady")
 	end
 end
 
@@ -9731,6 +10062,11 @@ function HUD.start()
 	HUD.gui = gui
 	buildTopBar()
 	buildColumns()
+
+	-- Pastille d'état du verrou
+	lockPill = HUD.pill(UI.Colors.Info, -1)
+	lockPill.Name = "LockPill"
+	lockText = lockPill:FindFirstChild("Text") :: TextLabel
 
 	-- Pastille "pièces à récupérer" (sur les plaques vertes de ta base)
 	local storedPill = HUD.pill(UI.Colors.Good, 0)
@@ -9792,7 +10128,7 @@ return HUD
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="49">
+        <Item class="ModuleScript" referent="50">
           <Properties>
             <string name="Name">Labels</string>
             <string name="Source"><![CDATA[--[[
@@ -9892,7 +10228,7 @@ return Labels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="50">
+        <Item class="ModuleScript" referent="51">
           <Properties>
             <string name="Name">Lang</string>
             <string name="Source"><![CDATA[--[[
@@ -10002,7 +10338,7 @@ return Lang
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="51">
+        <Item class="ModuleScript" referent="52">
           <Properties>
             <string name="Name">LeaderboardView</string>
             <string name="Source"><![CDATA[--[[
@@ -10122,7 +10458,7 @@ return LeaderboardView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="52">
+        <Item class="ModuleScript" referent="53">
           <Properties>
             <string name="Name">MonsterView</string>
             <string name="Source"><![CDATA[--[[
@@ -10296,7 +10632,7 @@ return MonsterView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="53">
+        <Item class="ModuleScript" referent="54">
           <Properties>
             <string name="Name">NightView</string>
             <string name="Source"><![CDATA[--[[
@@ -10445,7 +10781,7 @@ return NightView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="54">
+        <Item class="ModuleScript" referent="55">
           <Properties>
             <string name="Name">Panels</string>
             <string name="Source"><![CDATA[--[[
@@ -10928,7 +11264,7 @@ local function buildShop(): Frame
 		order += 1
 		if item.Category == "Passes" then
 			itemCard(pages.Passes, order, item, item.Icon, Lang.pick(item.Name), function()
-				return Strings.fill(Lang.pick(item.Desc), { long = Config.LockDurationPass, normal = Config.LockDuration })
+				return Lang.pick(item.Desc)
 			end)
 		elseif item.Category == "Coins" then
 			itemCard(pages.Coins, order, item, item.Icon, Lang.pick(item.Name), function()
@@ -11447,7 +11783,7 @@ return Panels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="55">
+        <Item class="ModuleScript" referent="56">
           <Properties>
             <string name="Name">PathView</string>
             <string name="Source"><![CDATA[--[[
@@ -11616,7 +11952,7 @@ return PathView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="56">
+        <Item class="ModuleScript" referent="57">
           <Properties>
             <string name="Name">Tutorial</string>
             <string name="Source"><![CDATA[--[[
@@ -11857,7 +12193,7 @@ return Tutorial
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="57">
+        <Item class="ModuleScript" referent="58">
           <Properties>
             <string name="Name">UI</string>
             <string name="Source"><![CDATA[--[[
@@ -12046,7 +12382,7 @@ return UI
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="58">
+        <Item class="ModuleScript" referent="59">
           <Properties>
             <string name="Name">WeaponView</string>
             <string name="Source"><![CDATA[--[[
@@ -12066,6 +12402,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Weapons = require(Shared:WaitForChild("Weapons"))
 
+local AnimView = require(script.Parent.AnimView)
 local Effects = require(script.Parent.Effects)
 local HUD = require(script.Parent.HUD)
 local Lang = require(script.Parent.Lang)
@@ -12165,19 +12502,6 @@ local function targetInRange(range: number): boolean
 	return false
 end
 
--- Petit coup de l'arme, tout de suite à l'écran (le serveur le montre aux autres)
-local function swingLocally(tool: Tool)
-	local base = tool:GetAttribute("BaseGrip")
-	if typeof(base) == "CFrame" then
-		tool.Grip = base * CFrame.Angles(math.rad(-75), 0, 0)
-		task.delay(0.18, function()
-			if tool.Parent then
-				tool.Grip = base
-			end
-		end)
-	end
-end
-
 function WeaponView.swing(tool: Tool?)
 	local chosen = tool or bestTool()
 	local weapon = Weapons.get(if chosen then chosen:GetAttribute("WeaponId") else "Batte") or Weapons.ById.Batte
@@ -12193,8 +12517,9 @@ function WeaponView.swing(tool: Tool?)
 		if humanoid and chosen.Parent ~= character then
 			humanoid:EquipTool(chosen)
 		end
-		swingLocally(chosen)
 	end
+	-- le geste tout de suite sur mon écran ; le serveur le montre aux autres
+	AnimView.swing(player.Character, weapon.Id, nil, true, false)
 	Effects.sound("Swing")
 	Remotes.get("Bonk"):FireServer(weapon.Id)
 end
@@ -12290,13 +12615,13 @@ return WeaponView
       </Item>
     </Item>
   </Item>
-  <Item class="TextChatService" referent="59">
+  <Item class="TextChatService" referent="60">
     <Properties>
       <string name="Name">TextChatService</string>
       <token name="ChatVersion">1</token>
     </Properties>
   </Item>
-  <Item class="Workspace" referent="60">
+  <Item class="Workspace" referent="61">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>

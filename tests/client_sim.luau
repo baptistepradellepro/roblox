@@ -225,18 +225,31 @@ check(boardPart and findText(boardPart, "PLUS GRANDS VOLEURS") ~= nil, "titre du
 check(boardPart and findText(boardPart, "Bob  :  🦹 1") ~= nil, "Bob apparaît avec son vol")
 check(boardPart and findText(boardPart, "Remise à zéro dans") ~= nil, "compte à rebours de la semaine")
 
-section("Verrou par le bouton du HUD")
+section("Verrou par le bouton au fond de la base")
 Sched.advance(5)
-local lock = find(gui.SAG_HUD, function(d)
+check(find(gui.SAG_HUD, function(d)
 	return d.Name == "Lock"
+end) == nil, "plus de bouton de verrou sur l'écran")
+local lockPill = find(gui.SAG_HUD, function(d)
+	return d.Name == "LockPill"
 end)
-lock.Activated:Fire()
+check(lockPill and lockPill.Visible and findText(lockPill, "Verrou prêt") ~= nil, "pastille 'Verrou prêt'")
+local lockPart = BaseService.getBase(alice).Model:FindFirstChild("LockButton")
+local lockPrompt = find(lockPart, function(d)
+	return d.ClassName == "ProximityPrompt"
+end)
+check(lockPrompt ~= nil and lockPrompt.Enabled, "bouton du verrou au fond de la base")
+Fake.moveTo(alice, Vector3.new(150, 3, 70))
+lockPrompt.Triggered:Fire(alice)
+Sched.advance(0.6)
+check(not BaseService.isLocked(BaseService.getBase(alice)), "pas de verrou à distance")
+Fake.moveTo(alice, lockPart.Position + Vector3.new(0, 3, -2))
+lockPrompt.Triggered:Fire(alice)
 Sched.advance(0.3)
-check(BaseService.isLocked(BaseService.getBase(alice)), "base verrouillée par le bouton")
+check(BaseService.isLocked(BaseService.getBase(alice)), "base verrouillée avec le bouton")
 local gate = BaseService.getBase(alice).Model:FindFirstChild("Barrier")
 check(gate and gate.Collider.CanCollide == false, "Alice peut traverser sa propre barrière")
-local caption = lock:FindFirstChild("Caption")
-check(caption and string.match(caption.Text, "^%d+s$"), "le bouton affiche le compte à rebours (" .. tostring(caption and caption.Text) .. ")")
+check(findText(lockPill, "Verrouillée : 4") ~= nil, "la pastille affiche le compte à rebours (" .. tostring(lockPill:FindFirstChild("Text").Text) .. ")")
 local visibleBars = 0
 for _, d in gate:GetDescendants() do
 	if d.Name == "Bar" and d.Transparency >= 0.8 then
@@ -353,6 +366,60 @@ section("Batte côté joueur")
 local bat = alice.Backpack:FindFirstChild("Batte") or alice.Character:FindFirstChild("Batte")
 check(bat ~= nil and bat:GetAttribute("WeaponId") == "Batte", "Alice a sa batte dans son sac")
 check(bat and bat:FindFirstChild("Handle") ~= nil, "la batte a une poignée")
+
+section("Animations avec les objets")
+local AnnounceService = Fake.require("ServerScriptService.Services.AnnounceService")
+local function shoulder(p)
+	return p.Character.RightUpperArm.RightShoulder
+end
+local function hips(p)
+	return p.Character.LowerTorso.Root
+end
+local function sameCf(a, b): boolean
+	return (a.Position - b.Position).Magnitude < 1e-3 and a.LookVector:Dot(b.LookVector) > 0.9999 and a.UpVector:Dot(b.UpVector) > 0.9999
+end
+local restRight = roblox.CFrame.new(1, 0.56, 0)
+local restHips = roblox.CFrame.new(0, -0.6, 0)
+check(sameCf(shoulder(alice).C0, restRight) and sameCf(shoulder(bob).C0, restRight), "bras au repos")
+Sched.advance(2)
+local batTool = alice.Backpack:FindFirstChild("Batte") or alice.Character:FindFirstChild("Batte")
+batTool.Activated:Fire()
+Sched.advance(0.2)
+check(batTool.Parent == alice.Character, "Alice prend la batte en main")
+check(not sameCf(shoulder(alice).C0, restRight), "Alice fait le geste du coup de batte")
+check(not sameCf(hips(alice).C0, restHips), "elle tourne le buste avec")
+check(batTool.Handle.SwingTrail.Enabled, "traînée colorée pendant le coup")
+Sched.advance(1)
+check(sameCf(shoulder(alice).C0, restRight) and sameCf(hips(alice).C0, restHips), "le corps revient au repos")
+check(not batTool.Handle.SwingTrail.Enabled, "la traînée s'éteint")
+-- Bob frappe : Alice voit son geste grâce au message du serveur
+Fake.fire(bob, "Bonk")
+Sched.advance(0.2)
+check(not sameCf(shoulder(bob).C0, restRight), "Alice voit le coup de batte de Bob")
+Sched.advance(1)
+check(sameCf(shoulder(bob).C0, restRight), "le bras de Bob revient au repos")
+-- marteau : geste par-dessus la tête (autre axe que la batte)
+bob:SetAttribute("Weapon_MarteauPouet", true)
+Sched.advance(2)
+Fake.fire(bob, "Bonk", "MarteauPouet")
+Sched.advance(0.25)
+local hammerPose = shoulder(bob).C0
+check(hammerPose.LookVector.Y > 0.3, "le marteau se lève au-dessus de la tête")
+Sched.advance(1)
+-- porter un fantôme : bras levés
+bob:SetAttribute("CarryGhost", "DrapMou")
+Sched.advance(0.2)
+check(shoulder(bob).C0.LookVector.Y > 0.5 or shoulder(bob).C0.UpVector.Y < 0, "Bob porte le fantôme bras levés")
+check(sameCf(hips(bob).C0, restHips), "seuls les bras bougent")
+bob:SetAttribute("CarryGhost", nil)
+Sched.advance(0.2)
+check(sameCf(shoulder(bob).C0, restRight), "bras baissés quand il ne porte plus rien")
+-- coup reçu : on part en arrière
+AnnounceService.effect("Bonk", { Position = Fake.position(bob), Weapon = "Batte", TargetId = bob.UserId })
+Sched.advance(0.15)
+check(not sameCf(hips(bob).C0, restHips), "Bob part en arrière quand il prend un coup")
+Sched.advance(0.6)
+check(sameCf(hips(bob).C0, restHips), "puis se redresse")
 
 section("Monstre lâché par un joueur")
 local MonsterService = Fake.require("ServerScriptService.Services.MonsterService")

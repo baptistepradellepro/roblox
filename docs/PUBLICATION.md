@@ -7,7 +7,7 @@ Checklist dans l'ordre. Compte une soirée pour tout faire, hors création des i
 Dans `Config.luau`, vérifie que les valeurs de test sont revenues à la normale :
 
 - [ ] `Config.ForceLanguage = nil`
-- [ ] `Config.NewPlayerShield = 120`
+- [ ] `Config.NewPlayerShield = 45`
 - [ ] `Config.DayDuration = 480`
 - [ ] `Config.RebirthBaseCost = 10000000`
 - [ ] `Config.FloorPrice = 50000`
@@ -75,7 +75,6 @@ Pour créer un article : Creator Hub > Creations > Steal a Ghost > Monetization.
 | Article | Type | Ligne dans Config | Prix conseillé |
 |---|---|---|---|
 | x2 Pièces | Game Pass | `GamePasses.DoubleCoins` | 149 R$ |
-| Verrou+ (75 s au lieu de 45 s) | Game Pass | `GamePasses.LongLock` | 79 R$ |
 | Marteau Pouet Géant | Game Pass | `GamePasses.WeaponHammer` | 99 R$ |
 | Balai de Sorcière | Game Pass | `GamePasses.WeaponBroom` | 149 R$ |
 | Aspira-Fantôme | Game Pass | `GamePasses.WeaponVacuum` | 199 R$ |

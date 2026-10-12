@@ -846,6 +846,20 @@ ClassMethods.Player = {
 		root.Parent = character
 		local head = newInstance("Part", { Name = "Head", CFrame = spawnCf * roblox.CFrame.new(0, 1.5, 0) })
 		head.Parent = character
+		-- un squelette R15 simplifié : torse, bras, et leurs articulations (Motor6D)
+		local lower = newInstance("Part", { Name = "LowerTorso", CFrame = spawnCf * roblox.CFrame.new(0, -0.6, 0) })
+		lower.Parent = character
+		local upper = newInstance("Part", { Name = "UpperTorso", CFrame = spawnCf * roblox.CFrame.new(0, 0.4, 0) })
+		upper.Parent = character
+		local rootJoint = newInstance("Motor6D", { Name = "Root", Part0 = root, Part1 = lower, C0 = roblox.CFrame.new(0, -0.6, 0) })
+		rootJoint.Parent = lower
+		for _, side in { "Right", "Left" } do
+			local x = if side == "Right" then 1 else -1
+			local arm = newInstance("Part", { Name = side .. "UpperArm", CFrame = spawnCf * roblox.CFrame.new(x * 1.5, 0.4, 0) })
+			arm.Parent = character
+			local shoulder = newInstance("Motor6D", { Name = side .. "Shoulder", Part0 = upper, Part1 = arm, C0 = roblox.CFrame.new(x, 0.56, 0) })
+			shoulder.Parent = arm
+		end
 		character.PrimaryPart = root
 		-- comme Roblox : un sac (Backpack) neuf à chaque apparition
 		local oldBackpack = self:FindFirstChild("Backpack")

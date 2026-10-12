@@ -50,9 +50,8 @@ Config.RecoverRange = 6 -- le propriétaire touche le voleur = fantôme récupé
 
 -- ===== Verrou de base =====
 Config.LockDuration = 45
-Config.LockDurationPass = 75 -- avec le Game Pass "Verrou+"
 Config.LockCooldown = 120 -- recharge après la fin du verrou
-Config.NewPlayerShield = 120 -- protection automatique à l'arrivée
+Config.NewPlayerShield = 45 -- protection automatique à l'arrivée (porte fermée 45 s, comme le verrou)
 
 -- ===== Nuit Hantée =====
 Config.DayDuration = 480 -- 8 min de jour...
@@ -137,7 +136,6 @@ Config.ForceHalloween = false -- mets true pour tester les fantômes Halloween h
 -- (pour tester). Dans le vrai jeu, il affiche "Bientôt".
 Config.GamePasses = {
 	DoubleCoins = 0, -- ID du Game Pass "x2 Pièces"
-	LongLock = 0, -- ID du Game Pass "Verrou+"
 	WeaponHammer = 0, -- ID du Game Pass "Marteau Pouet Géant"
 	WeaponBroom = 0, -- ID du Game Pass "Balai de Sorcière"
 	WeaponVacuum = 0, -- ID du Game Pass "Aspira-Fantôme"
