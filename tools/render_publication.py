@@ -1193,12 +1193,13 @@ def square_images(data, size, ss):
 def main():
     data = json.load(open(sys.argv[1]))
     out = sys.argv[2]
-    only = sys.argv[3] if len(sys.argv) > 3 and not sys.argv[3].startswith("--") else None
+    # filtre facultatif : un ou plusieurs morceaux de nom séparés par des virgules
+    only = sys.argv[3].split(",") if len(sys.argv) > 3 and not sys.argv[3].startswith("--") else None
     fast = "--fast" in sys.argv
     os.makedirs(out, exist_ok=True)
     w, h, ss = (960, 540, 1) if fast else (1920, 1080, 2)
     for name, fn in THUMBS.items():
-        if only and only not in name:
+        if only and not any(part in name for part in only):
             continue
         for lang in ("en", "fr"):
             img = fn(data, lang, w, h, ss)
@@ -1209,7 +1210,7 @@ def main():
                 break
     size = 256 if fast else 512
     for name, fn in square_images(data, size, ss).items():
-        if only and only not in name:
+        if only and not any(part in name for part in only):
             continue
         img = fn()
         path = os.path.join(out, name + ".png")
