@@ -33,6 +33,7 @@ local Sounds = {
 	NightStart = { Id = SWOOSH, Volume = 1, Pitch = 0.4 },
 	NightEnd = { Id = PING, Volume = 0.5, Jingle = { 1, 1.5, 2 } },
 	MonsterCatch = { Id = OOF, Volume = 1, Pitch = 0.6 },
+	Heartbeat = { Id = PING, Volume = 0.5, Jingle = { 0.35, 0.3 } },
 	Rebirth = { Id = PING, Volume = 0.9, Jingle = { 1, 1.26, 1.5, 2, 2.52, 3 } },
 	-- Musique de fond pendant la Nuit Hantée (aucune par défaut).
 	-- Mets ici l'ID d'une musique gratuite du Creator Store (catégorie Audio > Music).

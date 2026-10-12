@@ -23,6 +23,9 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local GhostService = require(Services:WaitForChild("GhostService"))
 local Guard = require(Services:WaitForChild("Guard"))
 local MapBuilder = require(Services:WaitForChild("MapBuilder"))
+local MonetizationService = require(Services:WaitForChild("MonetizationService"))
+local NightService = require(Services:WaitForChild("NightService"))
+local RebirthService = require(Services:WaitForChild("RebirthService"))
 local StealService = require(Services:WaitForChild("StealService"))
 
 -- 1. La map
@@ -35,6 +38,9 @@ BaseService.start()
 EconomyService.start()
 GhostService.start()
 StealService.start()
+NightService.start()
+RebirthService.start()
+MonetizationService.start()
 EconomyService.giveGhostCallback = GhostService.giveGhost
 
 -- 3. Les joueurs
@@ -57,6 +63,8 @@ local function onPlayerAdded(player: Player)
 		return
 	end
 
+	MonetizationService.setup(player) -- Game Passes (x2 pièces, verrou+)
+	RebirthService.setup(player) -- aura des rebirths
 	EconomyService.setup(player)
 
 	-- Premier lancement : un fantôme offert tout de suite

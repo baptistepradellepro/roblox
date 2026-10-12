@@ -31,6 +31,7 @@ local toastCount = 0
 -- Colonnes de boutons (d'autres modules y ajoutent les leurs)
 HUD.rightColumn = nil :: Frame?
 HUD.leftColumn = nil :: Frame?
+HUD.infoRow = nil :: Frame?
 HUD.gui = nil :: ScreenGui?
 
 local function myBase(): Model?
@@ -111,6 +112,28 @@ local carryBanner: TextLabel
 local bonkCooldownUntil = 0
 local shownCoins = 0
 
+-- Petite pastille d'info (ex. minuteur de nuit) dans la ligne sous les pièces
+function HUD.pill(color: Color3, order: number): Frame
+	local pill = UI.new("Frame", {
+		Name = "Pill",
+		Size = UDim2.fromOffset(190, 34),
+		BackgroundColor3 = UI.Colors.Panel,
+		BackgroundTransparency = 0.1,
+		LayoutOrder = order,
+		Visible = false,
+		Parent = HUD.infoRow,
+	}, { UI.corner(17), UI.stroke(color, 2) })
+	UI.label({
+		Name = "Text",
+		Size = UDim2.new(1, -12, 1, -6),
+		Position = UDim2.fromOffset(6, 3),
+		TextColor3 = color,
+		MaxTextSize = 22,
+		Parent = pill,
+	})
+	return pill
+end
+
 local function buildTopBar()
 	local panel = UI.new("Frame", {
 		Name = "Coins",
@@ -146,21 +169,29 @@ local function buildTopBar()
 		MaxTextSize = 24,
 		Parent = panel,
 	})
-	friendLabel = UI.label({
-		Size = UDim2.fromOffset(160, 28),
+	-- Ligne d'infos sous les pièces (minuteur de nuit, bonus amis)
+	HUD.infoRow = UI.new("Frame", {
+		Name = "InfoRow",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 1, 4),
-		Text = "",
-		TextColor3 = UI.Colors.Info,
-		MaxTextSize = 22,
-		Visible = false,
-		Parent = panel,
+		Position = UDim2.new(0.5, 0, 0, 94),
+		Size = UDim2.fromOffset(420, 34),
+		BackgroundTransparency = 1,
+		Parent = gui,
+	}, {
+		UI.new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Padding = UDim.new(0, 8),
+		}),
 	})
+	local friendPill = HUD.pill(UI.Colors.Info, 2)
+	friendLabel = friendPill:FindFirstChild("Text") :: TextLabel
 
 	toastList = UI.new("Frame", {
 		Name = "Toasts",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 124),
+		Position = UDim2.new(0.5, 0, 0, 136),
 		Size = UDim2.fromOffset(540, 160),
 		BackgroundTransparency = 1,
 		Parent = gui,
@@ -258,7 +289,8 @@ local function updateCoins()
 	coinLabel.Text = Format.short(coins)
 	incomeLabel.Text = Lang.t("Income", { coins = Format.short(income) })
 	local friends = player:GetAttribute("FriendBonus") or 0
-	friendLabel.Visible = friends > 0
+	local pill = friendLabel.Parent :: Frame
+	pill.Visible = friends > 0
 	friendLabel.Text = "👥 " .. Lang.t("FriendsBonus", { percent = math.floor(friends * 100 + 0.5) })
 end
 

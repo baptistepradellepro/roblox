@@ -45,6 +45,18 @@ Scénarios à vérifier :
 
 Les joueurs de test de Studio ne sont pas "amis" entre eux, donc le bonus amis (+10 %) ne s'affiche pas ici. Il marchera dans le vrai jeu.
 
+## Tester la Nuit Hantée, le rebirth et le reste
+
+Pour ne pas attendre 8 minutes, mets `Config.DayDuration = 30` pendant les tests (puis remets 480).
+
+- **Nuit Hantée** : 10 secondes avant, une annonce prévient. Le ciel devient violet, un fantôme spécial apparaît sur le chemin (Halloween pendant l'événement, sinon Légendaire) et Gloutrouille sort du portail. Reste dans ta base : il ne peut pas entrer. Sors : il te fonce dessus, les bords de l'écran deviennent rouges et tu entends des battements de cœur. S'il t'attrape, tu retournes chez toi avec 5 % de pièces en moins, et tout le serveur le voit dans une annonce.
+- **Voleur attrapé la nuit** : si tu portes un fantôme volé, Gloutrouille te le fait lâcher. Il préfère d'ailleurs poursuivre les voleurs.
+- **Rebirth** : dans `Config.luau`, mets temporairement `Config.RebirthBaseCost = 1000`. Bouton ♻️ à gauche, puis REBIRTH deux fois (la deuxième pression confirme). Tes pièces et tes fantômes repartent à zéro, tu gardes un Drap Mou, tu gagnes x1,5 sur tes revenus et un 9e socle. Une aura apparaît autour de ton personnage.
+- **Cadeau du jour** : bouton 🎁 à gauche (un point rouge indique qu'il est prêt). Il s'ouvre aussi tout seul à l'arrivée, sauf pendant le tutoriel.
+- **Tutoriel** : avec un compte qui n'a jamais joué (ou après avoir effacé sa sauvegarde), trois flèches jaunes s'enchaînent : "Achète !", "Ta base", "Vole !".
+- **Boutique** : bouton 🛒. Les articles affichent "Bientôt" tant que leurs IDs valent 0 dans `Config.luau`. Les achats Robux ne se testent vraiment qu'une fois le jeu publié (dans Studio, Roblox simule l'achat sans débiter de Robux).
+- **Fantômes Halloween** : ils n'apparaissent que la nuit, entre le 1er octobre et le 3 novembre 2026. Pour les voir hors période, mets `Config.ForceHalloween = true`.
+
 ## Tester la sauvegarde
 
 Il faut avoir publié le jeu et activé l'accès aux API (voir le README).

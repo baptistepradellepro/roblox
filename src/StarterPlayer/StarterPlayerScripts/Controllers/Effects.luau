@@ -236,6 +236,13 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 			Effects.shake(1.2, 0.6)
 		end
 	end,
+	NightStart = function()
+		Effects.sound("NightStart")
+		Effects.shake(0.8, 0.8)
+	end,
+	NightEnd = function()
+		Effects.sound("NightEnd")
+	end,
 	Rebirth = function(data)
 		if data.Position then
 			Effects.confetti(data.Position + Vector3.new(0, 4, 0), 160)

@@ -40,6 +40,7 @@ check(Format.short(-1500) == "-1.5K", "Format négatif -> " .. Format.short(-150
 check(Format.time(75) == "1:15", "Time 75 -> " .. Format.time(75))
 check(Format.time(9) == "9s", "Time 9 -> " .. Format.time(9))
 check(Format.time(-3) == "0s", "Time négatif")
+check(Format.time(3725) == "1:02:05", "Time en heures -> " .. Format.time(3725))
 
 ---------------------------------------------------------------- Raretés
 local Rarities = loadModule(SHARED .. "Rarities.luau")

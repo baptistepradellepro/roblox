@@ -13,6 +13,7 @@ if not player:GetAttribute("Ready") then
 	player:GetAttributeChangedSignal("Ready"):Wait()
 end
 
+-- L'ordre compte : le HUD doit exister avant les modules qui y ajoutent des boutons
 local ORDER = {
 	"Effects",
 	"HUD",
@@ -20,16 +21,18 @@ local ORDER = {
 	"PathView",
 	"BaseView",
 	"CarryView",
+	"NightView",
+	"Panels",
+	"Tutorial",
 }
 
 for _, name in ORDER do
 	local module = require(Controllers:WaitForChild(name)) :: any
 	if module.start then
-		task.spawn(function()
-			local ok, err = pcall(module.start)
-			if not ok then
-				warn("[Client] Erreur au démarrage de " .. name .. " : " .. tostring(err))
-			end
-		end)
+		-- pcall : si un module plante, les autres démarrent quand même
+		local ok, err = pcall(module.start)
+		if not ok then
+			warn("[Client] Erreur au démarrage de " .. name .. " : " .. tostring(err))
+		end
 	end
 end

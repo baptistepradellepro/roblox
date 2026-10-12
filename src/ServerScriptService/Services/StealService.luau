@@ -159,7 +159,8 @@ local function onHoldBegin(player: Player, baseIndex: any, slot: any)
 	if not Guard.isInt(baseIndex, 1, Config.BaseCount) or not Guard.isInt(slot, 1, Config.MaxPedestals) then
 		return
 	end
-	if not Guard.rate(player, "StealBegin", 0.2) then
+	-- limite très courte : un joueur peut relâcher et réappuyer vite sans être bloqué
+	if not Guard.rate(player, "StealBegin", 0.05) then
 		return
 	end
 	holdStarts[player] = { BaseIndex = baseIndex, Slot = slot, Time = os.clock() }

@@ -39,13 +39,15 @@ function Format.short(n: number?): string
 	return (if negative then "-" else "") .. s .. SUFFIXES[i]
 end
 
--- 75 -> "1:15", 9 -> "9s"
+-- 75 -> "1:15", 9 -> "9s", 3725 -> "1:02:05"
 function Format.time(seconds: number): string
 	local s = math.max(0, math.ceil(seconds))
 	if s < 60 then
 		return tostring(s) .. "s"
+	elseif s < 3600 then
+		return string.format("%d:%02d", s // 60, s % 60)
 	end
-	return string.format("%d:%02d", s // 60, s % 60)
+	return string.format("%d:%02d:%02d", s // 3600, (s % 3600) // 60, s % 60)
 end
 
 return Format

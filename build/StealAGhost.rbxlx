@@ -173,13 +173,15 @@ function Format.short(n: number?): string
 	return (if negative then "-" else "") .. s .. SUFFIXES[i]
 end
 
--- 75 -> "1:15", 9 -> "9s"
+-- 75 -> "1:15", 9 -> "9s", 3725 -> "1:02:05"
 function Format.time(seconds: number): string
 	local s = math.max(0, math.ceil(seconds))
 	if s < 60 then
 		return tostring(s) .. "s"
+	elseif s < 3600 then
+		return string.format("%d:%02d", s // 60, s % 60)
 	end
-	return string.format("%d:%02d", s // 60, s % 60)
+	return string.format("%d:%02d:%02d", s // 3600, (s % 3600) // 60, s % 60)
 end
 
 return Format
@@ -1425,6 +1427,7 @@ local Sounds = {
 	NightStart = { Id = SWOOSH, Volume = 1, Pitch = 0.4 },
 	NightEnd = { Id = PING, Volume = 0.5, Jingle = { 1, 1.5, 2 } },
 	MonsterCatch = { Id = OOF, Volume = 1, Pitch = 0.6 },
+	Heartbeat = { Id = PING, Volume = 0.5, Jingle = { 0.35, 0.3 } },
 	Rebirth = { Id = PING, Volume = 0.9, Jingle = { 1, 1.26, 1.5, 2, 2.52, 3 } },
 	-- Musique de fond pendant la Nuit Hantée (aucune par défaut).
 	-- Mets ici l'ID d'une musique gratuite du Creator Store (catégorie Audio > Music).
@@ -1531,6 +1534,7 @@ Strings.fr = {
 	RebirthCost = "Coût : {coins} pièces",
 	RebirthCurrent = "Multiplicateur actuel : x{mult}",
 	RebirthConfirm = "REBIRTH !",
+	RebirthSure = "Sûr ? Re-clique !",
 	RebirthNotEnough = "Il te faut {coins} pièces",
 	RebirthBusy = "Pas pendant un vol !",
 	RebirthDone = "Rebirth réussi ! Revenus x{mult}",
@@ -1644,6 +1648,7 @@ Strings.en = {
 	RebirthCost = "Cost: {coins} coins",
 	RebirthCurrent = "Current multiplier: x{mult}",
 	RebirthConfirm = "REBIRTH!",
+	RebirthSure = "Sure? Tap again!",
 	RebirthNotEnough = "You need {coins} coins",
 	RebirthBusy = "Not during a theft!",
 	RebirthDone = "Rebirth done! Income x{mult}",
@@ -1733,6 +1738,9 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local GhostService = require(Services:WaitForChild("GhostService"))
 local Guard = require(Services:WaitForChild("Guard"))
 local MapBuilder = require(Services:WaitForChild("MapBuilder"))
+local MonetizationService = require(Services:WaitForChild("MonetizationService"))
+local NightService = require(Services:WaitForChild("NightService"))
+local RebirthService = require(Services:WaitForChild("RebirthService"))
 local StealService = require(Services:WaitForChild("StealService"))
 
 -- 1. La map
@@ -1745,6 +1753,9 @@ BaseService.start()
 EconomyService.start()
 GhostService.start()
 StealService.start()
+NightService.start()
+RebirthService.start()
+MonetizationService.start()
 EconomyService.giveGhostCallback = GhostService.giveGhost
 
 -- 3. Les joueurs
@@ -1767,6 +1778,8 @@ local function onPlayerAdded(player: Player)
 		return
 	end
 
+	MonetizationService.setup(player) -- Game Passes (x2 pièces, verrou+)
+	RebirthService.setup(player) -- aura des rebirths
 	EconomyService.setup(player)
 
 	-- Premier lancement : un fantôme offert tout de suite
@@ -3754,6 +3767,474 @@ return MapBuilder
       </Item>
       <Item class="ModuleScript" referent="22">
         <Properties>
+          <string name="Name">MonetizationService</string>
+          <string name="Source"><![CDATA[--[[
+	MonetizationService : Game Passes et Developer Product (optionnels).
+	  - Game Pass "x2 Pièces" : double les revenus
+	  - Game Pass "Verrou+" : verrou de 90 s au lieu de 60 s
+	  - Developer Product "Pack de pièces" : 10 min de revenus (minimum 5 000)
+	Rien de tout ça n'aide à voler : pas de pay-to-win sur le vol.
+
+	Tant que les IDs valent 0 dans Config, tout est désactivé et le jeu marche normalement.
+]]
+
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+
+local AnnounceService = require(script.Parent.AnnounceService)
+local DataService = require(script.Parent.DataService)
+local EconomyService = require(script.Parent.EconomyService)
+
+local MonetizationService = {}
+
+-- Attribut posé sur le joueur pour chaque Game Pass
+local PASS_ATTRIBUTES = {
+	DoubleCoins = "DoubleCoins",
+	LongLock = "LongLock",
+}
+
+local function passIdToAttribute(passId: number): string?
+	for key, id in Config.GamePasses do
+		if id ~= 0 and id == passId then
+			return PASS_ATTRIBUTES[key]
+		end
+	end
+	return nil
+end
+
+-- Vérifie les Game Passes du joueur à son arrivée
+function MonetizationService.setup(player: Player)
+	for key, passId in Config.GamePasses do
+		if passId ~= 0 then
+			local ok, owns = pcall(function()
+				return MarketplaceService:UserOwnsGamePassAsync(player.UserId, passId)
+			end)
+			if ok and owns then
+				player:SetAttribute(PASS_ATTRIBUTES[key], true)
+			end
+		end
+	end
+end
+
+function MonetizationService.coinPackAmount(player: Player): number
+	local perMinute = EconomyService.incomePerSecond(player) * 60
+	return math.max(Config.CoinPackMin, math.floor(perMinute * Config.CoinPackMinutes))
+end
+
+-- Achat d'un Developer Product : Roblox rappelle cette fonction jusqu'à ce qu'on
+-- réponde "PurchaseGranted". On note chaque achat pour ne jamais créditer deux fois.
+local function processReceipt(receipt)
+	local player = Players:GetPlayerByUserId(receipt.PlayerId)
+	local data = player and DataService.get(player)
+	if not player or not data then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	if table.find(data.Receipts, receipt.PurchaseId) then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+	if receipt.ProductId == Config.Products.CoinPack and Config.Products.CoinPack ~= 0 then
+		EconomyService.add(player, MonetizationService.coinPackAmount(player))
+	else
+		warn("[Monetization] Produit inconnu : " .. tostring(receipt.ProductId))
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	table.insert(data.Receipts, receipt.PurchaseId)
+	while #data.Receipts > 50 do
+		table.remove(data.Receipts, 1)
+	end
+	AnnounceService.notify(player, "ShopThanks", nil, "good")
+	AnnounceService.effect("Gift", {}, player)
+	-- on sauvegarde tout de suite ; si ça échoue, Roblox réessaiera plus tard
+	if DataService.save(player, false) then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+	return Enum.ProductPurchaseDecision.NotProcessedYet
+end
+
+function MonetizationService.start()
+	MarketplaceService.ProcessReceipt = processReceipt
+
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
+		if not purchased then
+			return
+		end
+		local attribute = passIdToAttribute(passId)
+		if attribute then
+			player:SetAttribute(attribute, true)
+			EconomyService.refresh(player)
+			AnnounceService.notify(player, "ShopThanks", nil, "good")
+			AnnounceService.effect("Gift", {}, player)
+		end
+	end)
+end
+
+return MonetizationService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="23">
+        <Properties>
+          <string name="Name">NightService</string>
+          <string name="Source"><![CDATA[--[[
+	NightService : la Nuit Hantée.
+	  - toutes les 10 minutes : 8 min de jour, puis 2 min de nuit
+	  - la nuit : plus de fantômes rares sur le chemin, un fantôme spécial garanti,
+	    et Gloutrouille (le monstre) poursuit les joueurs qui sont HORS de leur base
+	  - attrapé : "BOUH !", retour à la base, -5 % de pièces, et on lâche le fantôme volé
+
+	Le serveur calcule la position du monstre (anti-triche) et la publie sur une pièce
+	invisible "GloutrouilleAnchor". Chaque joueur dessine le vrai monstre et le fait glisser
+	en douceur vers cette position.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Format = require(Shared:WaitForChild("Format"))
+local GhostData = require(Shared:WaitForChild("GhostData"))
+
+local AnnounceService = require(script.Parent.AnnounceService)
+local BaseService = require(script.Parent.BaseService)
+local EconomyService = require(script.Parent.EconomyService)
+local GhostService = require(script.Parent.GhostService)
+local Guard = require(script.Parent.Guard)
+local StealService = require(script.Parent.StealService)
+
+local NightService = {}
+
+local HOVER = 5 -- hauteur du monstre au-dessus du sol
+local TICK = 1 / 15
+local CATCH_IMMUNITY = 6 -- secondes de répit après avoir été attrapé
+
+local anchor: BasePart? = nil
+local immuneUntil: { [Player]: number } = {}
+local patrolDir = 1
+
+local function now(): number
+	return workspace:GetServerTimeNow()
+end
+
+local function setState(active: boolean, endsAt: number, nextAt: number)
+	ReplicatedStorage:SetAttribute("NightActive", active)
+	ReplicatedStorage:SetAttribute("NightEndsAt", endsAt)
+	ReplicatedStorage:SetAttribute("NextNightAt", nextAt)
+end
+
+function NightService.isNight(): boolean
+	return ReplicatedStorage:GetAttribute("NightActive") == true
+end
+
+local function flat(v: Vector3): Vector3
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+-- Un point est-il interdit au monstre ? (dans une base, avec une marge)
+local function blocked(position: Vector3): boolean
+	for _, base in BaseService.allBases() do
+		local localPos = base.Origin:PointToObjectSpace(position)
+		if math.abs(localPos.X) < 20 and math.abs(localPos.Z) < 18 then
+			return true
+		end
+	end
+	return false
+end
+
+-- Choisit la proie : le joueur le plus proche hors de sa base (les voleurs attirent plus)
+local function pickTarget(from: Vector3): (Player?, BasePart?)
+	local t = os.clock()
+	local best, bestRoot, bestScore = nil, nil, math.huge
+	for _, player in Players:GetPlayers() do
+		local root = Guard.root(player)
+		if root and (immuneUntil[player] or 0) < t and not BaseService.baseAt(root.Position) then
+			local score = (flat(root.Position) - flat(from)).Magnitude
+			if player:GetAttribute("CarryGhost") then
+				score *= 0.6
+			end
+			if score < bestScore then
+				best, bestRoot, bestScore = player, root, score
+			end
+		end
+	end
+	return best, bestRoot
+end
+
+local function catch(player: Player, root: BasePart)
+	immuneUntil[player] = os.clock() + CATCH_IMMUNITY
+	AnnounceService.effect("MonsterCatch", { Position = root.Position, PlayerId = player.UserId })
+	if StealService.isCarrying(player) then
+		StealService.failCarry(player, "Monster")
+	end
+	local lost = EconomyService.takePercent(player, Config.MonsterCoinPenalty)
+	AnnounceService.notify(player, "MonsterCaughtYou", { coins = Format.short(lost) }, "bad")
+	AnnounceService.announce("AnnCaught", { player = player.DisplayName }, "night")
+	BaseService.teleportHome(player)
+end
+
+local function spawnMonster()
+	if anchor then
+		anchor:Destroy()
+	end
+	local part = Instance.new("Part")
+	part.Name = "GloutrouilleAnchor"
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+	part.Transparency = 1
+	part.Size = Vector3.one
+	-- il sort du portail de départ
+	part.CFrame = CFrame.new(Config.PathStartX, HOVER, Config.PathZ)
+	part.Parent = workspace
+	anchor = part
+end
+
+local function removeMonster()
+	if anchor then
+		anchor:Destroy()
+		anchor = nil
+	end
+end
+
+-- Un pas de déplacement du monstre
+local function stepMonster(dt: number)
+	local part = anchor
+	if not part then
+		return
+	end
+	local pos = part.Position
+	local target, root = pickTarget(pos)
+	local goal: Vector3
+	if target and root then
+		goal = Vector3.new(root.Position.X, HOVER, root.Position.Z)
+		part:SetAttribute("TargetUserId", target.UserId)
+	else
+		-- personne dehors : il patrouille sur le chemin
+		part:SetAttribute("TargetUserId", 0)
+		if pos.X > Config.PathEndX - 20 then
+			patrolDir = -1
+		elseif pos.X < Config.PathStartX + 20 then
+			patrolDir = 1
+		end
+		goal = Vector3.new(pos.X + patrolDir * 30, HOVER, Config.PathZ)
+	end
+
+	local offset = flat(goal - pos)
+	local distance = offset.Magnitude
+	if distance > 0.1 then
+		local stepLength = math.min(distance, Config.MonsterSpeed * dt)
+		local dir = offset.Unit
+		local candidate = pos + dir * stepLength
+		-- il ne rentre jamais dans les bases : il glisse le long des murs
+		if blocked(candidate) then
+			-- on longe le mur à pleine vitesse, du côté de la cible
+			local sideX = if dir.X >= 0 then 1 else -1
+			local sideZ = if dir.Z >= 0 then 1 else -1
+			local alongX = pos + Vector3.new(sideX, 0, 0) * stepLength
+			local alongZ = pos + Vector3.new(0, 0, sideZ) * stepLength
+			if not blocked(alongX) then
+				candidate = alongX
+			elseif not blocked(alongZ) then
+				candidate = alongZ
+			else
+				candidate = pos
+			end
+		end
+		candidate = Vector3.new(math.clamp(candidate.X, -180, 180), HOVER, math.clamp(candidate.Z, -80, 80))
+		part.CFrame = CFrame.lookAt(candidate, candidate + dir)
+	end
+
+	if target and root then
+		local gap = (flat(root.Position) - flat(part.Position)).Magnitude
+		if gap <= Config.MonsterCatchRange + 3 then
+			catch(target, root)
+		end
+	end
+end
+
+local function runNight()
+	local endsAt = now() + Config.NightDuration
+	setState(true, endsAt, endsAt + Config.DayDuration)
+	AnnounceService.announce("NightStart", nil, "night")
+	AnnounceService.effect("NightStart", {})
+
+	-- un fantôme spécial garanti au début de chaque nuit
+	if GhostService.isEventActive() then
+		local list = GhostData.ByRarity.Halloween
+		GhostService.spawn(list[math.random(1, #list)].Id)
+	else
+		local list = GhostData.ByRarity.Legendary
+		GhostService.spawn(list[math.random(1, #list)].Id)
+	end
+
+	spawnMonster()
+	local last = os.clock()
+	while now() < endsAt do
+		task.wait(TICK)
+		local t = os.clock()
+		stepMonster(math.min(t - last, 0.2))
+		last = t
+	end
+	removeMonster()
+	immuneUntil = {}
+end
+
+function NightService.start()
+	setState(false, 0, now() + Config.DayDuration)
+	task.spawn(function()
+		while true do
+			local nextAt = ReplicatedStorage:GetAttribute("NextNightAt") or (now() + Config.DayDuration)
+			-- jour : on attend, avec une alerte juste avant la nuit
+			local warnAt = nextAt - Config.NightWarning
+			if now() < warnAt then
+				task.wait(warnAt - now())
+			end
+			AnnounceService.announce("NightSoon", { time = Format.time(Config.NightWarning) }, "night")
+			if now() < nextAt then
+				task.wait(nextAt - now())
+			end
+			runNight()
+			setState(false, 0, now() + Config.DayDuration)
+			AnnounceService.announce("NightEnd", nil, "info")
+			AnnounceService.effect("NightEnd", {})
+		end
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		immuneUntil[player] = nil
+	end)
+end
+
+return NightService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="24">
+        <Properties>
+          <string name="Name">RebirthService</string>
+          <string name="Source"><![CDATA[--[[
+	RebirthService : recommencer à zéro contre un bonus permanent.
+	  - coût : 1M, puis x3,5 à chaque rebirth (3,5M, 12,25M...)
+	  - on perd les pièces et les fantômes (on garde le fantôme de départ)
+	  - on gagne +50 % de revenus pour toujours, +1 socle, et une aura qui se voit
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Format = require(Shared:WaitForChild("Format"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+
+local AnnounceService = require(script.Parent.AnnounceService)
+local BaseService = require(script.Parent.BaseService)
+local DataService = require(script.Parent.DataService)
+local EconomyService = require(script.Parent.EconomyService)
+local GhostService = require(script.Parent.GhostService)
+local Guard = require(script.Parent.Guard)
+local StealService = require(script.Parent.StealService)
+
+local RebirthService = {}
+
+-- Couleurs de l'aura selon le nombre de rebirths
+local AURA_COLORS = {
+	Color3.fromRGB(120, 255, 200),
+	Color3.fromRGB(90, 170, 255),
+	Color3.fromRGB(190, 110, 255),
+	Color3.fromRGB(255, 200, 50),
+	Color3.fromRGB(255, 70, 140),
+}
+
+function RebirthService.cost(rebirths: number): number
+	return math.floor(Config.RebirthBaseCost * Config.RebirthCostGrowth ^ rebirths)
+end
+
+local function applyAura(player: Player)
+	local data = DataService.get(player)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not data or not root then
+		return
+	end
+	local old = root:FindFirstChild("RebirthAura")
+	if old then
+		old:Destroy()
+	end
+	if data.Rebirths <= 0 then
+		return
+	end
+	local color = AURA_COLORS[math.min(data.Rebirths, #AURA_COLORS)]
+	local aura = Instance.new("ParticleEmitter")
+	aura.Name = "RebirthAura"
+	aura.Color = ColorSequence.new(color)
+	aura.LightEmission = 1
+	aura.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0) })
+	aura.Transparency = NumberSequence.new(0.3, 1)
+	aura.Speed = NumberRange.new(1, 2)
+	aura.SpreadAngle = Vector2.new(180, 180)
+	aura.Lifetime = NumberRange.new(0.8, 1.2)
+	aura.Rate = 3 + math.min(data.Rebirths, 10) * 2
+	aura.Parent = root
+end
+
+local function onRebirth(player: Player)
+	if not Guard.rate(player, "Rebirth", 2) then
+		return
+	end
+	local data = DataService.get(player)
+	local base = BaseService.getBase(player)
+	if not data or not base then
+		return
+	end
+	if StealService.isCarrying(player) or StealService.isBeingStolenFrom(player) then
+		AnnounceService.notify(player, "RebirthBusy", nil, "bad")
+		return
+	end
+	local price = RebirthService.cost(data.Rebirths)
+	if data.Coins < price then
+		AnnounceService.notify(player, "RebirthNotEnough", { coins = Format.short(price) }, "bad")
+		return
+	end
+
+	-- On remet tout à zéro...
+	data.Coins = Config.StartCoins
+	data.Rebirths += 1
+	BaseService.clearAllGhosts(player)
+	-- ...mais on garde un fantôme pour repartir tout de suite
+	GhostService.giveGhost(player, Config.StarterGhost)
+	BaseService.refreshSlots(player)
+	EconomyService.refresh(player)
+	applyAura(player)
+
+	local mult = EconomyService.rebirthMultiplier(data.Rebirths)
+	AnnounceService.notify(player, "RebirthDone", { mult = mult }, "good")
+	AnnounceService.announce("AnnRebirth", { player = player.DisplayName, count = data.Rebirths }, "rebirth")
+	AnnounceService.effect("Rebirth", { Position = base.Origin.Position, PlayerId = player.UserId })
+	task.spawn(DataService.save, player, false)
+end
+
+function RebirthService.setup(player: Player)
+	player.CharacterAdded:Connect(function(character)
+		character:WaitForChild("HumanoidRootPart", 10)
+		applyAura(player)
+	end)
+end
+
+function RebirthService.start()
+	Remotes.get("Rebirth").OnServerEvent:Connect(onRebirth)
+end
+
+return RebirthService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="25">
+        <Properties>
           <string name="Name">StealService</string>
           <string name="Source"><![CDATA[--[[
 	StealService : voler un fantôme dans la base d'un autre joueur.
@@ -3916,7 +4397,8 @@ local function onHoldBegin(player: Player, baseIndex: any, slot: any)
 	if not Guard.isInt(baseIndex, 1, Config.BaseCount) or not Guard.isInt(slot, 1, Config.MaxPedestals) then
 		return
 	end
-	if not Guard.rate(player, "StealBegin", 0.2) then
+	-- limite très courte : un joueur peut relâcher et réappuyer vite sans être bloqué
+	if not Guard.rate(player, "StealBegin", 0.05) then
 		return
 	end
 	holdStarts[player] = { BaseIndex = baseIndex, Slot = slot, Time = os.clock() }
@@ -4141,15 +4623,15 @@ return StealService
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="23">
+  <Item class="StarterPlayer" referent="26">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="24">
+    <Item class="StarterPlayerScripts" referent="27">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="25">
+      <Item class="LocalScript" referent="28">
         <Properties>
           <string name="Name">Client</string>
           <string name="Source"><![CDATA[--[[
@@ -4167,6 +4649,7 @@ if not player:GetAttribute("Ready") then
 	player:GetAttributeChangedSignal("Ready"):Wait()
 end
 
+-- L'ordre compte : le HUD doit exister avant les modules qui y ajoutent des boutons
 local ORDER = {
 	"Effects",
 	"HUD",
@@ -4174,27 +4657,29 @@ local ORDER = {
 	"PathView",
 	"BaseView",
 	"CarryView",
+	"NightView",
+	"Panels",
+	"Tutorial",
 }
 
 for _, name in ORDER do
 	local module = require(Controllers:WaitForChild(name)) :: any
 	if module.start then
-		task.spawn(function()
-			local ok, err = pcall(module.start)
-			if not ok then
-				warn("[Client] Erreur au démarrage de " .. name .. " : " .. tostring(err))
-			end
-		end)
+		-- pcall : si un module plante, les autres démarrent quand même
+		local ok, err = pcall(module.start)
+		if not ok then
+			warn("[Client] Erreur au démarrage de " .. name .. " : " .. tostring(err))
+		end
 	end
 end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="26">
+      <Item class="Folder" referent="29">
         <Properties>
           <string name="Name">Controllers</string>
         </Properties>
-        <Item class="ModuleScript" referent="27">
+        <Item class="ModuleScript" referent="30">
           <Properties>
             <string name="Name">Announce</string>
             <string name="Source"><![CDATA[--[[
@@ -4324,7 +4809,7 @@ return Announce
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="28">
+        <Item class="ModuleScript" referent="31">
           <Properties>
             <string name="Name">BaseView</string>
             <string name="Source"><![CDATA[--[[
@@ -4679,7 +5164,7 @@ return BaseView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="29">
+        <Item class="ModuleScript" referent="32">
           <Properties>
             <string name="Name">CarryView</string>
             <string name="Source"><![CDATA[--[[
@@ -4870,7 +5355,7 @@ return CarryView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="30">
+        <Item class="ModuleScript" referent="33">
           <Properties>
             <string name="Name">Effects</string>
             <string name="Source"><![CDATA[--[[
@@ -5111,6 +5596,13 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 			Effects.shake(1.2, 0.6)
 		end
 	end,
+	NightStart = function()
+		Effects.sound("NightStart")
+		Effects.shake(0.8, 0.8)
+	end,
+	NightEnd = function()
+		Effects.sound("NightEnd")
+	end,
 	Rebirth = function(data)
 		if data.Position then
 			Effects.confetti(data.Position + Vector3.new(0, 4, 0), 160)
@@ -5134,7 +5626,7 @@ return Effects
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="31">
+        <Item class="ModuleScript" referent="34">
           <Properties>
             <string name="Name">HUD</string>
             <string name="Source"><![CDATA[--[[
@@ -5170,6 +5662,7 @@ local toastCount = 0
 -- Colonnes de boutons (d'autres modules y ajoutent les leurs)
 HUD.rightColumn = nil :: Frame?
 HUD.leftColumn = nil :: Frame?
+HUD.infoRow = nil :: Frame?
 HUD.gui = nil :: ScreenGui?
 
 local function myBase(): Model?
@@ -5250,6 +5743,28 @@ local carryBanner: TextLabel
 local bonkCooldownUntil = 0
 local shownCoins = 0
 
+-- Petite pastille d'info (ex. minuteur de nuit) dans la ligne sous les pièces
+function HUD.pill(color: Color3, order: number): Frame
+	local pill = UI.new("Frame", {
+		Name = "Pill",
+		Size = UDim2.fromOffset(190, 34),
+		BackgroundColor3 = UI.Colors.Panel,
+		BackgroundTransparency = 0.1,
+		LayoutOrder = order,
+		Visible = false,
+		Parent = HUD.infoRow,
+	}, { UI.corner(17), UI.stroke(color, 2) })
+	UI.label({
+		Name = "Text",
+		Size = UDim2.new(1, -12, 1, -6),
+		Position = UDim2.fromOffset(6, 3),
+		TextColor3 = color,
+		MaxTextSize = 22,
+		Parent = pill,
+	})
+	return pill
+end
+
 local function buildTopBar()
 	local panel = UI.new("Frame", {
 		Name = "Coins",
@@ -5285,21 +5800,29 @@ local function buildTopBar()
 		MaxTextSize = 24,
 		Parent = panel,
 	})
-	friendLabel = UI.label({
-		Size = UDim2.fromOffset(160, 28),
+	-- Ligne d'infos sous les pièces (minuteur de nuit, bonus amis)
+	HUD.infoRow = UI.new("Frame", {
+		Name = "InfoRow",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 1, 4),
-		Text = "",
-		TextColor3 = UI.Colors.Info,
-		MaxTextSize = 22,
-		Visible = false,
-		Parent = panel,
+		Position = UDim2.new(0.5, 0, 0, 94),
+		Size = UDim2.fromOffset(420, 34),
+		BackgroundTransparency = 1,
+		Parent = gui,
+	}, {
+		UI.new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Padding = UDim.new(0, 8),
+		}),
 	})
+	local friendPill = HUD.pill(UI.Colors.Info, 2)
+	friendLabel = friendPill:FindFirstChild("Text") :: TextLabel
 
 	toastList = UI.new("Frame", {
 		Name = "Toasts",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 124),
+		Position = UDim2.new(0.5, 0, 0, 136),
 		Size = UDim2.fromOffset(540, 160),
 		BackgroundTransparency = 1,
 		Parent = gui,
@@ -5397,7 +5920,8 @@ local function updateCoins()
 	coinLabel.Text = Format.short(coins)
 	incomeLabel.Text = Lang.t("Income", { coins = Format.short(income) })
 	local friends = player:GetAttribute("FriendBonus") or 0
-	friendLabel.Visible = friends > 0
+	local pill = friendLabel.Parent :: Frame
+	pill.Visible = friends > 0
 	friendLabel.Text = "👥 " .. Lang.t("FriendsBonus", { percent = math.floor(friends * 100 + 0.5) })
 end
 
@@ -5519,7 +6043,7 @@ return HUD
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="32">
+        <Item class="ModuleScript" referent="35">
           <Properties>
             <string name="Name">Labels</string>
             <string name="Source"><![CDATA[--[[
@@ -5611,7 +6135,7 @@ return Labels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="33">
+        <Item class="ModuleScript" referent="36">
           <Properties>
             <string name="Name">Lang</string>
             <string name="Source"><![CDATA[--[[
@@ -5690,7 +6214,739 @@ return Lang
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="34">
+        <Item class="ModuleScript" referent="37">
+          <Properties>
+            <string name="Name">NightView</string>
+            <string name="Source"><![CDATA[--[[
+	NightView : l'ambiance de la Nuit Hantée côté joueur.
+	  - le ciel devient violet et sombre (transition douce)
+	  - le minuteur "Nuit dans 5:12" / "Nuit : 1:23" sous les pièces
+	  - Gloutrouille, le monstre : on le dessine et on le fait glisser vers la position
+	    calculée par le serveur
+	  - quand il te poursuit : bords de l'écran rouges + battements de cœur
+]]
+
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Format = require(Shared:WaitForChild("Format"))
+
+local Effects = require(script.Parent.Effects)
+local HUD = require(script.Parent.HUD)
+local Lang = require(script.Parent.Lang)
+local UI = require(script.Parent.UI)
+
+local NightView = {}
+
+local player = Players.LocalPlayer
+
+local NIGHT_LIGHTING = {
+	ClockTime = 22.5,
+	Brightness = 1,
+	Ambient = Color3.fromRGB(90, 60, 140),
+	OutdoorAmbient = Color3.fromRGB(80, 50, 130),
+}
+local NIGHT_ATMOSPHERE = {
+	Density = 0.42,
+	Color = Color3.fromRGB(120, 80, 180),
+	Decay = Color3.fromRGB(60, 30, 100),
+}
+local NIGHT_CC = {
+	TintColor = Color3.fromRGB(215, 195, 255),
+	Saturation = 0.25,
+	Contrast = 0.12,
+}
+
+local dayLighting, dayAtmosphere, dayCC = {}, {}, {}
+local music: Sound? = nil
+local monster: Model? = nil
+local monsterAnchor: BasePart? = nil
+local vignette: Frame
+local timerLabel: TextLabel
+
+local function snapshot(target: Instance?, keys: { [string]: any }, into: { [string]: any })
+	if not target then
+		return
+	end
+	for key in keys do
+		into[key] = (target :: any)[key]
+	end
+end
+
+local function tweenTo(target: Instance?, goals: { [string]: any }, duration: number)
+	if target and next(goals) then
+		TweenService:Create(target, TweenInfo.new(duration, Enum.EasingStyle.Sine), goals):Play()
+	end
+end
+
+local function applyNight(active: boolean, duration: number)
+	local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
+	local cc = Lighting:FindFirstChild("SAG_ColorCorrection")
+	if active then
+		tweenTo(Lighting, NIGHT_LIGHTING, duration)
+		tweenTo(atmosphere, NIGHT_ATMOSPHERE, duration)
+		tweenTo(cc, NIGHT_CC, duration)
+	else
+		tweenTo(Lighting, dayLighting, duration)
+		tweenTo(atmosphere, dayAtmosphere, duration)
+		tweenTo(cc, dayCC, duration)
+	end
+end
+
+---------------------------------------------------------------- Le monstre
+
+local function part(model: Model, shape: Enum.PartType?, size: Vector3, cf: CFrame, color: Color3, extra: { [string]: any }?)
+	local p = Instance.new("Part")
+	if shape then
+		p.Shape = shape
+	end
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = Enum.Material.SmoothPlastic
+	if extra then
+		local writable: any = p
+		for key, value in extra do
+			writable[key] = value
+		end
+	end
+	p.Parent = model
+	return p
+end
+
+-- Gloutrouille : une citrouille en gelée avec des dents en bonbons (l'avant est en -Z)
+local function buildMonster(): Model
+	local model = Instance.new("Model")
+	model.Name = "Gloutrouille"
+	local root = part(model, nil, Vector3.one, CFrame.identity, Color3.new(1, 1, 1), { Transparency = 1, Name = "Root" })
+	model.PrimaryPart = root
+
+	local orange = Color3.fromRGB(255, 125, 25)
+	part(model, Enum.PartType.Ball, Vector3.one * 9, CFrame.identity, orange)
+	part(model, Enum.PartType.Ball, Vector3.one * 10.2, CFrame.identity, Color3.fromRGB(170, 80, 255), {
+		Transparency = 0.65,
+		Material = Enum.Material.Glass,
+	})
+	-- côtes de citrouille
+	for _, x in { -2.6, 2.6 } do
+		part(model, Enum.PartType.Ball, Vector3.one * 7.4, CFrame.new(x, 0, 0.6), orange:Lerp(Color3.new(0, 0, 0), 0.12))
+	end
+	-- yeux qui brillent
+	local glow = Color3.fromRGB(190, 255, 80)
+	for _, x in { -1.7, 1.7 } do
+		part(model, nil, Vector3.new(1.6, 1.6, 0.6), CFrame.new(x, 1.3, -4.2) * CFrame.Angles(0, 0, math.rad(45)), glow, {
+			Material = Enum.Material.Neon,
+		})
+	end
+	-- grande bouche + dents en bonbons
+	part(model, nil, Vector3.new(5.4, 1.6, 0.6), CFrame.new(0, -1.3, -4.1), Color3.fromRGB(40, 10, 45))
+	local candy = { Color3.fromRGB(255, 255, 240), Color3.fromRGB(255, 210, 60), Color3.fromRGB(255, 130, 30) }
+	for i = 0, 4 do
+		part(model, nil, Vector3.new(0.7, 0.8, 0.5), CFrame.new(-2 + i, -0.75, -4.35), candy[i % 3 + 1])
+	end
+	-- tige et petits bras
+	part(model, Enum.PartType.Cylinder, Vector3.new(2, 1, 1), CFrame.new(0, 5.2, 0) * CFrame.Angles(0, 0, math.rad(80)), Color3.fromRGB(70, 140, 40))
+	for _, x in { -5, 5 } do
+		part(model, Enum.PartType.Ball, Vector3.one * 2.4, CFrame.new(x, -1.5, -1), orange, { Name = "Arm" })
+	end
+
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 150, 60)
+	light.Range = 22
+	light.Brightness = 2
+	light.Shadows = false
+	light.Parent = root
+
+	local tag = UI.new("BillboardGui", {
+		Size = UDim2.fromOffset(240, 46),
+		StudsOffsetWorldSpace = Vector3.new(0, 8, 0),
+		AlwaysOnTop = true,
+		LightInfluence = 0,
+		MaxDistance = 400,
+		AutoLocalize = false,
+		Adornee = root,
+		Parent = root,
+	})
+	UI.label({
+		Size = UDim2.fromScale(1, 1),
+		Text = "👹 GLOUTROUILLE",
+		TextColor3 = Color3.fromRGB(255, 120, 60),
+		MaxTextSize = 34,
+		Parent = tag,
+	})
+	return model
+end
+
+local function onAnchorAdded(anchor: Instance)
+	if anchor.Name ~= "GloutrouilleAnchor" or not anchor:IsA("BasePart") then
+		return
+	end
+	if monster then
+		monster:Destroy()
+	end
+	monsterAnchor = anchor
+	local model = buildMonster()
+	model:PivotTo(anchor.CFrame)
+	model.Parent = workspace
+	monster = model
+	Effects.poof(anchor.Position, Color3.fromRGB(255, 140, 30))
+end
+
+local function onAnchorRemoved(anchor: Instance)
+	if anchor == monsterAnchor then
+		if monster then
+			Effects.poof(monster:GetPivot().Position, Color3.fromRGB(170, 80, 255))
+			monster:Destroy()
+		end
+		monster = nil
+		monsterAnchor = nil
+	end
+end
+
+---------------------------------------------------------------- Démarrage
+
+function NightView.start()
+	snapshot(Lighting, NIGHT_LIGHTING, dayLighting)
+	snapshot(Lighting:FindFirstChildOfClass("Atmosphere"), NIGHT_ATMOSPHERE, dayAtmosphere)
+	snapshot(Lighting:FindFirstChild("SAG_ColorCorrection"), NIGHT_CC, dayCC)
+
+	-- Bords rouges quand le monstre te poursuit
+	local vignetteGui = UI.new("ScreenGui", {
+		Name = "SAG_Vignette",
+		IgnoreGuiInset = true,
+		ResetOnSpawn = false,
+		DisplayOrder = -1,
+		Parent = player:WaitForChild("PlayerGui"),
+	})
+	vignette = UI.new("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.fromRGB(255, 0, 40),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Parent = vignetteGui,
+	}, {
+		UI.new("UIGradient", {
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0),
+				NumberSequenceKeypoint.new(0.2, 0.9),
+				NumberSequenceKeypoint.new(0.8, 0.9),
+				NumberSequenceKeypoint.new(1, 0),
+			}),
+		}),
+	})
+
+	local pill = HUD.pill(UI.Colors.Purple, 1)
+	pill.Visible = true
+	timerLabel = pill:FindFirstChild("Text") :: TextLabel
+
+	local function onNightChanged()
+		local active = ReplicatedStorage:GetAttribute("NightActive") == true
+		applyNight(active, 3)
+		if active then
+			music = Effects.music("NightMusic")
+		elseif music then
+			music:Destroy()
+			music = nil
+		end
+	end
+	ReplicatedStorage:GetAttributeChangedSignal("NightActive"):Connect(onNightChanged)
+	if ReplicatedStorage:GetAttribute("NightActive") then
+		applyNight(true, 0.1)
+	end
+
+	workspace.ChildAdded:Connect(onAnchorAdded)
+	workspace.ChildRemoved:Connect(onAnchorRemoved)
+	local existing = workspace:FindFirstChild("GloutrouilleAnchor")
+	if existing then
+		onAnchorAdded(existing)
+	end
+
+	local nextHeartbeat = 0
+	RunService.RenderStepped:Connect(function(dt)
+		local now = workspace:GetServerTimeNow()
+		local t = os.clock()
+
+		-- minuteur
+		if ReplicatedStorage:GetAttribute("NightActive") then
+			timerLabel.Text = "🌙 " .. Lang.t("NightTimer", { time = Format.time((ReplicatedStorage:GetAttribute("NightEndsAt") or now) - now) })
+		else
+			timerLabel.Text = "🌙 " .. Lang.t("DayTimer", { time = Format.time((ReplicatedStorage:GetAttribute("NextNightAt") or now) - now) })
+		end
+
+		-- monstre : il glisse vers la position du serveur, rebondit et agite les bras
+		local chased = false
+		if monster and monsterAnchor then
+			local alpha = 1 - math.exp(-dt * 10)
+			local goal = monsterAnchor.CFrame * CFrame.new(0, math.abs(math.sin(t * 5)) * 1.2, 0)
+			monster:PivotTo(monster:GetPivot():Lerp(goal, alpha))
+			if monsterAnchor:GetAttribute("TargetUserId") == player.UserId then
+				local character = player.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+				chased = root ~= nil and (root.Position - monsterAnchor.Position).Magnitude < 50
+			end
+		end
+		if chased then
+			vignette.BackgroundTransparency = 0.35 + math.abs(math.sin(t * 4)) * 0.4
+			if t >= nextHeartbeat then
+				nextHeartbeat = t + 0.6
+				Effects.sound("Heartbeat")
+			end
+		else
+			vignette.BackgroundTransparency = 1
+		end
+	end)
+end
+
+return NightView
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="38">
+          <Properties>
+            <string name="Name">Panels</string>
+            <string name="Source"><![CDATA[--[[
+	Panels : les fenêtres "Cadeau du jour", "Rebirth" et "Boutique",
+	et leurs gros boutons à gauche de l'écran.
+	Comme partout, l'interface ne fait que DEMANDER : le serveur vérifie et décide.
+]]
+
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Format = require(Shared:WaitForChild("Format"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+
+local Effects = require(script.Parent.Effects)
+local HUD = require(script.Parent.HUD)
+local Lang = require(script.Parent.Lang)
+local UI = require(script.Parent.UI)
+
+local Panels = {}
+
+local player = Players.LocalPlayer
+local gui: ScreenGui
+local openPanel: Frame? = nil
+local dailyInfo = nil
+local refreshers: { () -> () } = {}
+
+local function rebirthCost(rebirths: number): number
+	return math.floor(Config.RebirthBaseCost * Config.RebirthCostGrowth ^ rebirths)
+end
+
+---------------------------------------------------------------- Fenêtre générique
+
+local function close()
+	if openPanel then
+		openPanel.Visible = false
+		openPanel = nil
+	end
+end
+
+local function open(panel: Frame)
+	if openPanel == panel then
+		close()
+		return
+	end
+	close()
+	panel.Visible = true
+	openPanel = panel
+	for _, refresh in refreshers do
+		refresh()
+	end
+	UI.pop(panel)
+end
+
+local function makePanel(name: string, title: string, color: Color3): (Frame, Frame)
+	local panel = UI.new("Frame", {
+		Name = name,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.52),
+		Size = UDim2.fromOffset(600, 430),
+		BackgroundColor3 = UI.Colors.Panel,
+		Visible = false,
+		ZIndex = 10,
+		Parent = gui,
+	}, { UI.corner(26), UI.stroke(color, 5) })
+	UI.label({
+		Size = UDim2.new(1, -120, 0, 56),
+		Position = UDim2.fromOffset(60, 10),
+		Text = title,
+		TextColor3 = color,
+		MaxTextSize = 44,
+		Parent = panel,
+	})
+	local closeButton = UI.new("TextButton", {
+		Name = "Close",
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -12, 0, 12),
+		Size = UDim2.fromOffset(52, 52),
+		BackgroundColor3 = UI.Colors.Bad,
+		Text = "✕",
+		TextScaled = true,
+		Font = UI.Font,
+		TextColor3 = UI.Colors.Text,
+		AutoButtonColor = true,
+		Parent = panel,
+	}, { UI.corner(16), UI.stroke(nil, 3) })
+	closeButton.Activated:Connect(function()
+		Effects.sound("Click")
+		close()
+	end)
+	local body = UI.new("Frame", {
+		Name = "Body",
+		Position = UDim2.fromOffset(20, 76),
+		Size = UDim2.new(1, -40, 1, -96),
+		BackgroundTransparency = 1,
+		Parent = panel,
+	})
+	return panel, body
+end
+
+local function actionButton(parent: Instance, text: string, color: Color3, position: UDim2, size: UDim2): (TextButton, TextLabel)
+	local button = UI.new("TextButton", {
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = position,
+		Size = size,
+		BackgroundColor3 = color,
+		Text = "",
+		AutoButtonColor = true,
+		Parent = parent,
+	}, { UI.corner(18), UI.stroke(nil, 4) })
+	local label = UI.label({
+		Size = UDim2.new(1, -16, 1, -10),
+		Position = UDim2.fromOffset(8, 5),
+		Text = text,
+		MaxTextSize = 36,
+		Parent = button,
+	})
+	return button, label
+end
+
+---------------------------------------------------------------- Cadeau du jour
+
+local function buildDaily(): Frame
+	local panel, body = makePanel("Daily", "🎁 " .. Lang.t("DailyTitle"), UI.Colors.Gold)
+	local grid = UI.new("Frame", {
+		Size = UDim2.new(1, 0, 0, 150),
+		BackgroundTransparency = 1,
+		Parent = body,
+	}, {
+		UI.new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 6),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	local tiles = {}
+	for day = 1, #Config.DailyRewards do
+		local tile = UI.new("Frame", {
+			Size = UDim2.fromOffset(74, 140),
+			BackgroundColor3 = UI.Colors.PanelLight,
+			LayoutOrder = day,
+			Parent = grid,
+		}, { UI.corner(14), UI.stroke(nil, 3) })
+		UI.label({ Name = "Day", Size = UDim2.new(1, -6, 0, 26), Position = UDim2.fromOffset(3, 4), Text = Lang.t("DailyDay", { day = day }), MaxTextSize = 20, Parent = tile })
+		UI.label({ Name = "Icon", Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 30), Text = if Config.DailyRewards[day].RandomGhostRarity then "👻" else "🪙", MaxTextSize = 38, Parent = tile })
+		UI.label({ Name = "Amount", Size = UDim2.new(1, -6, 0, 26), Position = UDim2.fromOffset(3, 76), TextColor3 = UI.Colors.Gold, MaxTextSize = 20, Parent = tile })
+		UI.label({ Name = "Extra", Size = UDim2.new(1, -6, 0, 30), Position = UDim2.fromOffset(3, 104), TextColor3 = UI.Colors.Purple, MaxTextSize = 14, Parent = tile })
+		tiles[day] = tile
+	end
+
+	local claim, claimLabel = actionButton(body, Lang.t("DailyClaim"), UI.Colors.Good, UDim2.new(0.5, 0, 1, -4), UDim2.fromOffset(320, 80))
+	claim.Activated:Connect(function()
+		if dailyInfo and dailyInfo.CanClaim then
+			Effects.sound("Click")
+			Remotes.get("ClaimDaily"):FireServer()
+		end
+	end)
+
+	local function refresh()
+		local info = dailyInfo
+		if not info then
+			return
+		end
+		local income = player:GetAttribute("Income") or 0
+		for day, tile in tiles do
+			local reward = Config.DailyRewards[day]
+			local amount = math.max(reward.Min, math.floor(income * 60 * reward.Minutes))
+			tile.Amount.Text = Format.short(amount)
+			tile.Extra.Text = if reward.RandomGhostRarity then Lang.t("DailyGhostBonus") else ""
+			local stroke = tile:FindFirstChildOfClass("UIStroke")
+			local isToday = day == info.Day
+			local done = day < info.Day or (isToday and not info.CanClaim)
+			tile.BackgroundColor3 = if isToday then Color3.fromRGB(110, 70, 30) elseif done then UI.Colors.Panel else UI.Colors.PanelLight
+			if stroke then
+				stroke.Color = if isToday then UI.Colors.Gold else UI.Colors.Stroke
+			end
+			tile.Icon.Text = if done then "✅" elseif reward.RandomGhostRarity then "👻" else "🪙"
+		end
+		if info.CanClaim then
+			claim.BackgroundColor3 = UI.Colors.Good
+			claimLabel.Text = Lang.t("DailyClaim")
+		else
+			claim.BackgroundColor3 = UI.Colors.Gray
+			local wait = (info.NextAt or 0) - workspace:GetServerTimeNow()
+			claimLabel.Text = Lang.t("DailyNext", { time = Format.time(wait) })
+		end
+	end
+	table.insert(refreshers, refresh)
+	return panel
+end
+
+---------------------------------------------------------------- Rebirth
+
+local function buildRebirth(): Frame
+	local color = Color3.fromRGB(120, 255, 200)
+	local panel, body = makePanel("Rebirth", "♻️ " .. Lang.t("RebirthTitle"), color)
+	UI.label({ Size = UDim2.new(1, 0, 0, 34), Text = Lang.t("RebirthDesc"), MaxTextSize = 24, Parent = body })
+	local gain = UI.label({ Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 40), TextColor3 = color, MaxTextSize = 34, Parent = body })
+	local current = UI.label({ Size = UDim2.new(1, 0, 0, 28), Position = UDim2.fromOffset(0, 90), TextColor3 = UI.Colors.Info, MaxTextSize = 22, Parent = body })
+	local cost = UI.label({ Size = UDim2.new(1, 0, 0, 30), Position = UDim2.fromOffset(0, 124), TextColor3 = UI.Colors.Gold, MaxTextSize = 26, Parent = body })
+
+	local bar = UI.new("Frame", {
+		Position = UDim2.fromOffset(40, 164),
+		Size = UDim2.new(1, -80, 0, 22),
+		BackgroundColor3 = UI.Colors.Stroke,
+		Parent = body,
+	}, { UI.corner(11) })
+	local fill = UI.new("Frame", {
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = color,
+		Parent = bar,
+	}, { UI.corner(11) })
+
+	local button, buttonLabel = actionButton(body, Lang.t("RebirthConfirm"), color, UDim2.new(0.5, 0, 1, -4), UDim2.fromOffset(320, 80))
+	local armedUntil = 0
+	button.Activated:Connect(function()
+		local rebirths = player:GetAttribute("Rebirths") or 0
+		if (player:GetAttribute("Coins") or 0) < rebirthCost(rebirths) then
+			Effects.sound("Error")
+			return
+		end
+		-- double clic obligatoire : on ne perd pas tout par accident
+		if os.clock() > armedUntil then
+			armedUntil = os.clock() + 3
+			buttonLabel.Text = Lang.t("RebirthSure")
+			Effects.sound("Click")
+			return
+		end
+		armedUntil = 0
+		Remotes.get("Rebirth"):FireServer()
+		close()
+	end)
+
+	local function refresh()
+		local rebirths = player:GetAttribute("Rebirths") or 0
+		local coins = player:GetAttribute("Coins") or 0
+		local price = rebirthCost(rebirths)
+		gain.Text = Lang.t("RebirthGain", { percent = math.floor(Config.RebirthIncomeBonus * 100) })
+		current.Text = Lang.t("RebirthCurrent", { mult = 1 + rebirths * Config.RebirthIncomeBonus })
+		cost.Text = Lang.t("RebirthCost", { coins = Format.short(price) })
+		fill.Size = UDim2.fromScale(math.clamp(coins / price, 0, 1), 1)
+		local ready = coins >= price
+		button.BackgroundColor3 = if ready then color else UI.Colors.Gray
+		if os.clock() > armedUntil then
+			buttonLabel.Text = if ready then Lang.t("RebirthConfirm") else Lang.t("RebirthNotEnough", { coins = Format.short(price) })
+		end
+	end
+	table.insert(refreshers, refresh)
+	return panel
+end
+
+---------------------------------------------------------------- Boutique
+
+local function buildShop(): Frame
+	local panel, body = makePanel("Shop", "🛒 " .. Lang.t("ShopTitle"), UI.Colors.Orange)
+	local list = UI.new("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Parent = body,
+	}, {
+		UI.new("UIListLayout", {
+			Padding = UDim.new(0, 10),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+
+	local items = {
+		{ Key = "DoubleCoins", Icon = "💰", Title = "ShopDouble", Desc = "ShopDoubleDesc", Id = Config.GamePasses.DoubleCoins, Pass = true, Attribute = "DoubleCoins" },
+		{ Key = "LongLock", Icon = "🔒", Title = "ShopLock", Desc = "ShopLockDesc", Id = Config.GamePasses.LongLock, Pass = true, Attribute = "LongLock" },
+		{ Key = "CoinPack", Icon = "🪙", Title = "ShopCoins", Desc = "ShopCoinsDesc", Id = Config.Products.CoinPack, Pass = false },
+	}
+
+	local updaters = {}
+	for order, item in items do
+		local card = UI.new("Frame", {
+			Size = UDim2.new(1, 0, 0, 96),
+			BackgroundColor3 = UI.Colors.PanelLight,
+			LayoutOrder = order,
+			Parent = list,
+		}, { UI.corner(16), UI.stroke(nil, 3) })
+		UI.label({ Size = UDim2.fromOffset(70, 70), Position = UDim2.fromOffset(10, 13), Text = item.Icon, MaxTextSize = 54, Parent = card })
+		UI.label({ Size = UDim2.new(1, -280, 0, 38), Position = UDim2.fromOffset(90, 10), Text = Lang.t(item.Title), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 30, Parent = card })
+		local desc = UI.label({ Size = UDim2.new(1, -280, 0, 34), Position = UDim2.fromOffset(90, 50), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = card })
+		local buy = UI.new("TextButton", {
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -12, 0.5, 0),
+			Size = UDim2.fromOffset(170, 70),
+			BackgroundColor3 = UI.Colors.Good,
+			Text = "",
+			Parent = card,
+		}, { UI.corner(16), UI.stroke(nil, 3) })
+		local price = UI.label({ Size = UDim2.new(1, -12, 1, -10), Position = UDim2.fromOffset(6, 5), Text = "R$ ...", MaxTextSize = 30, Parent = buy })
+
+		local robux: number? = nil
+		if item.Id ~= 0 then
+			task.spawn(function()
+				local ok, info = pcall(function()
+					return MarketplaceService:GetProductInfo(item.Id, if item.Pass then Enum.InfoType.GamePass else Enum.InfoType.Product)
+				end)
+				if ok and info then
+					robux = info.PriceInRobux
+				end
+			end)
+		end
+
+		buy.Activated:Connect(function()
+			if item.Id == 0 or (item.Attribute and player:GetAttribute(item.Attribute)) then
+				return
+			end
+			Effects.sound("Click")
+			if item.Pass then
+				MarketplaceService:PromptGamePassPurchase(player, item.Id)
+			else
+				MarketplaceService:PromptProductPurchase(player, item.Id)
+			end
+		end)
+
+		table.insert(updaters, function()
+			if item.Key == "CoinPack" then
+				local income = player:GetAttribute("Income") or 0
+				local amount = math.max(Config.CoinPackMin, math.floor(income * 60 * Config.CoinPackMinutes))
+				desc.Text = Lang.t("ShopCoinsDesc", { coins = Format.short(amount) })
+			else
+				desc.Text = Lang.t(item.Desc)
+			end
+			if item.Id == 0 then
+				buy.BackgroundColor3 = UI.Colors.Gray
+				price.Text = Lang.t("ShopSoon")
+			elseif item.Attribute and player:GetAttribute(item.Attribute) then
+				buy.BackgroundColor3 = UI.Colors.Gray
+				price.Text = "✅ " .. Lang.t("ShopOwned")
+			else
+				buy.BackgroundColor3 = UI.Colors.Good
+				price.Text = if robux then "R$ " .. robux else "R$"
+			end
+		end)
+	end
+
+	table.insert(refreshers, function()
+		for _, update in updaters do
+			update()
+		end
+	end)
+	return panel
+end
+
+---------------------------------------------------------------- Démarrage
+
+function Panels.openDaily()
+	local panel = gui and gui:FindFirstChild("Daily") :: Frame?
+	if panel and openPanel ~= panel then
+		open(panel)
+	end
+end
+
+function Panels.start()
+	gui = UI.screen("SAG_Panels", 3)
+	local daily = buildDaily()
+	local rebirth = buildRebirth()
+	local shop = buildShop()
+
+	local column = HUD.leftColumn
+	local giftButton = UI.bigButton({ Name = "Gift", Icon = "🎁", Text = Lang.t("Daily"), Color = UI.Colors.Gold, Size = 92, LayoutOrder = 1, Parent = column })
+	local rebirthButton = UI.bigButton({ Name = "Rebirth", Icon = "♻️", Text = Lang.t("Rebirth"), Color = Color3.fromRGB(60, 190, 150), Size = 92, LayoutOrder = 2, Parent = column })
+	local shopButton = UI.bigButton({ Name = "Shop", Icon = "🛒", Text = Lang.t("Shop"), Color = UI.Colors.Orange, Size = 92, LayoutOrder = 3, Parent = column })
+
+	-- Pastille "!" sur le cadeau quand il est prêt
+	local dot = UI.label({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(1, -6, 0, 6),
+		Size = UDim2.fromOffset(34, 34),
+		BackgroundTransparency = 0,
+		BackgroundColor3 = UI.Colors.Bad,
+		Text = "!",
+		MaxTextSize = 28,
+		Visible = false,
+		Parent = giftButton,
+	})
+	UI.corner(17).Parent = dot
+
+	giftButton.Activated:Connect(function()
+		Effects.sound("Click")
+		open(daily)
+	end)
+	rebirthButton.Activated:Connect(function()
+		Effects.sound("Click")
+		open(rebirth)
+	end)
+	shopButton.Activated:Connect(function()
+		Effects.sound("Click")
+		open(shop)
+	end)
+
+	local function maybeAutoOpen()
+		if dailyInfo and dailyInfo.CanClaim and player:GetAttribute("TutorialDone") then
+			task.delay(2, Panels.openDaily)
+		end
+	end
+	Remotes.get("DailyInfo").OnClientEvent:Connect(function(info)
+		local first = dailyInfo == nil
+		dailyInfo = info
+		dot.Visible = info.CanClaim
+		if first then
+			maybeAutoOpen()
+		end
+		for _, refresh in refreshers do
+			refresh()
+		end
+	end)
+	player:GetAttributeChangedSignal("TutorialDone"):Connect(maybeAutoOpen)
+
+	-- Rafraîchit la fenêtre ouverte (prix, compte à rebours)
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(dt)
+		accumulator += dt
+		if openPanel and accumulator >= 0.5 then
+			accumulator = 0
+			for _, refresh in refreshers do
+				refresh()
+			end
+		end
+	end)
+end
+
+return Panels
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="39">
           <Properties>
             <string name="Name">PathView</string>
             <string name="Source"><![CDATA[--[[
@@ -5856,7 +7112,246 @@ return PathView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="35">
+        <Item class="ModuleScript" referent="40">
+          <Properties>
+            <string name="Name">Tutorial</string>
+            <string name="Source"><![CDATA[--[[
+	Tutorial : le tutoriel des nouveaux joueurs, en 3 flèches et presque sans texte.
+	  1. "Achète !"  -> flèche sur un fantôme du chemin (fini quand on a acheté)
+	  2. "Ta base"   -> flèche sur sa base (fini quand on y est entré)
+	  3. "Vole !"    -> flèche sur la base d'un autre joueur (fini quand on vole, ou après 25 s)
+	Une ligne jaune relie le joueur à la flèche. À la fin, le serveur note que c'est fait.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Remotes = require(Shared:WaitForChild("Remotes"))
+
+local Effects = require(script.Parent.Effects)
+local Lang = require(script.Parent.Lang)
+local PathView = require(script.Parent.PathView)
+local UI = require(script.Parent.UI)
+
+local Tutorial = {}
+
+local player = Players.LocalPlayer
+
+local marker: Part
+local arrowGui: BillboardGui
+local arrowText: TextLabel
+local beam: Beam
+local playerAttachment: Attachment?
+
+local function root(): BasePart?
+	local character = player.Character
+	return character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+local function basesFolder(): Instance?
+	local map = workspace:FindFirstChild("Map")
+	return map and map:FindFirstChild("Bases")
+end
+
+local function myBase(): Model?
+	local folder = basesFolder()
+	local index = player:GetAttribute("BaseIndex")
+	return folder and index and folder:FindFirstChild("Base_" .. index) :: Model?
+end
+
+local function insideBase(base: Model, position: Vector3): boolean
+	local origin = base:GetAttribute("Origin") :: CFrame
+	local localPos = origin:PointToObjectSpace(position)
+	return math.abs(localPos.X) < 18 and math.abs(localPos.Z) < 16
+end
+
+-- La base d'un autre joueur la plus proche, qui a au moins un fantôme
+local function nearestOtherBase(position: Vector3): Model?
+	local folder = basesFolder()
+	if not folder then
+		return nil
+	end
+	local best, bestDist = nil, math.huge
+	for _, base in folder:GetChildren() do
+		local owner = base:GetAttribute("OwnerUserId") or 0
+		if owner ~= 0 and owner ~= player.UserId then
+			local hasGhost = false
+			for _, ped in base.Pedestals:GetChildren() do
+				if (ped:GetAttribute("GhostId") or "") ~= "" then
+					hasGhost = true
+					break
+				end
+			end
+			local origin = base:GetAttribute("Origin") :: CFrame
+			local dist = (origin.Position - position).Magnitude
+			if hasGhost and dist < bestDist then
+				best, bestDist = base, dist
+			end
+		end
+	end
+	return best
+end
+
+local function buildMarker()
+	marker = Instance.new("Part")
+	marker.Name = "TutorialMarker"
+	marker.Anchored = true
+	marker.CanCollide = false
+	marker.CanQuery = false
+	marker.CanTouch = false
+	marker.Transparency = 1
+	marker.Size = Vector3.one
+	marker.Parent = workspace
+
+	arrowGui = UI.new("BillboardGui", {
+		Size = UDim2.fromOffset(180, 150),
+		AlwaysOnTop = true,
+		LightInfluence = 0,
+		AutoLocalize = Lang.autoLocalize,
+		Adornee = marker,
+		Parent = marker,
+	})
+	arrowText = UI.label({
+		Size = UDim2.new(1, 0, 0, 50),
+		TextColor3 = UI.Colors.Gold,
+		MaxTextSize = 40,
+		Parent = arrowGui,
+	})
+	UI.label({
+		Size = UDim2.new(1, 0, 0, 100),
+		Position = UDim2.fromOffset(0, 50),
+		Text = "⬇️",
+		MaxTextSize = 90,
+		Parent = arrowGui,
+	})
+
+	local targetAttachment = Instance.new("Attachment")
+	targetAttachment.Parent = marker
+	beam = Instance.new("Beam")
+	beam.Attachment1 = targetAttachment
+	beam.Color = ColorSequence.new(UI.Colors.Gold)
+	beam.Width0 = 0.6
+	beam.Width1 = 0.6
+	beam.FaceCamera = true
+	beam.LightEmission = 1
+	beam.Transparency = NumberSequence.new(0.25)
+	beam.Segments = 1
+	beam.Parent = marker
+end
+
+local function attachBeamToPlayer()
+	local r = root()
+	if r and (not playerAttachment or playerAttachment.Parent ~= r) then
+		local attachment = Instance.new("Attachment")
+		attachment.Name = "TutorialAttachment"
+		attachment.Parent = r
+		playerAttachment = attachment
+		beam.Attachment0 = attachment
+	end
+end
+
+local function cleanup()
+	if marker then
+		marker:Destroy()
+	end
+	if playerAttachment then
+		playerAttachment:Destroy()
+	end
+end
+
+function Tutorial.start()
+	if player:GetAttribute("TutorialDone") then
+		return
+	end
+	buildMarker()
+	local step = 1
+	local stepStarted = os.clock()
+	local finished = false
+	local connection: RBXScriptConnection
+
+	local function nextStep()
+		step += 1
+		stepStarted = os.clock()
+		Effects.sound("Gift")
+	end
+
+	local function finish()
+		if finished then
+			return
+		end
+		finished = true
+		connection:Disconnect()
+		cleanup()
+		Remotes.get("TutorialDone"):FireServer()
+	end
+
+	connection = RunService.RenderStepped:Connect(function()
+		local r = root()
+		if not r then
+			return
+		end
+		attachBeamToPlayer()
+		local t = os.clock()
+		local targetPosition: Vector3? = nil
+
+		if step == 1 then
+			arrowText.Text = "🛒 " .. Lang.t("Tuto1")
+			local ghost = PathView.closest(r.Position)
+			if ghost and ghost.PrimaryPart then
+				targetPosition = ghost.PrimaryPart.Position + Vector3.new(0, 4, 0)
+			end
+			if player:GetAttribute("HasBought") then
+				nextStep()
+			end
+		elseif step == 2 then
+			arrowText.Text = "🏠 " .. Lang.t("Tuto2")
+			local base = myBase()
+			if base then
+				local mat = base:FindFirstChild("Mat") :: BasePart?
+				targetPosition = if mat then mat.Position + Vector3.new(0, 4, 0) else nil
+				if insideBase(base, r.Position) or t - stepStarted > 20 then
+					nextStep()
+				end
+			else
+				nextStep()
+			end
+		elseif step == 3 then
+			arrowText.Text = "🦹 " .. Lang.t("Tuto3")
+			local other = nearestOtherBase(r.Position)
+			local mat = other and other:FindFirstChild("Mat") :: BasePart?
+			if mat then
+				targetPosition = mat.Position + Vector3.new(0, 4, 0)
+			end
+			if not other or player:GetAttribute("CarryGhost") or t - stepStarted > 25 then
+				finish()
+				return
+			end
+		end
+
+		if targetPosition then
+			marker.CFrame = CFrame.new(targetPosition + Vector3.new(0, 3 + math.abs(math.sin(t * 4)) * 1.5, 0))
+			arrowGui.Enabled = true
+			beam.Enabled = true
+		else
+			arrowGui.Enabled = false
+			beam.Enabled = false
+		end
+	end)
+
+	player:GetAttributeChangedSignal("TutorialDone"):Connect(function()
+		if player:GetAttribute("TutorialDone") then
+			finish()
+		end
+	end)
+end
+
+return Tutorial
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="41">
           <Properties>
             <string name="Name">UI</string>
             <string name="Source"><![CDATA[--[[
@@ -6048,13 +7543,13 @@ return UI
       </Item>
     </Item>
   </Item>
-  <Item class="TextChatService" referent="36">
+  <Item class="TextChatService" referent="42">
     <Properties>
       <string name="Name">TextChatService</string>
       <token name="ChatVersion">1</token>
     </Properties>
   </Item>
-  <Item class="Workspace" referent="37">
+  <Item class="Workspace" referent="43">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>
