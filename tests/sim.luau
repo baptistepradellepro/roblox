@@ -399,13 +399,32 @@ for _, d in barrierModel:GetChildren() do
 	end
 end
 check(bars >= 5, "barreaux rouges et blancs (" .. bars .. ")")
+local PhysicsService = Fake.game:GetService("PhysicsService")
+local aliceIndex = BaseService.getBase(alice).Index
+local gateName, ownerName = "Gate" .. aliceIndex, "Owner" .. aliceIndex
+check(barrierModel.Collider.CollisionGroup == gateName, "la barrière a son groupe de collision")
+check(alice.Character.HumanoidRootPart.CollisionGroup == ownerName, "Alice est dans le groupe du propriétaire")
+check(not PhysicsService:CollisionGroupsAreCollidable(gateName, ownerName), "Alice traverse sa barrière (géré par le serveur)")
+local bobGroup = bob.Character.HumanoidRootPart.CollisionGroup
+check(bobGroup == "Owner" .. BaseService.getBase(bob).Index, "Bob est dans le groupe de sa propre base")
+check(PhysicsService:CollisionGroupsAreCollidable(gateName, bobGroup), "la barrière d'Alice bloque Bob")
+check(PhysicsService:CollisionGroupsAreCollidable(gateName, "Default"), "et les joueurs sans base")
+check(PhysicsService:CollisionGroupsAreCollidable("Gate" .. BaseService.getBase(bob).Index, ownerName), "Alice ne traverse pas la barrière de Bob")
+local hat = Fake.Instance.new("Part")
+hat.Name = "Handle"
+hat.Parent = alice.Character
+check(hat.CollisionGroup == ownerName, "un accessoire ajouté après suit le même groupe")
+hat:Destroy()
+check(Config.LockDuration == 45, "le verrou dure 45 s")
 Sched.advance(0.5)
 check(not BaseService.isInside(BaseService.getBase(alice), Fake.position(bob)), "Bob est renvoyé dehors")
 m = mark()
 steal(bob, alice, slot)
 check(notified(bob, "BaseIsLocked", m), "vol impossible pendant le verrou")
-Sched.advance(Config.LockDuration + 1)
-check(BaseService.getBase(alice).Model:FindFirstChild("Barrier") == nil, "la barrière disparaît après 60 s")
+Sched.advance(Config.LockDuration - 3)
+check(BaseService.getBase(alice).Model:FindFirstChild("Barrier") ~= nil, "la barrière tient presque jusqu'au bout")
+Sched.advance(4)
+check(BaseService.getBase(alice).Model:FindFirstChild("Barrier") == nil, "la barrière disparaît après 45 s")
 m = mark()
 Fake.fire(alice, "RequestLock")
 check(notified(alice, "LockNotReady", m), "le verrou recharge")

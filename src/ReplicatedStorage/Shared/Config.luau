@@ -51,8 +51,8 @@ Config.BonkCooldown = 3
 Config.BonkStunTime = 1.5
 
 -- ===== Verrou de base =====
-Config.LockDuration = 60
-Config.LockDurationPass = 90 -- avec le Game Pass "Verrou+"
+Config.LockDuration = 45
+Config.LockDurationPass = 75 -- avec le Game Pass "Verrou+"
 Config.LockCooldown = 120 -- recharge après la fin du verrou
 Config.NewPlayerShield = 120 -- protection automatique à l'arrivée
 

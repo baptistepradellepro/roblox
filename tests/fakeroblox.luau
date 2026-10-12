@@ -256,6 +256,18 @@ local function setParent(inst, parent)
 	if parent then
 		table.insert(parent.__children, inst)
 		parent.ChildAdded:Fire(inst)
+		-- DescendantAdded sur chaque ancêtre qui l'écoute, pour l'objet et ses descendants
+		local ancestor = parent
+		while ancestor do
+			local sig = ancestor.__signals.DescendantAdded
+			if sig then
+				sig:Fire(inst)
+				for _, d in inst:GetDescendants() do
+					sig:Fire(d)
+				end
+			end
+			ancestor = ancestor.__props.Parent
+		end
 	end
 	local sig = inst.__propSignals.Parent
 	if sig then
@@ -668,6 +680,34 @@ ClassMethods.MarketplaceService = {
 	end,
 	PromptProductPurchase = function(_, player, id)
 		table.insert(Fake.purchasePrompts, { kind = "product", player = player, id = id })
+	end,
+}
+
+-- Groupes de collision (Roblox en accepte 32 au maximum, "Default" compris)
+Fake.collisionGroups = { Default = true }
+Fake.collisionGroupCount = 1
+Fake.nonCollidable = {}
+local function groupPair(a: string, b: string): string
+	return if a < b then a .. "|" .. b else b .. "|" .. a
+end
+ClassMethods.PhysicsService = {
+	RegisterCollisionGroup = function(_, name)
+		assert(type(name) == "string" and #name > 0, "nom de groupe invalide")
+		if not Fake.collisionGroups[name] then
+			assert(Fake.collisionGroupCount < 32, "trop de groupes de collision (32 maximum)")
+			Fake.collisionGroups[name] = true
+			Fake.collisionGroupCount += 1
+		end
+	end,
+	IsCollisionGroupRegistered = function(_, name)
+		return Fake.collisionGroups[name] == true
+	end,
+	CollisionGroupSetCollidable = function(_, a, b, collidable)
+		assert(Fake.collisionGroups[a] and Fake.collisionGroups[b], "groupe de collision inconnu : " .. tostring(a) .. "/" .. tostring(b))
+		Fake.nonCollidable[groupPair(a, b)] = if collidable then nil else true
+	end,
+	CollisionGroupsAreCollidable = function(_, a, b)
+		return not Fake.nonCollidable[groupPair(a, b)]
 	end,
 }
 

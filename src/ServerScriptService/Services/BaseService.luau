@@ -3,13 +3,15 @@
 	  - donne une base libre à chaque joueur qui arrive
 	  - gère les socles (quel fantôme est posé où) et l'étage 2 achetable
 	  - l'ascenseur entre le rez-de-chaussée et l'étage
-	  - gère le verrou (60 s, recharge 2 min) et le bouclier débutant
+	  - gère le verrou (45 s, recharge 2 min) et le bouclier débutant
+	  - la barrière du verrou bloque tout le monde sauf le propriétaire (groupes de collision)
 	  - fait apparaître le joueur dans sa base
 
 	Le serveur écrit l'état dans des "attributs" (sur les modèles de base et les socles),
 	et chaque joueur affiche les fantômes de son côté. Le client ne décide jamais rien.
 ]]
 
+local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -51,6 +53,56 @@ local function now(): number
 	return workspace:GetServerTimeNow()
 end
 
+-- Groupes de collision : la barrière de la base N ("GateN") ne bloque pas le personnage
+-- de son propriétaire ("OwnerN"), mais bloque tous les autres. C'est le serveur qui décide,
+-- donc ça marche même si le joueur a un écran lent à charger.
+local collisionGroupsReady = false
+
+local function gateGroup(index: number): string
+	return "Gate" .. index
+end
+
+local function ownerGroup(index: number): string
+	return "Owner" .. index
+end
+
+local function setupCollisionGroups()
+	local ok, err = pcall(function()
+		for index in bases do
+			for _, name in { gateGroup(index), ownerGroup(index) } do
+				if not PhysicsService:IsCollisionGroupRegistered(name) then
+					PhysicsService:RegisterCollisionGroup(name)
+				end
+			end
+			PhysicsService:CollisionGroupSetCollidable(gateGroup(index), ownerGroup(index), false)
+		end
+	end)
+	collisionGroupsReady = ok
+	if not ok then
+		warn("[BaseService] Groupes de collision indisponibles : " .. tostring(err))
+	end
+end
+
+-- Range toutes les pièces du personnage dans le groupe du propriétaire de la base
+local function applyOwnerGroup(player: Player, character: Model)
+	local base = byPlayer[player]
+	if not collisionGroupsReady or not base then
+		return
+	end
+	local group = ownerGroup(base.Index)
+	for _, d in character:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.CollisionGroup = group
+		end
+	end
+	-- les accessoires et le fantôme porté arrivent parfois après
+	character.DescendantAdded:Connect(function(d)
+		if d:IsA("BasePart") then
+			d.CollisionGroup = group
+		end
+	end)
+end
+
 function BaseService.init(map: Model)
 	local folder = map:WaitForChild("Bases")
 	for _, model in folder:GetChildren() do
@@ -74,6 +126,7 @@ function BaseService.init(map: Model)
 			}
 		end
 	end
+	setupCollisionGroups()
 end
 
 function BaseService.getBase(player: Player): Base?
@@ -330,6 +383,9 @@ local function setBarrier(base: Base, on: boolean)
 		local collider = makeBarrierPart(barrier, wallSize, front * CFrame.new(0, MapBuilder.WALL_HEIGHT / 2, 0), WHITE, false, "Collider")
 		collider.Transparency = 1
 		collider.CanCollide = true
+		if collisionGroupsReady then
+			collider.CollisionGroup = gateGroup(base.Index)
+		end
 		barrier.PrimaryPart = collider
 		for i = 0, 6 do
 			local red = i % 2 == 0
@@ -430,6 +486,7 @@ function BaseService.spawnCharacter(player: Player)
 end
 
 local function onCharacterAdded(player: Player, character: Model)
+	applyOwnerGroup(player, character)
 	local humanoid = character:WaitForChild("Humanoid", 10) :: Humanoid?
 	if not humanoid then
 		return

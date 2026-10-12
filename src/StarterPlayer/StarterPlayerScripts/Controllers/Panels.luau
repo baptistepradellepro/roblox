@@ -330,7 +330,7 @@ local function buildShop(): Frame
 				local amount = math.max(Config.CoinPackMin, math.floor(income * 60 * Config.CoinPackMinutes))
 				desc.Text = Lang.t("ShopCoinsDesc", { coins = Format.short(amount) })
 			else
-				desc.Text = Lang.t(item.Desc)
+				desc.Text = Lang.t(item.Desc, { long = Config.LockDurationPass, normal = Config.LockDuration })
 			end
 			if item.Id == 0 then
 				buy.BackgroundColor3 = UI.Colors.Gray

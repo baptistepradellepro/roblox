@@ -1,7 +1,7 @@
 --[[
 	MonetizationService : Game Passes et Developer Product (optionnels).
 	  - Game Pass "x2 Pièces" : double les revenus
-	  - Game Pass "Verrou+" : verrou de 90 s au lieu de 60 s
+	  - Game Pass "Verrou+" : verrou plus long (Config.LockDurationPass au lieu de Config.LockDuration)
 	  - Developer Product "Pack de pièces" : 10 min de revenus (minimum 5 000)
 	Rien de tout ça n'aide à voler : pas de pay-to-win sur le vol.
 

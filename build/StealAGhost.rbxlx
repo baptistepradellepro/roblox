@@ -75,8 +75,8 @@ Config.BonkCooldown = 3
 Config.BonkStunTime = 1.5
 
 -- ===== Verrou de base =====
-Config.LockDuration = 60
-Config.LockDurationPass = 90 -- avec le Game Pass "Verrou+"
+Config.LockDuration = 45
+Config.LockDurationPass = 75 -- avec le Game Pass "Verrou+"
 Config.LockCooldown = 120 -- recharge après la fin du verrou
 Config.NewPlayerShield = 120 -- protection automatique à l'arrivée
 
@@ -1898,7 +1898,7 @@ Strings.fr = {
 	ShopDouble = "x2 Pièces",
 	ShopDoubleDesc = "Double tous tes revenus, pour toujours",
 	ShopLock = "Verrou+",
-	ShopLockDesc = "Verrou de 90 s au lieu de 60 s",
+	ShopLockDesc = "Verrou de {long} s au lieu de {normal} s",
 	ShopCoins = "Pack de pièces",
 	ShopCoinsDesc = "+{coins} pièces tout de suite",
 	ShopOwned = "Possédé",
@@ -2078,7 +2078,7 @@ Strings.en = {
 	ShopDouble = "x2 Coins",
 	ShopDoubleDesc = "Doubles all your income, forever",
 	ShopLock = "Lock+",
-	ShopLockDesc = "90 s lock instead of 60 s",
+	ShopLockDesc = "{long} s lock instead of {normal} s",
 	ShopCoins = "Coin pack",
 	ShopCoinsDesc = "+{coins} coins right now",
 	ShopOwned = "Owned",
@@ -2361,13 +2361,15 @@ return AnnounceService
 	  - donne une base libre à chaque joueur qui arrive
 	  - gère les socles (quel fantôme est posé où) et l'étage 2 achetable
 	  - l'ascenseur entre le rez-de-chaussée et l'étage
-	  - gère le verrou (60 s, recharge 2 min) et le bouclier débutant
+	  - gère le verrou (45 s, recharge 2 min) et le bouclier débutant
+	  - la barrière du verrou bloque tout le monde sauf le propriétaire (groupes de collision)
 	  - fait apparaître le joueur dans sa base
 
 	Le serveur écrit l'état dans des "attributs" (sur les modèles de base et les socles),
 	et chaque joueur affiche les fantômes de son côté. Le client ne décide jamais rien.
 ]]
 
+local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -2409,6 +2411,56 @@ local function now(): number
 	return workspace:GetServerTimeNow()
 end
 
+-- Groupes de collision : la barrière de la base N ("GateN") ne bloque pas le personnage
+-- de son propriétaire ("OwnerN"), mais bloque tous les autres. C'est le serveur qui décide,
+-- donc ça marche même si le joueur a un écran lent à charger.
+local collisionGroupsReady = false
+
+local function gateGroup(index: number): string
+	return "Gate" .. index
+end
+
+local function ownerGroup(index: number): string
+	return "Owner" .. index
+end
+
+local function setupCollisionGroups()
+	local ok, err = pcall(function()
+		for index in bases do
+			for _, name in { gateGroup(index), ownerGroup(index) } do
+				if not PhysicsService:IsCollisionGroupRegistered(name) then
+					PhysicsService:RegisterCollisionGroup(name)
+				end
+			end
+			PhysicsService:CollisionGroupSetCollidable(gateGroup(index), ownerGroup(index), false)
+		end
+	end)
+	collisionGroupsReady = ok
+	if not ok then
+		warn("[BaseService] Groupes de collision indisponibles : " .. tostring(err))
+	end
+end
+
+-- Range toutes les pièces du personnage dans le groupe du propriétaire de la base
+local function applyOwnerGroup(player: Player, character: Model)
+	local base = byPlayer[player]
+	if not collisionGroupsReady or not base then
+		return
+	end
+	local group = ownerGroup(base.Index)
+	for _, d in character:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.CollisionGroup = group
+		end
+	end
+	-- les accessoires et le fantôme porté arrivent parfois après
+	character.DescendantAdded:Connect(function(d)
+		if d:IsA("BasePart") then
+			d.CollisionGroup = group
+		end
+	end)
+end
+
 function BaseService.init(map: Model)
 	local folder = map:WaitForChild("Bases")
 	for _, model in folder:GetChildren() do
@@ -2432,6 +2484,7 @@ function BaseService.init(map: Model)
 			}
 		end
 	end
+	setupCollisionGroups()
 end
 
 function BaseService.getBase(player: Player): Base?
@@ -2688,6 +2741,9 @@ local function setBarrier(base: Base, on: boolean)
 		local collider = makeBarrierPart(barrier, wallSize, front * CFrame.new(0, MapBuilder.WALL_HEIGHT / 2, 0), WHITE, false, "Collider")
 		collider.Transparency = 1
 		collider.CanCollide = true
+		if collisionGroupsReady then
+			collider.CollisionGroup = gateGroup(base.Index)
+		end
 		barrier.PrimaryPart = collider
 		for i = 0, 6 do
 			local red = i % 2 == 0
@@ -2788,6 +2844,7 @@ function BaseService.spawnCharacter(player: Player)
 end
 
 local function onCharacterAdded(player: Player, character: Model)
+	applyOwnerGroup(player, character)
 	local humanoid = character:WaitForChild("Humanoid", 10) :: Humanoid?
 	if not humanoid then
 		return
@@ -5239,7 +5296,7 @@ return MissionService
           <string name="Source"><![CDATA[--[[
 	MonetizationService : Game Passes et Developer Product (optionnels).
 	  - Game Pass "x2 Pièces" : double les revenus
-	  - Game Pass "Verrou+" : verrou de 90 s au lieu de 60 s
+	  - Game Pass "Verrou+" : verrou plus long (Config.LockDurationPass au lieu de Config.LockDuration)
 	  - Developer Product "Pack de pièces" : 10 min de revenus (minimum 5 000)
 	Rien de tout ça n'aide à voler : pas de pay-to-win sur le vol.
 
@@ -6551,19 +6608,28 @@ end
 
 ---------------------------------------------------------------- Barrière du verrou
 
+local OWNER_BARRIER_TRANSPARENCY = 0.85 -- chez moi, la barrière est presque invisible
+
 local function setupBarrier(baseModel: Model)
+	-- chez moi : je traverse la barrière et je la vois à peine (de mon côté seulement).
+	-- Le serveur la rend déjà traversable pour moi avec les groupes de collision,
+	-- ceci est une 2e sécurité et le côté visuel.
+	local function soften(p: Instance)
+		if p:IsA("BasePart") then
+			p.CanCollide = false
+			if p.Transparency < 1 then
+				p.Transparency = OWNER_BARRIER_TRANSPARENCY
+			end
+		end
+	end
 	local function onChild(child: Instance)
 		if child.Name == "Barrier" and isMine(baseModel) then
-			-- chez moi : je peux traverser (seulement de mon côté, le serveur ne change rien)
-			local parts = if child:IsA("BasePart") then { child } else child:GetDescendants()
-			for _, p in parts do
-				if p:IsA("BasePart") then
-					p.CanCollide = false
-					if p.Transparency < 1 then
-						p.Transparency = 0.6
-					end
-				end
+			soften(child)
+			for _, p in child:GetDescendants() do
+				soften(p)
 			end
+			-- les barreaux peuvent arriver un peu après le modèle
+			child.DescendantAdded:Connect(soften)
 		end
 	end
 	local function scan()
@@ -8779,7 +8845,7 @@ local function buildShop(): Frame
 				local amount = math.max(Config.CoinPackMin, math.floor(income * 60 * Config.CoinPackMinutes))
 				desc.Text = Lang.t("ShopCoinsDesc", { coins = Format.short(amount) })
 			else
-				desc.Text = Lang.t(item.Desc)
+				desc.Text = Lang.t(item.Desc, { long = Config.LockDurationPass, normal = Config.LockDuration })
 			end
 			if item.Id == 0 then
 				buy.BackgroundColor3 = UI.Colors.Gray

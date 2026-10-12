@@ -113,19 +113,28 @@ end
 
 ---------------------------------------------------------------- Barrière du verrou
 
+local OWNER_BARRIER_TRANSPARENCY = 0.85 -- chez moi, la barrière est presque invisible
+
 local function setupBarrier(baseModel: Model)
+	-- chez moi : je traverse la barrière et je la vois à peine (de mon côté seulement).
+	-- Le serveur la rend déjà traversable pour moi avec les groupes de collision,
+	-- ceci est une 2e sécurité et le côté visuel.
+	local function soften(p: Instance)
+		if p:IsA("BasePart") then
+			p.CanCollide = false
+			if p.Transparency < 1 then
+				p.Transparency = OWNER_BARRIER_TRANSPARENCY
+			end
+		end
+	end
 	local function onChild(child: Instance)
 		if child.Name == "Barrier" and isMine(baseModel) then
-			-- chez moi : je peux traverser (seulement de mon côté, le serveur ne change rien)
-			local parts = if child:IsA("BasePart") then { child } else child:GetDescendants()
-			for _, p in parts do
-				if p:IsA("BasePart") then
-					p.CanCollide = false
-					if p.Transparency < 1 then
-						p.Transparency = 0.6
-					end
-				end
+			soften(child)
+			for _, p in child:GetDescendants() do
+				soften(p)
 			end
+			-- les barreaux peuvent arriver un peu après le modèle
+			child.DescendantAdded:Connect(soften)
 		end
 	end
 	local function scan()

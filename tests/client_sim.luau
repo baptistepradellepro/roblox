@@ -236,7 +236,14 @@ check(BaseService.isLocked(BaseService.getBase(alice)), "base verrouillée par l
 local gate = BaseService.getBase(alice).Model:FindFirstChild("Barrier")
 check(gate and gate.Collider.CanCollide == false, "Alice peut traverser sa propre barrière")
 local caption = lock:FindFirstChild("Caption")
-check(caption and (caption.Text == "1:00" or string.match(caption.Text, "^%d+s$")), "le bouton affiche le compte à rebours (" .. tostring(caption and caption.Text) .. ")")
+check(caption and string.match(caption.Text, "^%d+s$"), "le bouton affiche le compte à rebours (" .. tostring(caption and caption.Text) .. ")")
+local visibleBars = 0
+for _, d in gate:GetDescendants() do
+	if d.Name == "Bar" and d.Transparency >= 0.8 then
+		visibleBars += 1
+	end
+end
+check(visibleBars >= 5, "chez soi, la barrière est presque invisible")
 check(findText(gui.SAG_HUD, "Base verrouillée") ~= nil, "message 'Base verrouillée !'")
 
 section("Rebirth par le panneau")

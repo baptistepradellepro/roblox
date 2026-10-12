@@ -26,7 +26,7 @@ Ensuite :
 - **Acheter** : va sur le chemin au milieu, approche-toi d'un fantôme et appuie sur E (ou touche le bouton sur mobile). Il apparaît sur un de tes socles dans un petit nuage, et le prix est retiré.
 - **Récupérer** : les fantômes ne versent plus leurs pièces directement sur ton compte. Elles s'empilent sur la plaque verte devant leur socle. Marche sur la plaque : les pièces passent sur ton compte avec un "+X" qui s'envole. Sous ton compteur, la pastille "💰 X à récupérer" te dit combien t'attend dans ta base.
 - **Vendre** : sur un de tes socles, maintiens E pendant 1 seconde. Tu récupères la moitié du prix, plus les pièces qui attendaient sur sa plaque.
-- **Verrouiller** : attends la fin du bouclier, puis va au fond de ta base. Le poste de verrouillage est entouré d'une barrière rouge et blanche, avec le panneau "🚧 VERROU". Appuie sur E devant le gros bouton rouge (ou sur le bouton 🔒 à droite de l'écran). Une barrière à barreaux ferme l'entrée pendant 60 secondes. Toi, tu peux la traverser. Ensuite le bouton recharge pendant 2 minutes.
+- **Verrouiller** : attends la fin du bouclier, puis va au fond de ta base. Le poste de verrouillage est entouré d'une barrière rouge et blanche, avec le panneau "🚧 VERROU". Appuie sur E devant le gros bouton rouge (ou sur le bouton 🔒 à droite de l'écran). Une barrière à barreaux ferme l'entrée pendant 45 secondes. Toi, tu la traverses et tu la vois presque transparente, les autres sont bloqués. Ensuite le bouton recharge pendant 2 minutes.
 - **Base pleine** : quand tes 10 socles sont pris et que tu essaies d'acheter, le message "Base pleine ! Achète l'étage 2 ou vends un fantôme." s'affiche.
 
 ## Tester l'étage 2

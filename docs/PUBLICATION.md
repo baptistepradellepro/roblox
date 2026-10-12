@@ -68,7 +68,7 @@ Le jeu tourne sans. Si tu veux l'activer :
 
 1. Creator Hub > Creations > Steal a Ghost > Monetization > Passes > Create a Pass.
 2. Pass "x2 Pièces" : image carrée 512×512, description "Double tous tes revenus, pour toujours". Une fois créé, ouvre-le > Sales > mets-le en vente. Prix conseillé : 149 Robux.
-3. Pass "Verrou+" : description "Verrou de 90 s au lieu de 60 s". Prix conseillé : 79 Robux.
+3. Pass "Verrou+" : description "Verrou de 75 s au lieu de 45 s". Prix conseillé : 79 Robux.
 4. Monetization > Developer Products > Create : "Pack de pièces", prix conseillé 25 Robux.
 5. Copie chaque ID (le nombre dans l'adresse de la page) dans `Config.luau` : `Config.GamePasses.DoubleCoins`, `Config.GamePasses.LongLock`, `Config.Products.CoinPack`.
 6. Republie le jeu.
