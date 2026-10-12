@@ -475,6 +475,27 @@ function MapBuilder.build(): Model
 		end
 	end
 
+	-- Grand écran du classement, suspendu au-dessus du milieu du chemin
+	for _, z in { -8.6, 8.6 } do
+		part({
+			Name = "BoardPost",
+			Size = Vector3.new(1.4, 32, 1.4),
+			CFrame = CFrame.new(0, 16, Config.PathZ + z),
+			Color = Color3.fromRGB(45, 35, 60),
+			Material = Enum.Material.Metal,
+			Parent = decor,
+		})
+	end
+	part({
+		Name = "Leaderboard",
+		Size = Vector3.new(30, 15, 1),
+		CFrame = CFrame.new(0, 27, Config.PathZ),
+		Color = Color3.fromRGB(25, 15, 40),
+		Material = Enum.Material.SmoothPlastic,
+		CastShadow = false,
+		Parent = map,
+	})
+
 	portal(decor, Config.PathStartX - 5, Color3.fromRGB(150, 80, 255))
 	portal(decor, Config.PathEndX + 5, Color3.fromRGB(80, 255, 170))
 

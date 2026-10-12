@@ -587,6 +587,36 @@ ClassMethods.RunService = {
 Fake.dataStores = {}
 Fake.dataStoreFailures = 0
 ClassMethods.DataStoreService = {
+	GetOrderedDataStore = function(_, name)
+		if Fake.orderedStoreBroken then
+			error("Studio : accès aux API désactivé (simulé)")
+		end
+		local values = Fake.orderedStores[name] or {}
+		Fake.orderedStores[name] = values
+		return {
+			IncrementAsync = function(_, key, delta)
+				values[key] = (values[key] or 0) + delta
+				return values[key]
+			end,
+			GetSortedAsync = function(_, ascending, pageSize)
+				local list = {}
+				for key, value in values do
+					table.insert(list, { key = key, value = value })
+				end
+				table.sort(list, function(a, b)
+					return if ascending then a.value < b.value else a.value > b.value
+				end)
+				while #list > pageSize do
+					table.remove(list)
+				end
+				return {
+					GetCurrentPage = function()
+						return list
+					end,
+				}
+			end,
+		}
+	end,
 	GetDataStore = function(_, name)
 		local raw = Fake.dataStores[name] or {}
 		Fake.dataStores[name] = raw
@@ -608,6 +638,16 @@ ClassMethods.DataStoreService = {
 }
 
 Fake.purchasePrompts = {}
+Fake.orderedStores = {}
+ClassMethods.HttpService = {
+	JSONEncode = function(_, value)
+		return serde.encode("json", value)
+	end,
+	JSONDecode = function(_, text)
+		return serde.decode("json", text)
+	end,
+}
+
 ClassMethods.MarketplaceService = {
 	UserOwnsGamePassAsync = function(_, userId, passId)
 		return Fake.ownedPasses and Fake.ownedPasses[userId .. ":" .. passId] == true
@@ -663,6 +703,9 @@ ClassMethods.Players = {
 			end
 		end
 		return out
+	end,
+	GetNameFromUserIdAsync = function(_, userId)
+		return "Joueur" .. tostring(userId)
 	end,
 	GetPlayerFromCharacter = function(self, character)
 		for _, p in self:GetPlayers() do

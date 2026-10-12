@@ -24,6 +24,7 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local GhostService = require(Services:WaitForChild("GhostService"))
 local Guard = require(Services:WaitForChild("Guard"))
 local IndexService = require(Services:WaitForChild("IndexService"))
+local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 local MapBuilder = require(Services:WaitForChild("MapBuilder"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local NightService = require(Services:WaitForChild("NightService"))
@@ -44,6 +45,7 @@ NightService.start()
 RebirthService.start()
 MonetizationService.start()
 CodeService.start()
+LeaderboardService.start()
 EconomyService.giveGhostCallback = GhostService.giveGhost
 BaseService.onGhostPlaced = IndexService.discover -- chaque nouveau fantôme entre dans le Fantômédex
 

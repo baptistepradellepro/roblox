@@ -247,6 +247,21 @@ check(announced("AnnSteal", m), "annonce du vol à tout le serveur")
 check(bData.TotalSteals == 1, "compteur de vols")
 check(bob.Character.Humanoid.WalkSpeed == Config.NormalWalkSpeed, "Bob retrouve sa vitesse")
 
+section("Classement des voleurs")
+local LeaderboardService = Fake.require("ServerScriptService.Services.LeaderboardService")
+LeaderboardService.refresh()
+local boardRaw = RS:GetAttribute("LeaderboardData")
+local board = serde.decode("json", boardRaw)
+check(#board >= 1 and board[1].Name == "Bob" and board[1].Value == 1, "Bob en tête du classement avec 1 vol")
+check(RS:GetAttribute("LeaderboardResetAt") > workspace:GetServerTimeNow(), "date de remise à zéro dans le futur")
+check(LeaderboardService.weekNumber(1790812800 + 4 * 86400) ~= LeaderboardService.weekNumber(1790812800 + 3 * 86400), "nouvelle semaine le lundi")
+check(LeaderboardService.weekNumber(1790812800 + 86400) == LeaderboardService.weekNumber(1790812800 + 3 * 86400 - 1), "même semaine du jeudi au dimanche")
+Fake.orderedStoreBroken = true
+LeaderboardService.refresh()
+board = serde.decode("json", RS:GetAttribute("LeaderboardData"))
+check(#board >= 1 and board[1].Name == "Bob", "sans accès aux API : classement de la partie en cours")
+Fake.orderedStoreBroken = false
+
 section("Récupération par le propriétaire")
 GhostService.giveGhost(alice, "Caquetome")
 local slot = nil

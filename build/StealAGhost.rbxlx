@@ -1853,6 +1853,12 @@ Strings.fr = {
 	CodeInvalid = "Code invalide",
 	CodeExpired = "Ce code a expiré",
 
+	-- Classement des voleurs
+	LeaderTitle = "PLUS GRANDS VOLEURS DE LA SEMAINE",
+	LeaderEmpty = "Personne n'a encore volé cette semaine... à toi de jouer !",
+	LeaderSteals = "🦹 {count}",
+	LeaderReset = "Remise à zéro dans {days} j {hours} h",
+
 	Close = "Fermer",
 }
 
@@ -1993,6 +1999,11 @@ Strings.en = {
 	CodeInvalid = "Invalid code",
 	CodeExpired = "This code has expired",
 
+	LeaderTitle = "TOP THIEVES OF THE WEEK",
+	LeaderEmpty = "Nobody has stolen anything this week... your turn!",
+	LeaderSteals = "🦹 {count}",
+	LeaderReset = "Resets in {days}d {hours}h",
+
 	Close = "Close",
 }
 
@@ -2052,6 +2063,7 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local GhostService = require(Services:WaitForChild("GhostService"))
 local Guard = require(Services:WaitForChild("Guard"))
 local IndexService = require(Services:WaitForChild("IndexService"))
+local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 local MapBuilder = require(Services:WaitForChild("MapBuilder"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local NightService = require(Services:WaitForChild("NightService"))
@@ -2072,6 +2084,7 @@ NightService.start()
 RebirthService.start()
 MonetizationService.start()
 CodeService.start()
+LeaderboardService.start()
 EconomyService.giveGhostCallback = GhostService.giveGhost
 BaseService.onGhostPlaced = IndexService.discover -- chaque nouveau fantôme entre dans le Fantômédex
 
@@ -3793,6 +3806,135 @@ return IndexService
       </Item>
       <Item class="ModuleScript" referent="23">
         <Properties>
+          <string name="Name">LeaderboardService</string>
+          <string name="Source"><![CDATA[--[[
+	LeaderboardService : le tableau des "plus grands voleurs de la semaine".
+	  - chaque vol réussi ajoute +1 au voleur dans un classement Roblox partagé par
+	    tous les serveurs (OrderedDataStore), remis à zéro chaque lundi 00h UTC
+	  - toutes les minutes : on envoie les nouveaux vols et on relit le top 10
+	  - le top 10 est publié dans un attribut de ReplicatedStorage, et chaque joueur
+	    l'affiche sur le grand écran au-dessus du chemin
+	Sans accès aux API (Studio), le tableau montre les vols de la partie en cours.
+]]
+
+local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LeaderboardService = {}
+
+local REFRESH = 60
+local WEEK = 7 * 86400
+local MONDAY_OFFSET = 4 * 86400 -- le 1er janvier 1970 était un jeudi
+
+local pending: { [number]: number } = {} -- vols pas encore envoyés
+local session: { [number]: number } = {} -- vols de cette partie (secours sans API)
+local names: { [number]: string } = {}
+
+function LeaderboardService.weekNumber(t: number?): number
+	return ((t or os.time()) - MONDAY_OFFSET) // WEEK
+end
+
+function LeaderboardService.weekEndsAt(t: number?): number
+	return (LeaderboardService.weekNumber(t) + 1) * WEEK + MONDAY_OFFSET
+end
+
+local function orderedStore(): OrderedDataStore?
+	local ok, result = pcall(function()
+		return DataStoreService:GetOrderedDataStore("WeeklySteals_" .. LeaderboardService.weekNumber())
+	end)
+	return if ok then result else nil
+end
+
+function LeaderboardService.recordSteal(player: Player)
+	local id = player.UserId
+	names[id] = player.DisplayName
+	pending[id] = (pending[id] or 0) + 1
+	session[id] = (session[id] or 0) + 1
+end
+
+local function nameOf(userId: number): string
+	if names[userId] then
+		return names[userId]
+	end
+	local ok, result = pcall(function()
+		return Players:GetNameFromUserIdAsync(userId)
+	end)
+	local name = if ok and result then result else "?"
+	names[userId] = name
+	return name
+end
+
+local function publish(list)
+	ReplicatedStorage:SetAttribute("LeaderboardData", HttpService:JSONEncode(list))
+	ReplicatedStorage:SetAttribute("LeaderboardResetAt", LeaderboardService.weekEndsAt())
+end
+
+-- Classement de secours : les vols de cette partie
+local function sessionTop()
+	local list = {}
+	for userId, count in session do
+		table.insert(list, { Name = nameOf(userId), Value = count, UserId = userId })
+	end
+	table.sort(list, function(a, b)
+		return a.Value > b.Value
+	end)
+	while #list > 10 do
+		table.remove(list)
+	end
+	return list
+end
+
+function LeaderboardService.refresh()
+	local store = orderedStore()
+	-- 1. on envoie les nouveaux vols
+	if store then
+		local ods = store :: OrderedDataStore
+		for userId, count in pending do
+			local ok = pcall(function()
+				ods:IncrementAsync(tostring(userId), count)
+			end)
+			if ok then
+				pending[userId] = nil
+			end
+		end
+	end
+	-- 2. on relit le top 10
+	local list = nil
+	if store then
+		local ods = store :: OrderedDataStore
+		local ok, page = pcall(function()
+			return ods:GetSortedAsync(false, 10):GetCurrentPage()
+		end)
+		if ok and page then
+			list = {}
+			for _, entry in page do
+				local userId = tonumber(entry.key) or 0
+				table.insert(list, { Name = nameOf(userId), Value = entry.value, UserId = userId })
+			end
+		end
+	end
+	publish(list or sessionTop())
+end
+
+function LeaderboardService.start()
+	publish({})
+	task.spawn(function()
+		task.wait(5)
+		while true do
+			LeaderboardService.refresh()
+			task.wait(REFRESH)
+		end
+	end)
+end
+
+return LeaderboardService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="24">
+        <Properties>
           <string name="Name">MapBuilder</string>
           <string name="Source"><![CDATA[--[[
 	MapBuilder : construit toute la map avec du code au démarrage du serveur.
@@ -4271,6 +4413,27 @@ function MapBuilder.build(): Model
 		end
 	end
 
+	-- Grand écran du classement, suspendu au-dessus du milieu du chemin
+	for _, z in { -8.6, 8.6 } do
+		part({
+			Name = "BoardPost",
+			Size = Vector3.new(1.4, 32, 1.4),
+			CFrame = CFrame.new(0, 16, Config.PathZ + z),
+			Color = Color3.fromRGB(45, 35, 60),
+			Material = Enum.Material.Metal,
+			Parent = decor,
+		})
+	end
+	part({
+		Name = "Leaderboard",
+		Size = Vector3.new(30, 15, 1),
+		CFrame = CFrame.new(0, 27, Config.PathZ),
+		Color = Color3.fromRGB(25, 15, 40),
+		Material = Enum.Material.SmoothPlastic,
+		CastShadow = false,
+		Parent = map,
+	})
+
 	portal(decor, Config.PathStartX - 5, Color3.fromRGB(150, 80, 255))
 	portal(decor, Config.PathEndX + 5, Color3.fromRGB(80, 255, 170))
 
@@ -4343,7 +4506,7 @@ return MapBuilder
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">MonetizationService</string>
           <string name="Source"><![CDATA[--[[
@@ -4454,7 +4617,7 @@ return MonetizationService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="25">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">NightService</string>
           <string name="Source"><![CDATA[--[[
@@ -4818,7 +4981,7 @@ return NightService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="26">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">RebirthService</string>
           <string name="Source"><![CDATA[--[[
@@ -4937,7 +5100,7 @@ return RebirthService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="28">
         <Properties>
           <string name="Name">StealService</string>
           <string name="Source"><![CDATA[--[[
@@ -4966,6 +5129,7 @@ local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local Guard = require(script.Parent.Guard)
+local LeaderboardService = require(script.Parent.LeaderboardService)
 
 local StealService = {}
 
@@ -5080,6 +5244,7 @@ local function deliver(carry: Carry)
 	if thiefData then
 		thiefData.TotalSteals += 1
 	end
+	LeaderboardService.recordSteal(thief)
 	EconomyService.refresh(thief)
 	EconomyService.refresh(owner)
 
@@ -5327,15 +5492,15 @@ return StealService
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="28">
+  <Item class="StarterPlayer" referent="29">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="29">
+    <Item class="StarterPlayerScripts" referent="30">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="30">
+      <Item class="LocalScript" referent="31">
         <Properties>
           <string name="Name">Client</string>
           <string name="Source"><![CDATA[--[[
@@ -5362,6 +5527,7 @@ local ORDER = {
 	"BaseView",
 	"CarryView",
 	"NightView",
+	"LeaderboardView",
 	"Panels",
 	"Tutorial",
 }
@@ -5379,11 +5545,11 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="31">
+      <Item class="Folder" referent="32">
         <Properties>
           <string name="Name">Controllers</string>
         </Properties>
-        <Item class="ModuleScript" referent="32">
+        <Item class="ModuleScript" referent="33">
           <Properties>
             <string name="Name">Announce</string>
             <string name="Source"><![CDATA[--[[
@@ -5515,7 +5681,7 @@ return Announce
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="33">
+        <Item class="ModuleScript" referent="34">
           <Properties>
             <string name="Name">BaseView</string>
             <string name="Source"><![CDATA[--[[
@@ -5870,7 +6036,7 @@ return BaseView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="34">
+        <Item class="ModuleScript" referent="35">
           <Properties>
             <string name="Name">CarryView</string>
             <string name="Source"><![CDATA[--[[
@@ -6061,7 +6227,7 @@ return CarryView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="35">
+        <Item class="ModuleScript" referent="36">
           <Properties>
             <string name="Name">Effects</string>
             <string name="Source"><![CDATA[--[[
@@ -6342,7 +6508,7 @@ return Effects
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="36">
+        <Item class="ModuleScript" referent="37">
           <Properties>
             <string name="Name">HUD</string>
             <string name="Source"><![CDATA[--[[
@@ -6769,7 +6935,7 @@ return HUD
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="37">
+        <Item class="ModuleScript" referent="38">
           <Properties>
             <string name="Name">Labels</string>
             <string name="Source"><![CDATA[--[[
@@ -6869,7 +7035,7 @@ return Labels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="38">
+        <Item class="ModuleScript" referent="39">
           <Properties>
             <string name="Name">Lang</string>
             <string name="Source"><![CDATA[--[[
@@ -6955,7 +7121,127 @@ return Lang
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="39">
+        <Item class="ModuleScript" referent="40">
+          <Properties>
+            <string name="Name">LeaderboardView</string>
+            <string name="Source"><![CDATA[--[[
+	LeaderboardView : affiche le top 10 des voleurs de la semaine sur le grand écran
+	au-dessus du chemin (des deux côtés). Les données viennent du serveur.
+]]
+
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Lang = require(script.Parent.Lang)
+local UI = require(script.Parent.UI)
+
+local LeaderboardView = {}
+
+local player = Players.LocalPlayer
+
+local MEDALS = { "🥇", "🥈", "🥉" }
+
+local function buildFace(board: BasePart, face: Enum.NormalId)
+	local surface = UI.new("SurfaceGui", {
+		Name = "Leaderboard_" .. face.Name,
+		Face = face,
+		SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud,
+		PixelsPerStud = 40,
+		LightInfluence = 0,
+		AutoLocalize = Lang.autoLocalize,
+		Adornee = board,
+		Parent = board,
+	})
+	UI.label({
+		Name = "Title",
+		Size = UDim2.new(1, -40, 0, 70),
+		Position = UDim2.fromOffset(20, 10),
+		Text = "🏆 " .. Lang.t("LeaderTitle") .. " 🏆",
+		TextColor3 = UI.Colors.Gold,
+		MaxTextSize = 60,
+		Parent = surface,
+	})
+	local rows = {}
+	for rank = 1, 10 do
+		local row = UI.label({
+			Name = "Row" .. rank,
+			Size = UDim2.new(1, -80, 0, 42),
+			Position = UDim2.fromOffset(40, 84 + (rank - 1) * 44),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			MaxTextSize = 38,
+			Parent = surface,
+		})
+		rows[rank] = row
+	end
+	local footer = UI.label({
+		Name = "Footer",
+		Size = UDim2.new(1, -40, 0, 40),
+		Position = UDim2.new(0, 20, 1, -50),
+		TextColor3 = UI.Colors.Info,
+		MaxTextSize = 30,
+		Parent = surface,
+	})
+	return rows, footer
+end
+
+function LeaderboardView.start()
+	local map = workspace:WaitForChild("Map")
+	local board = map:WaitForChild("Leaderboard", 30) :: BasePart?
+	if not board then
+		return
+	end
+	local faces = {}
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local rows, footer = buildFace(board, face)
+		table.insert(faces, { Rows = rows, Footer = footer })
+	end
+
+	local function refresh()
+		local raw = ReplicatedStorage:GetAttribute("LeaderboardData")
+		local ok, list = pcall(function()
+			return HttpService:JSONDecode(raw or "[]")
+		end)
+		if not ok or type(list) ~= "table" then
+			list = {}
+		end
+		local resetAt = ReplicatedStorage:GetAttribute("LeaderboardResetAt") or 0
+		local remaining = math.max(0, resetAt - workspace:GetServerTimeNow())
+		local footerText = Lang.t("LeaderReset", { days = math.floor(remaining / 86400), hours = math.floor((remaining % 86400) / 3600) })
+		for _, face in faces do
+			for rank, row in face.Rows do
+				local entry = list[rank]
+				if entry then
+					local medal = MEDALS[rank] or (tostring(rank) .. ".")
+					row.Text = medal .. "  " .. tostring(entry.Name) .. "  :  " .. Lang.t("LeaderSteals", { count = entry.Value })
+					row.TextColor3 = if entry.UserId == player.UserId then UI.Colors.Gold else UI.Colors.Text
+				elseif rank == 1 then
+					row.Text = Lang.t("LeaderEmpty")
+					row.TextColor3 = UI.Colors.Gray
+				else
+					row.Text = ""
+				end
+			end
+			face.Footer.Text = footerText
+		end
+	end
+
+	ReplicatedStorage:GetAttributeChangedSignal("LeaderboardData"):Connect(refresh)
+	refresh()
+	-- le compte à rebours avance même sans nouveau vol
+	task.spawn(function()
+		while true do
+			task.wait(60)
+			refresh()
+		end
+	end)
+end
+
+return LeaderboardView
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="41">
           <Properties>
             <string name="Name">NightView</string>
             <string name="Source"><![CDATA[--[[
@@ -7287,7 +7573,7 @@ return NightView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="40">
+        <Item class="ModuleScript" referent="42">
           <Properties>
             <string name="Name">Panels</string>
             <string name="Source"><![CDATA[--[[
@@ -7953,7 +8239,7 @@ return Panels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="41">
+        <Item class="ModuleScript" referent="43">
           <Properties>
             <string name="Name">PathView</string>
             <string name="Source"><![CDATA[--[[
@@ -8122,7 +8408,7 @@ return PathView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="42">
+        <Item class="ModuleScript" referent="44">
           <Properties>
             <string name="Name">Tutorial</string>
             <string name="Source"><![CDATA[--[[
@@ -8361,7 +8647,7 @@ return Tutorial
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="43">
+        <Item class="ModuleScript" referent="45">
           <Properties>
             <string name="Name">UI</string>
             <string name="Source"><![CDATA[--[[
@@ -8553,13 +8839,13 @@ return UI
       </Item>
     </Item>
   </Item>
-  <Item class="TextChatService" referent="44">
+  <Item class="TextChatService" referent="46">
     <Properties>
       <string name="Name">TextChatService</string>
       <token name="ChatVersion">1</token>
     </Properties>
   </Item>
-  <Item class="Workspace" referent="45">
+  <Item class="Workspace" referent="47">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>

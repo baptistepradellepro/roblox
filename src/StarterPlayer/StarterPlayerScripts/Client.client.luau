@@ -22,6 +22,7 @@ local ORDER = {
 	"BaseView",
 	"CarryView",
 	"NightView",
+	"LeaderboardView",
 	"Panels",
 	"Tutorial",
 }

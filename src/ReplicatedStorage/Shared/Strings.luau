@@ -156,6 +156,12 @@ Strings.fr = {
 	CodeInvalid = "Code invalide",
 	CodeExpired = "Ce code a expiré",
 
+	-- Classement des voleurs
+	LeaderTitle = "PLUS GRANDS VOLEURS DE LA SEMAINE",
+	LeaderEmpty = "Personne n'a encore volé cette semaine... à toi de jouer !",
+	LeaderSteals = "🦹 {count}",
+	LeaderReset = "Remise à zéro dans {days} j {hours} h",
+
 	Close = "Fermer",
 }
 
@@ -295,6 +301,11 @@ Strings.en = {
 	CodeUsed = "You already used this code",
 	CodeInvalid = "Invalid code",
 	CodeExpired = "This code has expired",
+
+	LeaderTitle = "TOP THIEVES OF THE WEEK",
+	LeaderEmpty = "Nobody has stolen anything this week... your turn!",
+	LeaderSteals = "🦹 {count}",
+	LeaderReset = "Resets in {days}d {hours}h",
 
 	Close = "Close",
 }

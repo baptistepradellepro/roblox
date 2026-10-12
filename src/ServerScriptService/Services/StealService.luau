@@ -24,6 +24,7 @@ local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local Guard = require(script.Parent.Guard)
+local LeaderboardService = require(script.Parent.LeaderboardService)
 
 local StealService = {}
 
@@ -138,6 +139,7 @@ local function deliver(carry: Carry)
 	if thiefData then
 		thiefData.TotalSteals += 1
 	end
+	LeaderboardService.recordSteal(thief)
 	EconomyService.refresh(thief)
 	EconomyService.refresh(owner)
 

@@ -189,6 +189,16 @@ Fake.walk(bob, BaseService.getBase(bob).Origin.Position + Vector3.new(0, 3, 0), 
 Sched.advance(0.5)
 check(findText(gui.SAG_Announce, "Bob a volé") ~= nil, "bannière 'Bob a volé ... à Alice !'")
 
+section("Écran du classement")
+local LeaderboardServiceSim = Fake.require("ServerScriptService.Services.LeaderboardService")
+LeaderboardServiceSim.refresh()
+Sched.advance(0.2)
+local boardPart = workspace.Map:FindFirstChild("Leaderboard")
+check(boardPart and #boardPart:GetChildren() == 2, "écran double face au-dessus du chemin")
+check(boardPart and findText(boardPart, "PLUS GRANDS VOLEURS") ~= nil, "titre du classement")
+check(boardPart and findText(boardPart, "Bob  :  🦹 1") ~= nil, "Bob apparaît avec son vol")
+check(boardPart and findText(boardPart, "Remise à zéro dans") ~= nil, "compte à rebours de la semaine")
+
 section("Verrou par le bouton du HUD")
 Sched.advance(5)
 local lock = find(gui.SAG_HUD, function(d)
