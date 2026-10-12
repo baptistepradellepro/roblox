@@ -1713,6 +1713,65 @@ function Missions.today(t: number): number
 	return t // 86400
 end
 
+---------------------------------------------------------------- Défis de la semaine
+
+-- Plus longs que les missions du jour. 3 défis par semaine, du lundi 0h UTC au
+-- dimanche soir. Chaque défi réussi rapporte des pièces, et les 3 réussis donnent
+-- un fantôme Épique Doré (payé en pièces si la base est pleine).
+Missions.WeeklyDefs = {
+	Steal = { Target = 15, Icon = "🦹" },
+	Bonk = { Target = 10, Icon = "🏏" },
+	Trap = { Target = 5, Icon = "🍌" },
+	Buy = { Target = 40, Icon = "🛒" },
+	BuyEpic = { Target = 5, Icon = "✨", MinRarity = "Epic" },
+	BuyLegendary = { Target = 1, Icon = "🌟", MinRarity = "Legendary" },
+	NightOutside = { Target = 300, Icon = "🌙" },
+	Earn = { Icon = "🪙" }, -- objectif calculé : environ 3 h de revenus
+	Sell = { Target = 20, Icon = "💰" },
+}
+Missions.WeeklyPool = { "Steal", "Bonk", "Trap", "Buy", "BuyEpic", "BuyLegendary", "NightOutside", "Earn", "Sell" }
+Missions.WeeklyReward = { Minutes = 45, Min = 5000 }
+Missions.WeeklyBonusGhost = { Rarity = "Epic", Mutation = "Gold" }
+
+local WEEK = 7 * 86400
+local MONDAY_OFFSET = 4 * 86400 -- le 1er janvier 1970 était un jeudi
+
+-- Numéro de la semaine (elle commence le lundi à 0h UTC)
+function Missions.thisWeek(t: number): number
+	return (t - MONDAY_OFFSET) // WEEK
+end
+
+-- Début de la semaine suivante (temps Unix)
+function Missions.weekEnd(week: number): number
+	return (week + 1) * WEEK + MONDAY_OFFSET
+end
+
+function Missions.weeklyReward(incomePerSecond: number): number
+	local r = Missions.WeeklyReward
+	return math.max(r.Min, math.floor(incomePerSecond * 60 * r.Minutes))
+end
+
+function Missions.weeklyEarnTarget(incomePerSecond: number): number
+	return math.max(50000, math.floor(incomePerSecond * 3 * 3600))
+end
+
+-- Les 3 défis d'un joueur pour une semaine (toujours les mêmes, tous différents)
+function Missions.generateWeekly(week: number, userId: number, incomePerSecond: number)
+	local seed = (week * 104729 + math.abs(userId) * 31) % 2147483647
+	local function nextRandom(): number
+		seed = (seed * 1103515245 + 12345) % 2147483648
+		return seed / 2147483648
+	end
+	local pool = table.clone(Missions.WeeklyPool)
+	local list = {}
+	for _ = 1, 3 do
+		local id = table.remove(pool, math.floor(nextRandom() * #pool) + 1)
+		local target = Missions.WeeklyDefs[id].Target or Missions.weeklyEarnTarget(incomePerSecond)
+		table.insert(list, { Id = id, Tier = "weekly", Target = target, Progress = 0, Done = false })
+	end
+	return list
+end
+
 -- Tire les 3 missions d'un joueur pour un jour donné (toujours les mêmes pour ce jour)
 function Missions.generate(day: number, userId: number, incomePerSecond: number)
 	local seed = (day * 7919 + math.abs(userId)) % 2147483647
@@ -2529,6 +2588,26 @@ Strings.fr = {
 	MissionsBonus = "🎁 Les 3 missions : bonus de {coins} pièces",
 	MissionsBonusDone = "✅ Bonus du jour récupéré, reviens demain !",
 	MissionsNext = "Nouvelles missions dans {time}",
+	MissionTier_weekly = "Défi",
+	MissionsTabDaily = "📋 Du jour",
+	WeeklyTitle = "DÉFIS DE LA SEMAINE",
+	MissionsTabWeekly = "🏆 De la semaine",
+	Weekly_Steal = "Vole {n} fantômes",
+	Weekly_Bonk = "Arrête {n} voleurs avec une arme",
+	Weekly_Trap = "Piège {n} intrus dans ta base",
+	Weekly_Buy = "Achète {n} fantômes",
+	Weekly_BuyEpic = "Achète {n} fantômes Épiques ou mieux",
+	Weekly_BuyLegendary = "Achète un fantôme Légendaire ou mieux",
+	Weekly_NightOutside = "Reste {n} s dehors pendant les Nuits Hantées",
+	Weekly_Earn = "Gagne {n} pièces",
+	Weekly_Sell = "Vends {n} fantômes",
+	WeeklyDone = "Défi de la semaine réussi : +{coins} pièces !",
+	WeeklyAllDone = "Les 3 défis de la semaine sont faits : {ghost} est à toi !",
+	WeeklyAllDoneCoins = "Les 3 défis sont faits ! Base pleine : {ghost} t'est payé {coins} pièces",
+	AnnWeekly = "{player} a réussi les 3 défis de la semaine !",
+	WeeklyBonus = "🎁 Les 3 défis : un fantôme Épique Doré",
+	WeeklyBonusDone = "✅ Défis de la semaine finis, bravo !",
+	WeeklyNext = "Nouveaux défis dans {days} j {hours} h",
 
 	-- Classement des voleurs
 	LeaderTitle = "PLUS GRANDS VOLEURS DE LA SEMAINE",
@@ -2764,6 +2843,26 @@ Strings.en = {
 	MissionsBonus = "🎁 All 3 missions: {coins} coins bonus",
 	MissionsBonusDone = "✅ Daily bonus collected, come back tomorrow!",
 	MissionsNext = "New missions in {time}",
+	MissionTier_weekly = "Challenge",
+	MissionsTabDaily = "📋 Daily",
+	WeeklyTitle = "WEEKLY CHALLENGES",
+	MissionsTabWeekly = "🏆 Weekly",
+	Weekly_Steal = "Steal {n} ghosts",
+	Weekly_Bonk = "Stop {n} thieves with a weapon",
+	Weekly_Trap = "Trap {n} intruders in your base",
+	Weekly_Buy = "Buy {n} ghosts",
+	Weekly_BuyEpic = "Buy {n} Epic ghosts or better",
+	Weekly_BuyLegendary = "Buy a Legendary ghost or better",
+	Weekly_NightOutside = "Stay {n} s outside during Haunted Nights",
+	Weekly_Earn = "Earn {n} coins",
+	Weekly_Sell = "Sell {n} ghosts",
+	WeeklyDone = "Weekly challenge done: +{coins} coins!",
+	WeeklyAllDone = "All 3 weekly challenges done: {ghost} is yours!",
+	WeeklyAllDoneCoins = "All 3 challenges done! Base full: you get {coins} coins for {ghost}",
+	AnnWeekly = "{player} completed all 3 weekly challenges!",
+	WeeklyBonus = "🎁 All 3 challenges: a Golden Epic ghost",
+	WeeklyBonusDone = "✅ Weekly challenges done, well played!",
+	WeeklyNext = "New challenges in {days}d {hours}h",
 
 	LeaderTitle = "TOP THIEVES OF THE WEEK",
 	LeaderEmpty = "Nobody has stolen anything this week... your turn!",
@@ -4397,6 +4496,7 @@ local function template()
 		IndexComplete = false, -- bonus permanent du Fantômédex complet
 		RedeemedCodes = {}, -- codes promo déjà utilisés : ["BOUH2026"] = true
 		Missions = {}, -- missions du jour : { Day, List, BonusDone }
+		Weekly = {}, -- défis de la semaine : { Week, List, BonusDone }
 		Traps = {}, -- pièges achetés : ["Banana"] = true
 		Spins = 0, -- tours de Roue de la Fortune achetés et pas encore utilisés
 		BoostUntil = 0, -- fin du bonus "x2 revenus" de la roue (temps Unix)
@@ -6544,10 +6644,12 @@ return MapBuilder
         <Properties>
           <string name="Name">MissionService</string>
           <string name="Source"><![CDATA[--[[
-	MissionService : les missions du jour.
+	MissionService : les missions du jour et les défis de la semaine.
 	  - 3 missions par joueur et par jour (facile, moyenne, difficile), qui changent à minuit UTC
+	  - 3 défis par semaine, plus longs, qui changent le lundi à 0h UTC
 	  - le serveur compte les progrès grâce aux événements de Hooks (achat, vol, vente...)
-	  - mission réussie : pièces tout de suite ; les 3 réussies : un bonus en plus
+	  - mission réussie : pièces tout de suite ; les 3 du jour : un bonus en pièces ;
+	    les 3 de la semaine : un fantôme Épique Doré
 	Les progrès sont sauvegardés avec le reste des données du joueur.
 ]]
 
@@ -6564,11 +6666,13 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local AnnounceService = require(script.Parent.AnnounceService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
+local GhostService = require(script.Parent.GhostService)
 local Hooks = require(script.Parent.Hooks)
 
 local MissionService = {}
 
 local dirty: { [Player]: boolean } = {}
+local rng = Random.new()
 
 local function today(): number
 	return Missions.today(os.time())
@@ -6580,11 +6684,20 @@ function MissionService.sync(player: Player)
 		return
 	end
 	dirty[player] = nil
+	local weekly = data.Weekly
 	Remotes.get("MissionsInfo"):FireClient(player, {
 		Day = data.Missions.Day,
 		List = data.Missions.List,
 		BonusDone = data.Missions.BonusDone,
 		ResetAt = (data.Missions.Day + 1) * 86400,
+		Weekly = if type(weekly) == "table" and weekly.List
+			then {
+				Week = weekly.Week,
+				List = weekly.List,
+				BonusDone = weekly.BonusDone,
+				ResetAt = Missions.weekEnd(weekly.Week),
+			}
+			else nil,
 	})
 end
 
@@ -6606,17 +6719,80 @@ function MissionService.ensure(player: Player): boolean
 	return true
 end
 
+-- Pareil pour les défis de la semaine
+function MissionService.ensureWeekly(player: Player): boolean
+	local data = DataService.get(player)
+	if not data then
+		return false
+	end
+	local week = Missions.thisWeek(os.time())
+	if type(data.Weekly) == "table" and data.Weekly.Week == week then
+		return false
+	end
+	data.Weekly = {
+		Week = week,
+		List = Missions.generateWeekly(week, player.UserId, EconomyService.incomePerSecond(player)),
+		BonusDone = false,
+	}
+	return true
+end
+
 -- Est-ce que cet événement fait avancer cette mission ?
-local function matches(mission, kind: string, info: any): boolean
-	if mission.Id == kind then
-		return true
+local function matches(mission, defs, kind: string, info: any): boolean
+	local def = defs[mission.Id]
+	if not def then
+		return false
 	end
-	if kind == "Buy" and (mission.Id == "BuyRare" or mission.Id == "BuyEpic") then
+	if def.MinRarity then
+		if kind ~= "Buy" then
+			return false
+		end
 		local ghost = type(info) == "string" and GhostData.get(info)
-		local minRarity = Missions.Defs[mission.Id].MinRarity
-		return ghost ~= nil and ghost ~= false and Rarities.rank(ghost.Rarity) >= Rarities.rank(minRarity)
+		return ghost ~= nil and ghost ~= false and Rarities.rank(ghost.Rarity) >= Rarities.rank(def.MinRarity)
 	end
-	return false
+	return mission.Id == kind
+end
+
+-- Avance une liste de missions. Renvoie les missions qui viennent d'être réussies.
+local function advance(list, defs, kind: string, amount: number, info: any)
+	local completed = {}
+	for _, mission in list do
+		if not mission.Done and matches(mission, defs, kind, info) then
+			-- "Buy" compte 1 fantôme acheté
+			local step = if kind == "Buy" then 1 else amount
+			mission.Progress = math.min(mission.Target, mission.Progress + step)
+			if mission.Progress >= mission.Target then
+				mission.Done = true
+				table.insert(completed, mission)
+			end
+		end
+	end
+	return completed
+end
+
+local function allDone(list): boolean
+	for _, mission in list do
+		if not mission.Done then
+			return false
+		end
+	end
+	return true
+end
+
+-- Les 3 défis de la semaine : un fantôme Épique Doré (en pièces si la base est pleine)
+local function giveWeeklyBonus(player: Player)
+	local bonus = Missions.WeeklyBonusGhost
+	local ghost = GhostData.pick(bonus.Rarity, rng:NextNumber())
+	local key = GhostData.key(ghost.Id, bonus.Mutation)
+	if GhostService.giveGhost(player, key) then
+		AnnounceService.notify(player, "WeeklyAllDone", { ghost = key }, "good")
+	else
+		local coins = GhostData.priceOf(key)
+		EconomyService.add(player, coins)
+		AnnounceService.notify(player, "WeeklyAllDoneCoins", { ghost = key, coins = Format.short(coins) }, "good")
+	end
+	AnnounceService.announce("AnnWeekly", { player = player.DisplayName }, "rebirth")
+	AnnounceService.effect("Gift", {}, player)
 end
 
 local function progress(player: Player, kind: string, amount: number, info: any)
@@ -6627,38 +6803,66 @@ local function progress(player: Player, kind: string, amount: number, info: any)
 	if MissionService.ensure(player) then
 		dirty[player] = true
 	end
-	local completedOne = false
-	for _, mission in data.Missions.List do
-		if not mission.Done and matches(mission, kind, info) then
-			-- "Buy" compte 1 fantôme acheté, sauf pour les missions qui demandent une rareté
-			local step = if kind == "Buy" then 1 else amount
-			mission.Progress = math.min(mission.Target, mission.Progress + step)
-			dirty[player] = true
-			if mission.Progress >= mission.Target then
-				mission.Done = true
-				completedOne = true
-				local coins = Missions.reward(mission.Tier, EconomyService.incomePerSecond(player))
-				EconomyService.add(player, coins)
-				AnnounceService.notify(player, "MissionDone", { coins = Format.short(coins) }, "good")
-				AnnounceService.effect("Gift", {}, player)
-			end
+	if MissionService.ensureWeekly(player) then
+		dirty[player] = true
+	end
+	local income = EconomyService.incomePerSecond(player)
+	local changed = false
+
+	-- missions du jour
+	local before = {}
+	for i, mission in data.Missions.List do
+		before[i] = mission.Progress
+	end
+	local daily = advance(data.Missions.List, Missions.Defs, kind, amount, info)
+	for i, mission in data.Missions.List do
+		if mission.Progress ~= before[i] then
+			changed = true
 		end
 	end
-	if completedOne and not data.Missions.BonusDone then
-		local allDone = true
-		for _, mission in data.Missions.List do
-			if not mission.Done then
-				allDone = false
+	for _, mission in daily do
+		local coins = Missions.reward(mission.Tier, income)
+		EconomyService.add(player, coins)
+		AnnounceService.notify(player, "MissionDone", { coins = Format.short(coins) }, "good")
+		AnnounceService.effect("Gift", {}, player)
+	end
+	if #daily > 0 and not data.Missions.BonusDone and allDone(data.Missions.List) then
+		data.Missions.BonusDone = true
+		local coins = Missions.reward("bonus", income)
+		EconomyService.add(player, coins)
+		AnnounceService.notify(player, "MissionsAllDone", { coins = Format.short(coins) }, "good")
+	end
+
+	-- défis de la semaine
+	local weekly = data.Weekly
+	local finished = {}
+	if type(weekly) == "table" and weekly.List then
+		local beforeWeekly = {}
+		for i, mission in weekly.List do
+			beforeWeekly[i] = mission.Progress
+		end
+		finished = advance(weekly.List, Missions.WeeklyDefs, kind, amount, info)
+		for i, mission in weekly.List do
+			if mission.Progress ~= beforeWeekly[i] then
+				changed = true
 			end
 		end
-		if allDone then
-			data.Missions.BonusDone = true
-			local coins = Missions.reward("bonus", EconomyService.incomePerSecond(player))
+		for _ in finished do
+			local coins = Missions.weeklyReward(income)
 			EconomyService.add(player, coins)
-			AnnounceService.notify(player, "MissionsAllDone", { coins = Format.short(coins) }, "good")
+			AnnounceService.notify(player, "WeeklyDone", { coins = Format.short(coins) }, "good")
+			AnnounceService.effect("Gift", {}, player)
+		end
+		if #finished > 0 and not weekly.BonusDone and allDone(weekly.List) then
+			weekly.BonusDone = true
+			giveWeeklyBonus(player)
 		end
 	end
-	if completedOne then
+
+	if changed then
+		dirty[player] = true
+	end
+	if #daily > 0 or #finished > 0 then
 		MissionService.sync(player)
 	end
 end
@@ -6666,11 +6870,12 @@ MissionService.progress = progress
 
 function MissionService.setup(player: Player)
 	MissionService.ensure(player)
+	MissionService.ensureWeekly(player)
 	MissionService.sync(player)
 end
 
 function MissionService.start()
-	for _, kind in { "Buy", "Sell", "Steal", "Bonk", "Lock", "Earn", "NightOutside" } do
+	for _, kind in { "Buy", "Sell", "Steal", "Bonk", "Lock", "Earn", "NightOutside", "Trap" } do
 		Hooks.on(kind, function(player: Player, value: any)
 			local amount = if type(value) == "number" then value else 1
 			progress(player, kind, amount, value)
@@ -6688,7 +6893,9 @@ function MissionService.start()
 			if sinceDayCheck >= 60 then
 				sinceDayCheck = 0
 				for _, player in Players:GetPlayers() do
-					if MissionService.ensure(player) then
+					local newDay = MissionService.ensure(player)
+					local newWeek = MissionService.ensureWeekly(player)
+					if newDay or newWeek then
 						dirty[player] = true
 					end
 				end
@@ -12038,12 +12245,31 @@ local TIER_COLORS = {
 
 local function buildMissions(): Frame
 	local panel, body = makePanel("Missions", "📋 " .. Lang.t("MissionsTitle"), UI.Colors.Info)
+	panel.Size = UDim2.fromOffset(600, 490)
+	local title = panel:FindFirstChildOfClass("TextLabel")
+	local mode = "daily"
+
+	-- deux onglets : missions du jour, défis de la semaine
+	local tabs = {}
+	for i, info in { { "daily", "MissionsTabDaily" }, { "weekly", "MissionsTabWeekly" } } do
+		local tab = UI.new("TextButton", {
+			Name = if info[1] == "daily" then "TabDaily" else "TabWeekly",
+			Size = UDim2.new(0.5, -6, 0, 44),
+			Position = UDim2.new((i - 1) * 0.5, (i - 1) * 6, 0, 0),
+			BackgroundColor3 = UI.Colors.PanelLight,
+			Text = "",
+			Parent = body,
+		}, { UI.corner(14), UI.stroke(nil, 3) })
+		UI.label({ Size = UDim2.new(1, -8, 1, -8), Position = UDim2.fromOffset(4, 4), Text = Lang.t(info[2]), MaxTextSize = 22, Parent = tab })
+		tabs[info[1]] = tab
+	end
+
 	local cards = {}
 	for i = 1, 3 do
 		local card = UI.new("Frame", {
 			Name = "Mission" .. i,
 			Size = UDim2.new(1, 0, 0, 72),
-			Position = UDim2.fromOffset(0, (i - 1) * 80),
+			Position = UDim2.fromOffset(0, 52 + (i - 1) * 80),
 			BackgroundColor3 = UI.Colors.PanelLight,
 			Parent = body,
 		}, { UI.corner(16), UI.stroke(nil, 3) })
@@ -12061,37 +12287,61 @@ local function buildMissions(): Frame
 		local reward = UI.label({ Name = "Reward", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(100, 40), TextColor3 = UI.Colors.Gold, MaxTextSize = 26, Parent = card })
 		cards[i] = { Icon = icon, Tier = tier, Text = text, Fill = fill, Count = count, Reward = reward }
 	end
-	local bonus = UI.label({ Name = "Bonus", Size = UDim2.new(1, 0, 0, 34), Position = UDim2.fromOffset(0, 244), TextColor3 = UI.Colors.Gold, MaxTextSize = 24, Parent = body })
-	local footer = UI.label({ Name = "Footer", Size = UDim2.new(1, 0, 0, 28), Position = UDim2.fromOffset(0, 284), TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = body })
+	local bonus = UI.label({ Name = "Bonus", Size = UDim2.new(1, 0, 0, 34), Position = UDim2.fromOffset(0, 296), TextColor3 = UI.Colors.Gold, MaxTextSize = 24, Parent = body })
+	local footer = UI.label({ Name = "Footer", Size = UDim2.new(1, 0, 0, 28), Position = UDim2.fromOffset(0, 336), TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = body })
 
 	local function refresh()
 		local info = missionsInfo
 		if not info or not panel.Visible then
 			return
 		end
+		for key, tab in tabs do
+			tab.BackgroundColor3 = if key == mode then UI.Colors.Info else UI.Colors.PanelLight
+		end
+		if title then
+			title.Text = if mode == "daily" then "📋 " .. Lang.t("MissionsTitle") else "🏆 " .. Lang.t("WeeklyTitle")
+		end
+		local weekly = mode == "weekly"
+		local source = if weekly then info.Weekly else info
+		local defs = if weekly then Missions.WeeklyDefs else Missions.Defs
+		if not source then
+			return
+		end
 		local income = player:GetAttribute("Income") or 0
 		for i, card in cards do
-			local mission = info.List[i]
+			local mission = source.List[i]
 			if mission then
-				local def = Missions.Defs[mission.Id] or {}
+				local def = defs[mission.Id] or {}
 				local n = if mission.Id == "Earn" then Format.short(mission.Target) else mission.Target
+				local reward = if weekly then Missions.weeklyReward(income) else Missions.reward(mission.Tier, income)
 				card.Icon.Text = if mission.Done then "✅" else (def.Icon or "⭐")
 				card.Tier.Text = Lang.t("MissionTier_" .. mission.Tier)
-				card.Tier.TextColor3 = TIER_COLORS[mission.Tier] or UI.Colors.Text
-				card.Text.Text = Lang.t("Mission_" .. mission.Id, { n = n })
+				card.Tier.TextColor3 = TIER_COLORS[mission.Tier] or UI.Colors.Gold
+				card.Text.Text = Lang.t((if weekly then "Weekly_" else "Mission_") .. mission.Id, { n = n })
 				card.Fill.Size = UDim2.fromScale(math.clamp(mission.Progress / mission.Target, 0, 1), 1)
 				card.Count.Text = if mission.Id == "Earn"
 					then Format.short(mission.Progress) .. "/" .. Format.short(mission.Target)
 					else mission.Progress .. "/" .. mission.Target
-				card.Reward.Text = if mission.Done then "✅" else "🪙 " .. Format.short(Missions.reward(mission.Tier, income))
+				card.Reward.Text = if mission.Done then "✅" else "🪙 " .. Format.short(reward)
 			end
 		end
-		if info.BonusDone then
-			bonus.Text = Lang.t("MissionsBonusDone")
+		local remaining = math.max(0, (source.ResetAt or 0) - workspace:GetServerTimeNow())
+		if weekly then
+			bonus.Text = if source.BonusDone then Lang.t("WeeklyBonusDone") else Lang.t("WeeklyBonus")
+			footer.Text = Lang.t("WeeklyNext", { days = math.floor(remaining / 86400), hours = math.floor(remaining % 86400 / 3600) })
 		else
-			bonus.Text = Lang.t("MissionsBonus", { coins = Format.short(Missions.reward("bonus", income)) })
+			bonus.Text = if source.BonusDone
+				then Lang.t("MissionsBonusDone")
+				else Lang.t("MissionsBonus", { coins = Format.short(Missions.reward("bonus", income)) })
+			footer.Text = Lang.t("MissionsNext", { time = Format.time(remaining) })
 		end
-		footer.Text = Lang.t("MissionsNext", { time = Format.time((info.ResetAt or 0) - workspace:GetServerTimeNow()) })
+	end
+	for key, tab in tabs do
+		tab.Activated:Connect(function()
+			Effects.sound("Click")
+			mode = key
+			refresh()
+		end)
 	end
 	table.insert(refreshers, refresh)
 	return panel

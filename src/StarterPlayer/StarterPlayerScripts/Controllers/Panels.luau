@@ -790,12 +790,31 @@ local TIER_COLORS = {
 
 local function buildMissions(): Frame
 	local panel, body = makePanel("Missions", "📋 " .. Lang.t("MissionsTitle"), UI.Colors.Info)
+	panel.Size = UDim2.fromOffset(600, 490)
+	local title = panel:FindFirstChildOfClass("TextLabel")
+	local mode = "daily"
+
+	-- deux onglets : missions du jour, défis de la semaine
+	local tabs = {}
+	for i, info in { { "daily", "MissionsTabDaily" }, { "weekly", "MissionsTabWeekly" } } do
+		local tab = UI.new("TextButton", {
+			Name = if info[1] == "daily" then "TabDaily" else "TabWeekly",
+			Size = UDim2.new(0.5, -6, 0, 44),
+			Position = UDim2.new((i - 1) * 0.5, (i - 1) * 6, 0, 0),
+			BackgroundColor3 = UI.Colors.PanelLight,
+			Text = "",
+			Parent = body,
+		}, { UI.corner(14), UI.stroke(nil, 3) })
+		UI.label({ Size = UDim2.new(1, -8, 1, -8), Position = UDim2.fromOffset(4, 4), Text = Lang.t(info[2]), MaxTextSize = 22, Parent = tab })
+		tabs[info[1]] = tab
+	end
+
 	local cards = {}
 	for i = 1, 3 do
 		local card = UI.new("Frame", {
 			Name = "Mission" .. i,
 			Size = UDim2.new(1, 0, 0, 72),
-			Position = UDim2.fromOffset(0, (i - 1) * 80),
+			Position = UDim2.fromOffset(0, 52 + (i - 1) * 80),
 			BackgroundColor3 = UI.Colors.PanelLight,
 			Parent = body,
 		}, { UI.corner(16), UI.stroke(nil, 3) })
@@ -813,37 +832,61 @@ local function buildMissions(): Frame
 		local reward = UI.label({ Name = "Reward", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(100, 40), TextColor3 = UI.Colors.Gold, MaxTextSize = 26, Parent = card })
 		cards[i] = { Icon = icon, Tier = tier, Text = text, Fill = fill, Count = count, Reward = reward }
 	end
-	local bonus = UI.label({ Name = "Bonus", Size = UDim2.new(1, 0, 0, 34), Position = UDim2.fromOffset(0, 244), TextColor3 = UI.Colors.Gold, MaxTextSize = 24, Parent = body })
-	local footer = UI.label({ Name = "Footer", Size = UDim2.new(1, 0, 0, 28), Position = UDim2.fromOffset(0, 284), TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = body })
+	local bonus = UI.label({ Name = "Bonus", Size = UDim2.new(1, 0, 0, 34), Position = UDim2.fromOffset(0, 296), TextColor3 = UI.Colors.Gold, MaxTextSize = 24, Parent = body })
+	local footer = UI.label({ Name = "Footer", Size = UDim2.new(1, 0, 0, 28), Position = UDim2.fromOffset(0, 336), TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = body })
 
 	local function refresh()
 		local info = missionsInfo
 		if not info or not panel.Visible then
 			return
 		end
+		for key, tab in tabs do
+			tab.BackgroundColor3 = if key == mode then UI.Colors.Info else UI.Colors.PanelLight
+		end
+		if title then
+			title.Text = if mode == "daily" then "📋 " .. Lang.t("MissionsTitle") else "🏆 " .. Lang.t("WeeklyTitle")
+		end
+		local weekly = mode == "weekly"
+		local source = if weekly then info.Weekly else info
+		local defs = if weekly then Missions.WeeklyDefs else Missions.Defs
+		if not source then
+			return
+		end
 		local income = player:GetAttribute("Income") or 0
 		for i, card in cards do
-			local mission = info.List[i]
+			local mission = source.List[i]
 			if mission then
-				local def = Missions.Defs[mission.Id] or {}
+				local def = defs[mission.Id] or {}
 				local n = if mission.Id == "Earn" then Format.short(mission.Target) else mission.Target
+				local reward = if weekly then Missions.weeklyReward(income) else Missions.reward(mission.Tier, income)
 				card.Icon.Text = if mission.Done then "✅" else (def.Icon or "⭐")
 				card.Tier.Text = Lang.t("MissionTier_" .. mission.Tier)
-				card.Tier.TextColor3 = TIER_COLORS[mission.Tier] or UI.Colors.Text
-				card.Text.Text = Lang.t("Mission_" .. mission.Id, { n = n })
+				card.Tier.TextColor3 = TIER_COLORS[mission.Tier] or UI.Colors.Gold
+				card.Text.Text = Lang.t((if weekly then "Weekly_" else "Mission_") .. mission.Id, { n = n })
 				card.Fill.Size = UDim2.fromScale(math.clamp(mission.Progress / mission.Target, 0, 1), 1)
 				card.Count.Text = if mission.Id == "Earn"
 					then Format.short(mission.Progress) .. "/" .. Format.short(mission.Target)
 					else mission.Progress .. "/" .. mission.Target
-				card.Reward.Text = if mission.Done then "✅" else "🪙 " .. Format.short(Missions.reward(mission.Tier, income))
+				card.Reward.Text = if mission.Done then "✅" else "🪙 " .. Format.short(reward)
 			end
 		end
-		if info.BonusDone then
-			bonus.Text = Lang.t("MissionsBonusDone")
+		local remaining = math.max(0, (source.ResetAt or 0) - workspace:GetServerTimeNow())
+		if weekly then
+			bonus.Text = if source.BonusDone then Lang.t("WeeklyBonusDone") else Lang.t("WeeklyBonus")
+			footer.Text = Lang.t("WeeklyNext", { days = math.floor(remaining / 86400), hours = math.floor(remaining % 86400 / 3600) })
 		else
-			bonus.Text = Lang.t("MissionsBonus", { coins = Format.short(Missions.reward("bonus", income)) })
+			bonus.Text = if source.BonusDone
+				then Lang.t("MissionsBonusDone")
+				else Lang.t("MissionsBonus", { coins = Format.short(Missions.reward("bonus", income)) })
+			footer.Text = Lang.t("MissionsNext", { time = Format.time(remaining) })
 		end
-		footer.Text = Lang.t("MissionsNext", { time = Format.time((info.ResetAt or 0) - workspace:GetServerTimeNow()) })
+	end
+	for key, tab in tabs do
+		tab.Activated:Connect(function()
+			Effects.sound("Click")
+			mode = key
+			refresh()
+		end)
 	end
 	table.insert(refreshers, refresh)
 	return panel

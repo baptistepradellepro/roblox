@@ -206,6 +206,30 @@ local function scanKeys(dir: string)
 end
 scanKeys("src")
 
+---------------------------------------------------------------- Défis de la semaine
+for _, id in Missions.WeeklyPool do
+	check(Missions.WeeklyDefs[id] ~= nil, "défi défini : " .. id)
+	check(Strings.fr["Weekly_" .. id] and Strings.en["Weekly_" .. id], "texte du défi : " .. id)
+end
+for week = 2900, 2960 do
+	local list = Missions.generateWeekly(week, 101, 50)
+	local seen = {}
+	for _, mission in list do
+		check(not seen[mission.Id], "défis tous différents (semaine " .. week .. ")")
+		seen[mission.Id] = true
+		check(mission.Target > 0, "objectif positif : " .. mission.Id)
+	end
+	check(#list == 3, "3 défis par semaine")
+end
+local sameA = Missions.generateWeekly(2950, 7, 10)
+local sameB = Missions.generateWeekly(2950, 7, 10)
+check(sameA[1].Id == sameB[1].Id and sameA[3].Id == sameB[3].Id, "mêmes défis toute la semaine")
+local sampleTime = 1793000000
+local week = Missions.thisWeek(sampleTime)
+local nextStart = Missions.weekEnd(week)
+check(nextStart > sampleTime and nextStart - sampleTime <= 7 * 86400, "fin de semaine cohérente")
+check(os.date("!*t", nextStart).wday == 2 and os.date("!*t", nextStart).hour == 0, "les défis changent le lundi à 0h UTC")
+
 ---------------------------------------------------------------- Boutique, roue, armes, monstres
 local Shop = loadModule(SHARED .. "Shop.luau")
 local Wheel = loadModule(SHARED .. "Wheel.luau")

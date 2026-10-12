@@ -90,6 +90,8 @@ Pour ne pas attendre 8 minutes, mets `Config.DayDuration = 30` pendant les tests
 
 Bouton 📋 à gauche. Chaque joueur a 3 missions par jour : une facile, une moyenne, une difficile (par exemple "Achète 3 fantômes", "Vends 2 fantômes", "Vole un fantôme à un autre joueur"). La barre avance toute seule, et quand une mission est finie les pièces arrivent directement avec un message "Mission réussie". Les 3 réussies donnent un bonus. Les missions changent à minuit UTC (2h du matin à Paris en été, 1h en hiver).
 
+**Défis de la semaine** : dans le même panneau, onglet 🏆 « De la semaine ». Trois défis plus longs (par exemple « Vole 15 fantômes », « Piège 5 intrus dans ta base », « Achète un Légendaire »), qui changent le lundi à 0h UTC. Chaque défi réussi rapporte environ 45 minutes de revenus, et les trois réussis donnent un fantôme Épique Doré (payé en pièces si ta base est pleine), avec une annonce pour tout le serveur. Les défis et leurs objectifs se règlent dans `Missions.luau`.
+
 Les missions difficiles demandent souvent un deuxième joueur (vol, coup de batte) : teste-les avec le Serveur local à 2 ou 3 joueurs.
 
 ## Tester la boutique (gratuit dans Studio)

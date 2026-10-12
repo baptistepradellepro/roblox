@@ -1051,6 +1051,44 @@ aData.Missions.Day = oldDay - 1
 check(MissionService.ensure(alice) == true and aData.Missions.Day == oldDay and #aData.Missions.List == 3 and not aData.Missions.BonusDone, "nouvelles missions le lendemain")
 check(MissionService.ensure(alice) == false, "pas de nouveau tirage le même jour")
 
+section("Défis de la semaine")
+for _, p in { alice, bob, chloe } do
+	local data = DataService.get(p)
+	check(type(data.Weekly) == "table" and #data.Weekly.List == 3, p.Name .. " a 3 défis de la semaine")
+end
+bData.Weekly.List = {
+	{ Id = "Sell", Tier = "weekly", Target = 1, Progress = 0, Done = false },
+	{ Id = "Buy", Tier = "weekly", Target = 2, Progress = 0, Done = false },
+	{ Id = "BuyEpic", Tier = "weekly", Target = 1, Progress = 0, Done = false },
+}
+bData.Weekly.BonusDone = false
+m = mark()
+local bobCoins = bData.Coins
+MissionService.progress(bob, "Sell", 1, 1)
+check(bData.Weekly.List[1].Done and notified(bob, "WeeklyDone", m), "défi 'Vends' réussi")
+check(bData.Coins >= bobCoins + 5000, "récompense du défi en pièces")
+MissionService.progress(bob, "Buy", 1, "DrapMou")
+check(bData.Weekly.List[2].Progress == 1 and not bData.Weekly.List[3].Done, "un Commun ne compte pas pour 'Épique ou mieux'")
+local ghostsBefore = 0
+for _ in bData.Slots do
+	ghostsBefore += 1
+end
+m = mark()
+MissionService.progress(bob, "Buy", 1, "CrepeFrisson")
+check(bData.Weekly.List[2].Done and bData.Weekly.List[3].Done, "un Épique compte pour les deux défis d'achat")
+check(bData.Weekly.BonusDone and (notified(bob, "WeeklyAllDone", m) or notified(bob, "WeeklyAllDoneCoins", m)), "bonus des 3 défis")
+check(announced("AnnWeekly", m), "annonce pour tout le serveur")
+local goldEpic = false
+for _, id in bData.Slots do
+	if string.find(id, "#Gold", 1, true) and GhostData.get(id).Rarity == "Epic" then
+		goldEpic = true
+	end
+end
+check(goldEpic or notified(bob, "WeeklyAllDoneCoins", m), "Bob reçoit un fantôme Épique Doré")
+local oldWeek = bData.Weekly.Week
+bData.Weekly.Week = oldWeek - 1
+check(MissionService.ensureWeekly(bob) and bData.Weekly.Week == oldWeek and not bData.Weekly.BonusDone, "nouveaux défis la semaine suivante")
+
 section("Le propriétaire quitte pendant un vol")
 GhostService.giveGhost(chloe, "WifiFantome")
 local chloeSlot

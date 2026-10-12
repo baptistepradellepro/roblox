@@ -491,6 +491,21 @@ for i = 1, 3 do
 end
 check(findText(missionsPanel, "Nouvelles missions dans") ~= nil, "compte à rebours des missions")
 check(findText(missionsPanel, "Les 3 missions") ~= nil or findText(missionsPanel, "Bonus du jour") ~= nil, "ligne du bonus")
+local weeklyTab = missionsPanel:FindFirstChild("TabWeekly", true)
+check(weeklyTab ~= nil, "onglet des défis de la semaine")
+weeklyTab.Activated:Fire()
+Sched.advance(0.2)
+check(findText(missionsPanel, "DÉFIS DE LA SEMAINE") ~= nil, "titre des défis")
+for i = 1, 3 do
+	local card = missionsPanel:FindFirstChild("Mission" .. i, true)
+	local text = card and card:FindFirstChild("Text")
+	check(text and #text.Text > 5 and not string.find(text.Text, "Weekly_", 1, true), "défi " .. i .. " affiché (" .. tostring(text and text.Text) .. ")")
+end
+check(findText(missionsPanel, "Nouveaux défis dans") ~= nil, "compte à rebours de la semaine")
+check(findText(missionsPanel, "Épique Doré") ~= nil, "le bonus des défis est annoncé")
+missionsPanel:FindFirstChild("TabDaily", true).Activated:Fire()
+Sched.advance(0.2)
+check(findText(missionsPanel, "MISSIONS DU JOUR") ~= nil, "retour aux missions du jour")
 missionsPanel.Close.Activated:Fire()
 
 section("Codes secrets (boutique)")
