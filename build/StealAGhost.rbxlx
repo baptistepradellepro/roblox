@@ -4950,8 +4950,8 @@ end
 local function setupLockButton(baseModel: Model)
 	local button = baseModel:WaitForChild("LockButton") :: BasePart
 	local attachment = Instance.new("Attachment")
+	attachment.Position = button.CFrame:PointToObjectSpace(button.Position + Vector3.new(0, 2.5, 0))
 	attachment.Parent = button
-	attachment.WorldPosition = button.Position + Vector3.new(0, 2.5, 0)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = Lang.t("Lock")
 	prompt.ObjectText = "🔒"
@@ -5067,8 +5067,8 @@ local function setupPedestal(baseModel: Model, ped: BasePart)
 	local top = ped:GetAttribute("GhostCFrame") :: CFrame
 
 	local attachment = Instance.new("Attachment")
+	attachment.Position = ped.CFrame:PointToObjectSpace(top.Position + Vector3.new(0, 2.5, 0))
 	attachment.Parent = ped
-	attachment.WorldPosition = top.Position + Vector3.new(0, 2.5, 0)
 
 	local steal = makePrompt(attachment, Lang.t("Steal"), Config.StealHoldDuration, Config.StealRange)
 	local sell = makePrompt(attachment, Lang.t("Sell"), 1, 10)
