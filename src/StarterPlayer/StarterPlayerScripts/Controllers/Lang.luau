@@ -9,7 +9,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local GhostData = require(Shared:WaitForChild("GhostData"))
+local Monsters = require(Shared:WaitForChild("Monsters"))
 local Strings = require(Shared:WaitForChild("Strings"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
 
 local Lang = {}
 
@@ -55,6 +57,24 @@ function Lang.ghostGag(ghostId: string): string
 	return ghost.Gag[Lang.code] or ghost.Gag.en
 end
 
+-- Choisit le texte dans la bonne langue : { fr = "...", en = "..." }
+function Lang.pick(texts: { [string]: string }?): string
+	if not texts then
+		return ""
+	end
+	return texts[Lang.code] or texts.en or ""
+end
+
+function Lang.monsterName(id: string): string
+	local monster = Monsters.get(id)
+	return if monster then Lang.pick(monster.Name) else tostring(id)
+end
+
+function Lang.weaponName(id: string): string
+	local weapon = Weapons.get(id)
+	return if weapon then Lang.pick(weapon.Name) else tostring(id)
+end
+
 function Lang.rarityName(rarity: string): string
 	return Strings.format(Lang.code, "Rarity_" .. rarity)
 end
@@ -69,6 +89,10 @@ function Lang.t(key: string, params: { [string]: any }?): string
 				resolved[name] = Lang.ghostName(value)
 			elseif name == "rarity" then
 				resolved[name] = Lang.rarityName(value)
+			elseif name == "monster" then
+				resolved[name] = Lang.monsterName(value)
+			elseif name == "weapon" then
+				resolved[name] = Lang.weaponName(value)
 			else
 				resolved[name] = value
 			end

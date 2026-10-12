@@ -202,7 +202,7 @@ check(findText(gui.SAG_Announce, "Bob a volé") ~= nil, "bannière 'Bob a volé 
 section("Étage 2 (ascenseur et achat)")
 local upPad = aliceBase.Model:FindFirstChild("UpPad")
 local floorTag = upPad:FindFirstChildOfClass("BillboardGui")
-check(floorTag and findText(floorTag, "Étage 2 : 🪙 25K") ~= nil, "prix de l'étage affiché sur l'ascenseur")
+check(floorTag and findText(floorTag, "Étage 2 : 🪙 50K") ~= nil, "prix de l'étage affiché sur l'ascenseur")
 local floorPrompt = find(upPad, function(d)
 	return d.ClassName == "ProximityPrompt"
 end)
@@ -247,7 +247,7 @@ check(visibleBars >= 5, "chez soi, la barrière est presque invisible")
 check(findText(gui.SAG_HUD, "Base verrouillée") ~= nil, "message 'Base verrouillée !'")
 
 section("Rebirth par le panneau")
-aData.Coins = 6_000_000
+aData.Coins = 12_000_000
 Sched.advance(1.2)
 local rebirthButton = find(gui.SAG_HUD, function(d)
 	return d.Name == "Rebirth"
@@ -277,6 +277,93 @@ local shop = gui.SAG_Panels:FindFirstChild("Shop")
 check(shop.Visible == true, "boutique ouverte")
 Sched.advance(0.6)
 check(findText(shop, "Bientôt") ~= nil, "articles 'Bientôt' tant que les IDs sont à 0")
+local function tab(id: string)
+	local button = find(shop, function(d)
+		return d.Name == "Tab_" .. id
+	end)
+	button.Activated:Fire()
+	Sched.advance(0.6)
+	return find(shop, function(d)
+		return d.Name == "Page_" .. id
+	end)
+end
+check(find(shop, function(d)
+	return d.Name == "Tab_Weapons"
+end) ~= nil, "onglets de la boutique")
+local weaponsPage = tab("Weapons")
+check(weaponsPage.Visible and findText(weaponsPage, "Offerte") ~= nil, "onglet Armes : la batte est offerte")
+check(findText(weaponsPage, "Marteau Pouet Géant") ~= nil and findText(weaponsPage, "Portée") ~= nil, "armes payantes avec leur portée")
+local monstersPage = tab("Monsters")
+check(monstersPage.Visible and findText(monstersPage, "Mamie Toile") ~= nil, "onglet Monstres")
+local wheelPage = tab("Wheel")
+check(wheelPage.Visible and not weaponsPage.Visible, "un seul onglet affiché à la fois")
+local odds = 0
+for _, d in wheelPage:GetDescendants() do
+	if string.sub(d.Name, 1, 5) == "Odds_" and string.find(d.Text, "%", 1, true) then
+		odds += 1
+	end
+end
+check(odds == 8, "les chances de chaque case sont affichées avant l'achat (" .. odds .. ")")
+check(findText(wheelPage, "Un fantôme Mythique  :  2 %") ~= nil, "exemple : Mythique 2 %")
+shop.Close.Activated:Fire()
+
+section("Roue de la Fortune côté joueur")
+local wheelModel = workspace:FindFirstChild("FortuneWheel")
+check(wheelModel ~= nil, "la roue est dessinée au milieu de la map")
+local holders = {}
+for _, d in wheelModel:GetDescendants() do
+	if d:GetAttribute("Segment") then
+		holders[d:GetAttribute("Segment")] = d
+	end
+end
+check(#holders == 8 and holders[1]:FindFirstChild("SegmentLabel") ~= nil, "8 cases avec leur texte")
+aData.Spins = 1
+alice:SetAttribute("Spins", 1)
+shopButton.Activated:Fire()
+Sched.advance(0.3)
+wheelPage = tab("Wheel")
+local spinButton = find(wheelPage, function(d)
+	return d.Name == "SpinButton"
+end)
+Fake.moveTo(alice, Vector3.new(150, 3, 70))
+spinButton.Activated:Fire()
+Sched.advance(0.3)
+check(aData.Spins == 1 and findText(gui.SAG_HUD, "Va devant la roue") ~= nil, "il faut être devant la roue pour tourner")
+local wheelAnchor = workspace.Map:FindFirstChild("FortuneWheelAnchor", true)
+Fake.moveTo(alice, wheelAnchor.Position + Vector3.new(0, -8, -8))
+spinButton.Activated:Fire()
+Sched.advance(0.5)
+check(aData.Spins == 0, "Alice tourne la roue")
+check(shop.Visible == false, "la boutique se ferme pour regarder la roue")
+local winning = wheelAnchor:GetAttribute("SpinSegment")
+local startAngle = holders[1].CFrame
+Sched.advance(2)
+check(holders[1].CFrame ~= startAngle, "la roue tourne")
+Sched.advance(5)
+local highest, highestY = nil, -math.huge
+for index, holder in holders do
+	if holder.Position.Y > highestY then
+		highest, highestY = index, holder.Position.Y
+	end
+end
+check(highest == winning, "la roue s'arrête sur la case tirée par le serveur (" .. tostring(highest) .. " / " .. tostring(winning) .. ")")
+check(findText(gui.SAG_HUD, "Roue de la Fortune") ~= nil or findText(gui.SAG_HUD, "Base pleine") ~= nil, "message du gain")
+
+section("Batte côté joueur")
+local bat = alice.Backpack:FindFirstChild("Batte") or alice.Character:FindFirstChild("Batte")
+check(bat ~= nil and bat:GetAttribute("WeaponId") == "Batte", "Alice a sa batte dans son sac")
+check(bat and bat:FindFirstChild("Handle") ~= nil, "la batte a une poignée")
+
+section("Monstre lâché par un joueur")
+local MonsterService = Fake.require("ServerScriptService.Services.MonsterService")
+MonsterService.summon(bob, "MamieToile")
+Sched.advance(0.5)
+local spiderModel = workspace:FindFirstChild("MamieToile")
+check(spiderModel ~= nil, "Mamie Toile est dessinée")
+check(spiderModel and findText(spiderModel, "lâché par Bob") ~= nil, "on voit qui l'a lâchée")
+check(findText(gui.SAG_Announce, "Bob a lâché Mamie Toile") ~= nil, "annonce pour tout le serveur")
+Sched.advance(50)
+check(workspace:FindFirstChild("MamieToile") == nil, "elle disparaît à la fin")
 
 section("Fantômédex (panneau)")
 local indexButton = find(gui.SAG_HUD, function(d)
@@ -374,6 +461,32 @@ check(lighting.ClockTime == 22.5, "le ciel passe en mode nuit")
 Sched.advance(Config.NightDuration)
 check(workspace:FindFirstChild("Gloutrouille") == nil, "le monstre disparaît au matin")
 check(math.abs(lighting.ClockTime - 18.3) < 0.01, "le jour revient")
+
+section("Fantôme dessiné à la main dans Studio")
+local GhostFactory = Fake.require("ReplicatedStorage.Shared.GhostFactory")
+local folder = Fake.Instance.new("Folder")
+folder.Name = "GhostModels"
+local custom = Fake.Instance.new("Model")
+custom.Name = "DrapMou"
+local body = Fake.Instance.new("Part")
+body.Name = "MonCorps"
+body.Size = Vector3.new(4, 6, 3)
+body.CFrame = roblox.CFrame.new(50, 20, 10)
+body.Anchored = false
+body.CanCollide = true
+body.Parent = custom
+custom.Parent = folder
+folder.Parent = RS
+local built = GhostFactory.build("DrapMou#Gold")
+local copy = built:FindFirstChild("MonCorps")
+check(copy ~= nil, "le modèle de Studio remplace le fantôme fabriqué")
+check(copy and copy.Anchored and not copy.CanCollide, "ses pièces sont ancrées et sans collision")
+check(built.PrimaryPart and built.PrimaryPart.Name == "Root", "il a une racine pour être déplacé")
+check((built:GetAttribute("Top") or 0) > 0 and (built:GetAttribute("Bottom") or 0) > 0, "hauteur calculée")
+check(copy and (copy.Position - built.PrimaryPart.Position).Magnitude < 0.01, "centré sur sa racine")
+check(body.Parent == custom and body.CanCollide, "le modèle d'origine n'est pas modifié")
+folder:Destroy()
+check(GhostFactory.build("DrapMou"):FindFirstChild("MonCorps") == nil, "sans le dossier, retour au modèle fabriqué")
 
 section("Bilan")
 for _, w in Fake.warnings do

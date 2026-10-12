@@ -7,6 +7,15 @@
 	  - on le déplace avec model:PivotTo(cframe)
 	  - attribut "Bottom" = distance entre le centre et le bas du fantôme
 	  - attribut "Top" = distance entre le centre et le haut du fantôme
+
+	FANTÔMES DESSINÉS À LA MAIN DANS STUDIO
+	Construis ton fantôme avec des Parts, groupe-les (Ctrl+G) et range le Model dans
+	ReplicatedStorage > GhostModels, avec comme nom l'Id du fantôme (ex. "DrapMou",
+	voir GhostData). Le jeu l'utilise à la place du modèle fabriqué ici :
+	  - il est redimensionné tout seul (attribut "Height" sur le Model pour choisir sa
+	    hauteur en studs, sinon environ 5 studs)
+	  - s'il regarde dans la mauvaise direction : attribut "Turn" = 90, 180 ou -90
+	  - le halo de rareté, les variantes Dorée et Arc-en-ciel sont ajoutés automatiquement
 ]]
 
 local GhostData = require(script.Parent.GhostData)
@@ -81,6 +90,21 @@ local function block(ctx, size: Vector3, cf: CFrame, color: Color3, extra: { [st
 	return newPart(ctx, "Block", size, cf, color, extra)
 end
 
+-- Bloc aux coins arrondis (vu de face) : deux blocs en croix + 4 cylindres dans les coins.
+-- C'est ce qui donne l'aspect "jouet en pâte à modeler" sans modèle 3D externe.
+local function roundedBlock(ctx, size: Vector3, cf: CFrame, color: Color3, extra: { [string]: any }?, radius: number?)
+	local r = math.min(radius or 0.3 * math.min(size.X, size.Y), size.X / 2, size.Y / 2)
+	local main = block(ctx, Vector3.new(size.X - 2 * r, size.Y, size.Z), cf, color, extra)
+	block(ctx, Vector3.new(size.X, size.Y - 2 * r, size.Z), cf, color, extra)
+	for _, sx in { -1, 1 } do
+		for _, sy in { -1, 1 } do
+			local corner = cf * CFrame.new(sx * (size.X / 2 - r), sy * (size.Y / 2 - r), 0) * ROT_FRONT
+			newPart(ctx, "Cylinder", Vector3.new(size.Z, 2 * r, 2 * r), corner, color, extra)
+		end
+	end
+	return main
+end
+
 -- Cylindre debout (axe vertical)
 local function upCyl(ctx, h: number, d: number, pos: Vector3, color: Color3, extra: { [string]: any }?)
 	return newPart(ctx, "Cylinder", Vector3.new(h, d, d), CFrame.new(pos) * ROT_UP, color, extra)
@@ -126,6 +150,7 @@ function Bodies.Sheet(ctx)
 	local body = { Material = ctx.material, Transparency = ctx.transparency, Reflectance = ctx.reflectance }
 	ball(ctx, 4 * s, Vector3.new(0, 0.6 * s, 0), ctx.color, body)
 	upCyl(ctx, 2.2 * s, 4 * s, Vector3.new(0, -0.9 * s, 0), ctx.color, body)
+	-- trois petits pieds ronds (deux devant, un derrière)
 	for i = 0, 2 do
 		local a = math.rad(90 + i * 120)
 		ball(ctx, 1.5 * s, Vector3.new(math.cos(a) * 1.25 * s, -2 * s, math.sin(a) * 1.25 * s), ctx.color, body)
@@ -159,7 +184,7 @@ function Bodies.Block(ctx)
 	local s = ctx.s
 	local size = ctx.look.Size or { 3.4, 3.4, 1.2 }
 	local v = Vector3.new(size[1], size[2], size[3]) * s
-	block(ctx, v, CFrame.identity, ctx.color, { Material = ctx.material, Transparency = ctx.transparency, Reflectance = ctx.reflectance })
+	roundedBlock(ctx, v, CFrame.identity, ctx.color, { Material = ctx.material, Transparency = ctx.transparency, Reflectance = ctx.reflectance })
 	return {
 		top = v.Y / 2,
 		bottom = -v.Y / 2,
@@ -208,10 +233,10 @@ end
 function Bodies.Sock(ctx)
 	local s = ctx.s
 	local body = { Material = ctx.material, Transparency = ctx.transparency }
-	block(ctx, Vector3.new(2, 3.4, 2) * s, CFrame.new(0, 0.6 * s, 0), ctx.color, body)
+	roundedBlock(ctx, Vector3.new(2, 3.4, 2) * s, CFrame.new(0, 0.6 * s, 0), ctx.color, body, 0.45 * s)
 	block(ctx, Vector3.new(2.2, 0.6, 2.2) * s, CFrame.new(0, 2.1 * s, 0), ctx.accent)
 	block(ctx, Vector3.new(2.1, 0.4, 2.1) * s, CFrame.new(0, -0.4 * s, 0), ctx.accent)
-	block(ctx, Vector3.new(2, 1.5, 3.2) * s, CFrame.new(0, -1.85 * s, -0.6 * s), ctx.color, body)
+	roundedBlock(ctx, Vector3.new(3.2, 1.5, 2) * s, CFrame.new(0, -1.85 * s, -0.6 * s) * CFrame.Angles(0, math.rad(90), 0), ctx.color, body, 0.5 * s)
 	return {
 		top = 2.4 * s,
 		bottom = -2.6 * s,
@@ -353,19 +378,21 @@ end
 
 local function twoEyes(ctx, m, d: number?)
 	local f = ctx.f
-	local eyeD = (d or 0.7) * f
+	local eyeD = (d or 0.75) * f
 	eyeAt(ctx, m, m.faceX - 0.65 * f, m.faceY + 0.35 * f, eyeD)
 	eyeAt(ctx, m, m.faceX + 0.65 * f, m.faceY + 0.35 * f, eyeD)
 end
 
 local function smile(ctx, m, sad: boolean?)
 	local f = ctx.f
-	local y = m.faceY - 0.45 * f
-	local tilt = if sad then -30 else 30
-	local sideY = if sad then y - 0.12 * f else y + 0.12 * f
-	flatAt(ctx, m, Vector3.new(0.6 * f, 0.2 * f, 0.3 * f), m.faceX, y, 0, BLACK)
-	flatAt(ctx, m, Vector3.new(0.45 * f, 0.2 * f, 0.3 * f), m.faceX - 0.45 * f, sideY, -tilt, BLACK)
-	flatAt(ctx, m, Vector3.new(0.45 * f, 0.2 * f, 0.3 * f), m.faceX + 0.45 * f, sideY, tilt, BLACK)
+	local y = m.faceY - 0.5 * f
+	local curve = if sad then -0.9 else 0.9
+	for i = -3, 3 do
+		local x = i * 0.16 * f
+		local dy = curve * (x / f) ^ 2
+		local px, py = m.faceX + x, y + dy
+		ball(ctx, 0.19 * f, Vector3.new(px, py, frontZ(m, px, py) + 0.03 * ctx.s), BLACK)
+	end
 end
 
 function Faces.Happy(ctx, m)
@@ -403,7 +430,7 @@ end
 
 function Faces.Shocked(ctx, m)
 	local f = ctx.f
-	twoEyes(ctx, m, 0.85)
+	twoEyes(ctx, m, 0.95)
 	eyeAt(ctx, m, m.faceX, m.faceY - 0.5 * f, 0.8 * f)
 end
 
@@ -458,7 +485,7 @@ end
 
 function Faces.Pirate(ctx, m)
 	local f = ctx.f
-	eyeAt(ctx, m, m.faceX - 0.65 * f, m.faceY + 0.35 * f, 0.7 * f)
+	eyeAt(ctx, m, m.faceX - 0.65 * f, m.faceY + 0.35 * f, 0.8 * f)
 	local x, y = m.faceX + 0.65 * f, m.faceY + 0.35 * f
 	frontDisc(ctx, 0.25 * f, 0.85 * f, Vector3.new(x, y, frontZ(m, x, y) + 0.05 * f), BLACK)
 	flatAt(ctx, m, Vector3.new(2.6 * f, 0.12 * f, 0.25 * f), m.faceX, m.faceY + 0.55 * f, -12, BLACK)
@@ -467,7 +494,7 @@ end
 
 function Faces.Skull(ctx, m)
 	local f = ctx.f
-	twoEyes(ctx, m, 1.0)
+	twoEyes(ctx, m, 1.05)
 	flatAt(ctx, m, Vector3.new(0.25, 0.35, 0.3) * f, m.faceX, m.faceY - 0.15 * f, 0, BLACK)
 	flatAt(ctx, m, Vector3.new(1.2, 0.3, 0.3) * f, m.faceX, m.faceY - 0.6 * f, 0, BLACK)
 	for i = -1, 1 do
@@ -858,6 +885,68 @@ function GhostFactory.scaleOf(ghostId: string): number
 	return ghost.Look.Scale or Rarities.Info[ghost.Rarity].Scale
 end
 
+-- Modèle fait à la main dans Studio : ReplicatedStorage > GhostModels > <Id>
+function GhostFactory.customSource(ghostId: string): Model?
+	local shared = script.Parent
+	local container = shared and shared.Parent
+	local folder = container and container:FindFirstChild("GhostModels")
+	local source = folder and folder:FindFirstChild(ghostId)
+	if source and source:IsA("Model") then
+		return source
+	end
+	return nil
+end
+
+-- Prépare une copie du modèle Studio : centrée, à la bonne taille, sans collision.
+-- Renvoie le modèle et ses mesures (comme un corps fabriqué).
+local function fromCustom(ctx, source: Model)
+	local model = source:Clone()
+	model.Name = ctx.model.Name
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = false
+			d.CanTouch = false
+			d.CanQuery = false
+			d.CastShadow = false
+		elseif d:IsA("Script") or d:IsA("LocalScript") then
+			d:Destroy()
+		end
+	end
+	-- même hauteur que les autres fantômes de la rareté (ou l'attribut "Height")
+	local _, size = model:GetBoundingBox()
+	local height = source:GetAttribute("Height") or 5.2 * ctx.s
+	if size.Y > 0 then
+		model:ScaleTo(model:GetScale() * height / size.Y)
+	end
+	local boxCf, box = model:GetBoundingBox()
+	local root = Instance.new("Part")
+	root.Name = "Root"
+	root.Anchored = true
+	root.CanCollide = false
+	root.CanTouch = false
+	root.CanQuery = false
+	root.Transparency = 1
+	root.Size = Vector3.one
+	-- attribut "Turn" (en degrés) si le fantôme regarde dans la mauvaise direction
+	local turn = tonumber(source:GetAttribute("Turn")) or 0
+	root.CFrame = CFrame.new(boxCf.Position) * model:GetPivot().Rotation * CFrame.Angles(0, math.rad(turn), 0)
+	root.Parent = model
+	model.PrimaryPart = root
+	model:PivotTo(CFrame.identity)
+	ctx.model:Destroy()
+	ctx.model = model
+	return {
+		top = box.Y / 2,
+		bottom = -box.Y / 2,
+		faceY = 0,
+		faceX = 0,
+		halfWidth = box.X / 2,
+		back = box.Z / 2,
+		front = -box.Z / 2,
+	}
+end
+
 -- ghostKey = "DrapMou" ou "DrapMou#Gold" (avec variante)
 function GhostFactory.build(ghostKey: string): Model
 	local ghost = GhostData.get(ghostKey) or GhostData.get("DrapMou")
@@ -883,25 +972,33 @@ function GhostFactory.build(ghostKey: string): Model
 		reflectance = look.Reflectance,
 	}
 
-	-- La "racine" invisible : c'est elle qu'on déplace
-	local root = newPart(ctx, "Block", Vector3.one, CFrame.identity, WHITE, { Transparency = 1, Name = "Root" })
-	model.PrimaryPart = root
+	local m
+	local custom = GhostFactory.customSource(ghost.Id)
+	if custom then
+		m = fromCustom(ctx, custom)
+		model = ctx.model
+	else
+		-- La "racine" invisible : c'est elle qu'on déplace
+		local root = newPart(ctx, "Block", Vector3.one, CFrame.identity, WHITE, { Transparency = 1, Name = "Root" })
+		model.PrimaryPart = root
 
-	local bodyBuilder = Bodies[look.Body] or Bodies.Sheet
-	local m = bodyBuilder(ctx)
-	ctx.f = ctx.s * (look.FaceScale or m.faceScale or 1)
+		local bodyBuilder = Bodies[look.Body] or Bodies.Sheet
+		m = bodyBuilder(ctx)
+		ctx.f = ctx.s * (look.FaceScale or m.faceScale or 1)
 
-	local faceBuilder = Faces[look.Face] or Faces.Happy
-	faceBuilder(ctx, m)
+		local faceBuilder = Faces[look.Face] or Faces.Happy
+		faceBuilder(ctx, m)
 
-	for _, accessoryName in look.Accessories or {} do
-		local builder = Accessories[accessoryName]
-		if builder then
-			builder(ctx, m)
-		else
-			warn("[GhostFactory] Accessoire inconnu : " .. tostring(accessoryName))
+		for _, accessoryName in look.Accessories or {} do
+			local builder = Accessories[accessoryName]
+			if builder then
+				builder(ctx, m)
+			else
+				warn("[GhostFactory] Accessoire inconnu : " .. tostring(accessoryName))
+			end
 		end
 	end
+	local root = model.PrimaryPart :: BasePart
 
 	-- Effets selon la rareté : lumière dès Légendaire, étincelles dès Mythique
 	local rank = rarityInfo.Rank

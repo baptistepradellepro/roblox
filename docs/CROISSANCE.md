@@ -30,10 +30,10 @@ Pendant la Nuit Hantée, sors de ta base avec un fantôme volé. Les bords rouge
 
 ### 4. Le piège parfait
 
-Pose ton plus beau fantôme sur le socle le plus proche de l'entrée, laisse la base ouverte et cache-toi avec un ami. Le voleur arrive, attrape le fantôme, et ton ami lui met un coup de Marteau Pouet devant la porte.
+Pose ton plus beau fantôme sur le socle le plus proche de l'entrée, laisse la base ouverte et cache-toi avec un ami. Le voleur arrive, attrape le fantôme, et ton ami lui met un coup de batte devant la porte.
 
 - Accroche : "Il pensait que c'était gratuit..."
-- Le son "pouet" et les étoiles doivent tomber pile sur un temps fort de la musique.
+- Le coup de batte et les étoiles doivent tomber pile sur un temps fort de la musique.
 
 ### 5. De Drap Mou au Rebirth
 

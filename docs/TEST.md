@@ -31,7 +31,7 @@ Ensuite :
 
 ## Tester l'étage 2
 
-Au fond de ta base, à côté du poste de verrouillage, il y a une plaque violette avec "🔒 Étage 2 : 🪙 25K". Pour tester sans attendre, mets temporairement `Config.FloorPrice = 100` dans `Config.luau`.
+Au fond de ta base, à côté du poste de verrouillage, il y a une plaque violette avec "🔒 Étage 2 : 🪙 50K". Pour tester sans attendre, mets temporairement `Config.FloorPrice = 100` dans `Config.luau`.
 
 1. Approche-toi de la plaque violette et appuie sur E (ou sur le bouton du téléphone). Si tu n'as pas assez de pièces, un message te le dit.
 2. Une fois l'étage acheté, un plancher, des murs vitrés et 10 nouveaux socles apparaissent en hauteur, avec leurs plaques vertes. Le panneau devient "⬆️ Étage 2".
@@ -53,7 +53,7 @@ Scénarios à vérifier :
 
 1. **Vol réussi** : avec Player2, entre dans la base de Player1 et maintiens E sur un fantôme pendant 1,5 s. Le fantôme passe au-dessus de ta tête, tu es ralenti, une ligne verte te montre ta base. Dans la fenêtre de Player1, tu dois voir Player2 surligné en rouge avec "VOLEUR !". Rentre dans ta base avec Player2 : confettis, son, et l'annonce "Player2 a volé Drap Mou à Player1 !" pour tout le monde.
 2. **Récupération** : recommence un vol, puis avec Player1 cours toucher Player2. Le fantôme retourne sur son socle.
-3. **Marteau Pouet** (3 joueurs) : pendant que Player2 vole, approche Player3 de lui. Un bouton 🔨 apparaît à droite (ou touche Q sur PC). Des étoiles, Player2 lâche le fantôme et reste étourdi une seconde.
+3. **Coup de batte** (3 joueurs) : pendant que Player2 vole, approche Player3 de lui. Un gros bouton rouge 🏏 « Tape ! » apparaît à droite (ou touche Q sur PC, ou clic avec la batte en main). Des étoiles, Player2 lâche le fantôme, recule et reste étourdi une seconde et demie.
 4. **Trop lent** : vole un fantôme et attends 45 secondes sans rentrer. Il retourne chez son propriétaire.
 5. **Base verrouillée** : verrouille la base de Player1, puis essaie d'entrer avec Player2. La barrière bloque, et si tu passes quand même tu es renvoyé dehors.
 6. **Départ pendant un vol** : pendant que Player2 porte le fantôme de Player1, ferme la fenêtre de Player1. Player2 reçoit le fantôme directement.
@@ -66,17 +66,17 @@ Pour ne pas attendre 8 minutes, mets `Config.DayDuration = 30` pendant les tests
 
 - **Nuit Hantée** : 10 secondes avant, une annonce prévient. Le ciel devient violet, un fantôme spécial apparaît sur le chemin (Halloween pendant l'événement, sinon Légendaire) et Gloutrouille sort du portail. Reste dans ta base : il ne peut pas entrer. Sors : il te fonce dessus, les bords de l'écran deviennent rouges et tu entends des battements de cœur. S'il t'attrape, tu retournes chez toi avec 5 % de pièces en moins, et tout le serveur le voit dans une annonce.
 - **Voleur attrapé la nuit** : si tu portes un fantôme volé, Gloutrouille te le fait lâcher. Il préfère d'ailleurs poursuivre les voleurs.
-- **Rebirth** : dans `Config.luau`, mets temporairement `Config.RebirthBaseCost = 1000` (le vrai prix est 5 millions, puis x3 à chaque rebirth). Bouton ♻️ à gauche, puis REBIRTH deux fois (la deuxième pression confirme). Tes pièces, tes fantômes et les pièces en attente sur les plaques repartent à zéro. Tu gardes un Drap Mou et ton étage 2, et tu gagnes +50 % de revenus pour toujours. Une aura apparaît autour de ton personnage.
+- **Rebirth** : dans `Config.luau`, mets temporairement `Config.RebirthBaseCost = 1000` (le vrai prix est 10 millions, puis x3 à chaque rebirth). Bouton ♻️ à gauche, puis REBIRTH deux fois (la deuxième pression confirme). Tes pièces, tes fantômes et les pièces en attente sur les plaques repartent à zéro. Tu gardes un Drap Mou et ton étage 2, et tu gagnes +50 % de revenus pour toujours. Une aura apparaît autour de ton personnage.
 - **Cadeau du jour** : bouton 🎁 à gauche (un point rouge indique qu'il est prêt). Il s'ouvre aussi tout seul à l'arrivée, sauf pendant le tutoriel.
 - **Tutoriel** : avec un compte qui n'a jamais joué (ou après avoir effacé sa sauvegarde), trois flèches jaunes s'enchaînent : "Achète !", "Récupère !" (sur la plaque verte qui a le plus de pièces) et "Vole !".
-- **Boutique** : bouton 🛒. Les articles affichent "Bientôt" tant que leurs IDs valent 0 dans `Config.luau`. Les achats Robux ne se testent vraiment qu'une fois le jeu publié (dans Studio, Roblox simule l'achat sans débiter de Robux).
+- **Boutique** : bouton 🛒, voir la partie "Tester la boutique" plus bas.
 - **Fantômes Halloween** : ils n'apparaissent que la nuit, entre le 1er octobre et le 3 novembre 2026. Pour les voir hors période, mets `Config.ForceHalloween = true`.
 
 ## Tester le Fantômédex et les codes
 
 - **Fantômédex** : bouton 📖 à gauche. Les 36 fantômes sont rangés par rareté. Ceux que tu n'as jamais eus sont des silhouettes noires avec "???". Touche une case pour lire la blague du fantôme. Achète un nouveau fantôme : un message "Nouveau dans le Fantômédex" apparaît et un point rouge s'allume sur le bouton.
 - **Série complète** : trouve les 8 Communs (ils coûtent peu) pour recevoir 500 pièces. Quand toutes les raretés sauf Halloween sont complètes, tu gagnes +10 % de revenus pour toujours et tout le serveur reçoit une annonce.
-- **Codes** : boutique 🛒, dernière ligne. Tape `BOUH2026` puis OK : +5 000 pièces. Le même code une deuxième fois est refusé. Les codes de départ sont `BOUH2026` (5 000 pièces), `GLOUTROUILLE` (10 minutes de revenus) et `POUET` (un Caquetôme offert). Les majuscules et les espaces ne comptent pas.
+- **Codes** : boutique 🛒, dernière ligne. Tape `BOUH2026` puis OK : +5 000 pièces (onglet 🎟️ Codes). Le même code une deuxième fois est refusé. Les codes de départ sont `BOUH2026` (5 000 pièces), `GLOUTROUILLE` (10 minutes de revenus) et `POUET` (un Caquetôme offert). Les majuscules et les espaces ne comptent pas.
 
 ## Tester les variantes, les nuits à thème et le classement
 
@@ -90,7 +90,57 @@ Pour ne pas attendre 8 minutes, mets `Config.DayDuration = 30` pendant les tests
 
 Bouton 📋 à gauche. Chaque joueur a 3 missions par jour : une facile, une moyenne, une difficile (par exemple "Achète 3 fantômes", "Vends 2 fantômes", "Vole un fantôme à un autre joueur"). La barre avance toute seule, et quand une mission est finie les pièces arrivent directement avec un message "Mission réussie". Les 3 réussies donnent un bonus. Les missions changent à minuit UTC (2h du matin à Paris en été, 1h en hiver).
 
-Les missions difficiles demandent souvent un deuxième joueur (vol, Marteau Pouet) : teste-les avec le Serveur local à 2 ou 3 joueurs.
+Les missions difficiles demandent souvent un deuxième joueur (vol, coup de batte) : teste-les avec le Serveur local à 2 ou 3 joueurs.
+
+## Tester la boutique (gratuit dans Studio)
+
+Bouton 🛒 à gauche, ou le stand violet et orange au milieu de la map (côté sud, avec le chaudron). La boutique a 6 onglets : ⭐ Passes, ⚔️ Armes, 🎡 Roue, 👹 Monstres, 🪙 Pièces et 🎟️ Codes.
+
+Tant que tu n'as pas créé les articles sur le Creator Hub (IDs à 0 dans `Config.luau`), chaque bouton affiche "🧪 Gratuit (test)" dans Studio : un clic te donne l'article sans payer, pour tout essayer. Dans le vrai jeu, ces mêmes articles affichent "Bientôt" tant que leur ID vaut 0. Personne ne peut donc les avoir gratuitement une fois le jeu publié.
+
+## Tester la batte et les armes
+
+- Chaque joueur a une **Batte** dans sa barre d'outils (touche 1). Clique pour frapper.
+- Un voleur touché lâche le fantôme (il rentre chez son propriétaire), recule et marche au ralenti un moment.
+- Un joueur qui entre dans TA base sans y être invité : un coup de batte le renvoie dehors avec le message "X t'a chassé de sa base !".
+- Les autres joueurs ne sont pas touchés : pas de bagarre gratuite au milieu de la map.
+- Quand tu portes un fantôme volé, tu ne peux pas frapper.
+- Le gros bouton rouge « Tape ! » à droite apparaît tout seul quand un voleur est à portée. Il prend ta meilleure arme en main et frappe. C'est le plus pratique sur téléphone.
+- Les armes Robux (onglet ⚔️, gratuites dans Studio) : **Marteau Pouet Géant** (plus loin, plus fort), **Balai de Sorcière** (touche tous les voleurs autour), **Aspira-Fantôme** (de très loin). Elles arrivent tout de suite dans le sac après l'achat, et à chaque réapparition.
+- Les réglages (portée, recharge, étourdissement) sont dans `Weapons.luau`.
+
+## Tester la Roue de la Fortune
+
+La roue est au milieu de la map, côté nord, sur une estrade violette.
+
+1. Approche-toi : le bouton "Roue de la Fortune" ouvre l'onglet 🎡 de la boutique, avec les chances de chaque case en %.
+2. Achète des tours (gratuits dans Studio), puis appuie sur TOURNER. Il faut être devant la roue.
+3. Tout le serveur voit la roue tourner, avec ton nom au-dessus. Le gain arrive quand elle s'arrête : des pièces, un fantôme Épique, Légendaire ou Mythique, un Épique Doré, ou revenus x2 pendant 15 minutes (une pastille ⚡ apparaît sous les pièces).
+4. Si ta base est pleine, un fantôme gagné t'est payé en pièces.
+5. Une seule personne peut jouer à la fois. Les autres reçoivent "La roue tourne déjà".
+
+Les chances se règlent dans `Wheel.luau`. Elles doivent toujours faire 100 % au total, et chaque case doit donner quelque chose : c'est une règle de Roblox pour les objets aléatoires payants (un test automatique le vérifie).
+
+## Tester les monstres payants
+
+Onglet 👹 de la boutique, ou le chaudron vert du stand. Trois monstres : Gloutrouille, la Chauve-Souris Turbo (très rapide) et Mamie Toile (elle attrape de loin).
+
+- Le monstre sort du portail et poursuit les joueurs qui sont dehors, sauf celui qui l'a lâché. Il n'entre jamais dans les bases.
+- Attrapé : retour à la base et on lâche le fantôme volé, mais on ne perd pas de pièces (contrairement à Gloutrouille pendant la nuit).
+- Tout le serveur reçoit l'annonce "X a lâché Y sur le serveur !", et le nom du joueur flotte au-dessus du monstre.
+- Un seul monstre payant à la fois : si quelqu'un en achète un pendant qu'un autre court, il attend son tour.
+- Pour le tester seul, mets-toi dehors avec un deuxième joueur (Serveur local à 2 joueurs) : c'est lui qui sera poursuivi.
+
+## Redessiner un fantôme à la main
+
+Tu peux remplacer n'importe quel fantôme par un modèle construit à la main dans Studio :
+
+1. Dans l'Explorateur, crée un dossier `GhostModels` dans ReplicatedStorage (clic droit > Insérer un objet > Folder).
+2. Construis ton fantôme avec des Parts (ou des MeshParts si tu sais faire des modèles 3D), sélectionne tout et groupe avec Ctrl+G.
+3. Renomme le Model avec l'Id exact du fantôme, par exemple `DrapMou` (la liste des Id est dans `GhostData.luau`, la ligne `Id = "..."` de chaque fantôme).
+4. Glisse le Model dans `ReplicatedStorage > GhostModels`, puis relance le jeu.
+
+Le jeu le met à la bonne taille tout seul. Il ajoute aussi la lumière de rareté et les variantes Dorée et Arc-en-ciel. Deux réglages possibles, en attributs nombre sur le Model (Propriétés > Attributs > +) : `Height` pour choisir sa hauteur en studs, et `Turn` = 180 (ou 90, -90) s'il regarde dans la mauvaise direction en jeu. Garde une copie de tes modèles (clic droit > Enregistrer dans un fichier) : si tu retélécharges un nouveau `.rbxlx`, ce dossier n'y sera pas.
 
 ## Tester la sauvegarde
 

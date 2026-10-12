@@ -1,6 +1,6 @@
 # Steal a Ghost
 
-Jeu Roblox multijoueur (8 à 12 joueurs) sur le thème d'Halloween, version cartoon. On achète des fantômes absurdes sur un chemin hanté et on les pose dans sa base (5 socles à gauche, 5 à droite, plus un étage à acheter). Ils fabriquent des pièces qu'il faut venir ramasser sur les plaques vertes, et on peut aller voler les fantômes des autres.
+Jeu Roblox multijoueur (8 à 12 joueurs) sur le thème d'Halloween, version cartoon. On achète des fantômes absurdes sur un chemin hanté et on les pose dans sa base (5 socles à gauche, 5 à droite, plus un étage à acheter). Ils fabriquent des pièces qu'il faut venir ramasser sur les plaques vertes, et on peut aller voler les fantômes des autres. Une batte sert à chasser les voleurs. Au milieu de la map, il y a une Roue de la Fortune et une boutique (armes, tours de roue, monstres à lâcher sur le serveur).
 
 Tout le jeu est écrit en Luau dans le dossier `src/`. La map, les fantômes et l'interface sont générés par le code au lancement : il n'y a rien à construire à la main dans Studio.
 
@@ -42,7 +42,9 @@ Rojo synchronise les fichiers du dossier `src/` avec Studio pendant que tu trava
 
 Presque tout se règle dans `src/ReplicatedStorage/Shared/Config.luau` : prix, durées du verrou, fréquence de la Nuit Hantée, récompenses quotidiennes, IDs des Game Passes. Chaque ligne est commentée en français.
 
-Les fantômes (noms, prix, revenus, apparence) sont dans `GhostData.luau`, les textes du jeu en français et en anglais dans `Strings.luau`, les sons dans `Sounds.luau`.
+Les fantômes (noms, prix, revenus, apparence) sont dans `GhostData.luau`, les textes du jeu en français et en anglais dans `Strings.luau`, les sons dans `Sounds.luau`. Les armes sont dans `Weapons.luau`, les monstres dans `Monsters.luau`, la Roue de la Fortune dans `Wheel.luau` et les articles de la boutique dans `Shop.luau`.
+
+Pour redessiner un fantôme à la main dans Studio, sans toucher au code : voir "Redessiner un fantôme à la main" dans [docs/TEST.md](docs/TEST.md).
 
 ## Organisation du code
 
@@ -50,7 +52,9 @@ Les fantômes (noms, prix, revenus, apparence) sont dans `GhostData.luau`, les t
 src/
   ReplicatedStorage/Shared/      partagé serveur + joueurs
     Config, GhostData, Rarities, Strings, Sounds, Format, Remotes
-    GhostFactory                 fabrique les fantômes 3D
+    GhostFactory                 fabrique les fantômes 3D (ou prend ceux de GhostModels)
+    Weapons, Monsters, Wheel     armes, monstres, roue (données + modèles 3D)
+    Shop                         les articles vendus en Robux
   ServerScriptService/
     Main.server.luau             démarre tout
     Services/                    toute la logique importante (anti-triche)
@@ -59,10 +63,13 @@ src/
       BaseService                bases, socles, étage 2, ascenseur, verrou
       EconomyService             pièces, récolte sur les plaques, achat de l'étage, amis, hors ligne, cadeau du jour
       GhostService               chemin hanté, achat, vente
-      StealService               vol, porteur, Marteau Pouet
+      StealService               vol, porteur, étourdissement
+      WeaponService              batte et armes contre les voleurs
+      MonsterService             monstres (Nuit Hantée et monstres achetés)
+      WheelService               Roue de la Fortune
       NightService               Nuit Hantée et Gloutrouille
       RebirthService             rebirth
-      MonetizationService        Game Passes et pack de pièces
+      MonetizationService        achats Robux (boutique, mode test de Studio)
       IndexService               Fantômédex (collection et récompenses)
       CodeService                codes promo
       LeaderboardService         classement des voleurs de la semaine
@@ -72,7 +79,8 @@ src/
       Guard                      vérifications anti-triche
   StarterPlayer/StarterPlayerScripts/
     Client.client.luau           démarre l'affichage côté joueur
-    Controllers/                 HUD, panneaux, tutoriel, nuit, bases, chemin, voleurs, effets
+    Controllers/                 HUD, panneaux, boutique, tutoriel, nuit, monstres, armes,
+                                 roue, bases, chemin, voleurs, effets
 ```
 
 Le serveur décide de tout (argent, achats, vols). Les joueurs envoient seulement des demandes, que le serveur vérifie une par une.

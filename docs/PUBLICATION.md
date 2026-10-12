@@ -9,8 +9,8 @@ Dans `Config.luau`, vérifie que les valeurs de test sont revenues à la normale
 - [ ] `Config.ForceLanguage = nil`
 - [ ] `Config.NewPlayerShield = 120`
 - [ ] `Config.DayDuration = 480`
-- [ ] `Config.RebirthBaseCost = 5000000`
-- [ ] `Config.FloorPrice = 25000`
+- [ ] `Config.RebirthBaseCost = 10000000`
+- [ ] `Config.FloorPrice = 50000`
 - [ ] `Config.ForceHalloween = false`
 
 Puis un dernier test à 3 joueurs (voir [TEST.md](TEST.md)), sans ligne rouge dans la fenêtre Sortie.
@@ -32,7 +32,7 @@ Pour que le jeu soit visible par les 9-15 ans (Roblox Select), il faut en plus :
 - [ ] Soit des frais par jeu, remboursés automatiquement 90 jours après que le jeu devient éligible (1 000 Robux selon l'annonce Roblox sur le DevForum), soit un abonnement Roblox Plus ou Premium actif depuis au moins 2 mois
 - [ ] Passer l'évaluation : un nouveau jeu commence visible uniquement par les 16+, puis Roblox attend qu'un nombre minimum de joueurs "très engagés" y aient joué sur 60 jours (250 selon la doc officielle, 500 selon d'autres sources ; ça bouge) et fait une revue de sécurité. Le suivi se fait dans Creator Hub, tableau de bord "Audience Reach".
 
-Ce que ça veut dire pour un budget de 0 € : les frais sont remboursés, mais il faut les avancer. Le chemin gratuit, c'est de lancer d'abord pour les 16+, de gagner 1 000 Robux avec les Game Passes et le pack de pièces, puis de payer les frais avec ces Robux. Soyons clairs aussi sur le calendrier : l'évaluation ne sera probablement pas terminée avant le 31 octobre. Halloween se jouera surtout avec les 16+, et les 9-15 ans arriveront pour les mises à jour de novembre.
+Ce que ça veut dire pour un budget de 0 € : les frais sont remboursés, mais il faut les avancer. Le chemin gratuit, c'est de lancer d'abord pour les 16+, de gagner 1 000 Robux avec la boutique (Game Passes, tours de roue, monstres, pack de pièces), puis de payer les frais avec ces Robux. Soyons clairs aussi sur le calendrier : l'évaluation ne sera probablement pas terminée avant le 31 octobre. Halloween se jouera surtout avec les 16+, et les 9-15 ans arriveront pour les mises à jour de novembre.
 
 Ces règles sont récentes et changent souvent : vérifie la page officielle avant de payer quoi que ce soit (liens en bas de page).
 
@@ -54,26 +54,48 @@ Dans Studio : Accueil > Paramètres du jeu (Game Settings). Certains réglages s
 
 Creator Hub > Creations > ton jeu > Audience > Maturity & Compliance Questionnaire. Réponds toujours selon le contenu le plus fort qu'un joueur peut rencontrer. Pour Steal a Ghost :
 
-- **Violence** : un marteau en caoutchouc qui fait "pouet", sans dégât ni sang, et un monstre cartoon qui renvoie les joueurs chez eux. Réponds "violence légère / non réaliste" si la question le propose.
+- **Violence** : des armes cartoon (batte, marteau en caoutchouc, balai, aspirateur) qui repoussent les voleurs, sans dégât, sans barre de vie et sans sang. Les monstres cartoon renvoient seulement les joueurs chez eux. Réponds "violence légère / non réaliste, répétée" si la question le propose.
 - **Peur** : la Nuit Hantée a une ambiance sombre et une poursuite avec battements de cœur. C'est de la peur légère et occasionnelle, à déclarer comme telle.
 - **Sang, humour vulgaire, romance, alcool, drogues, jeux d'argent** : non.
-- **Objets aléatoires payants (loot boxes)** : non. Le pack de pièces donne toujours la même chose.
+- **Objets aléatoires payants** : **oui**. La Roue de la Fortune vend des tours avec des Robux. Le jeu respecte déjà les règles de Roblox : chances de chaque case affichées en % avant l'achat, total de 100 %, chaque case fait gagner quelque chose, et achat bloqué automatiquement pour les joueurs où c'est interdit (PolicyService, par exemple au Brésil). Déclare-le honnêtement : un oubli peut faire retirer le jeu.
 - **Lieu de rencontre (social hangout), création libre, texte libre** : non (seulement le chat standard de Roblox).
 
-Le résultat attendu est le label **Minimal** (au pire Mild). Les deux sont acceptés pour Roblox Select.
+Avec les armes, le résultat attendu est plutôt le label **Mild** (léger). Il reste accepté pour Roblox Select (9-15 ans). Vérifie le résultat affiché à la fin du questionnaire.
 
-## 5. Monétisation (optionnelle, gratuite à créer)
+## 5. Monétisation (gratuite à créer)
 
-Le jeu tourne sans. Si tu veux l'activer :
+Le jeu tourne sans. Tant qu'un ID vaut 0, l'article affiche "Bientôt" dans le vrai jeu, et "🧪 Gratuit (test)" dans Studio pour que tu puisses tout essayer.
 
-1. Creator Hub > Creations > Steal a Ghost > Monetization > Passes > Create a Pass.
-2. Pass "x2 Pièces" : image carrée 512×512, description "Double tous tes revenus, pour toujours". Une fois créé, ouvre-le > Sales > mets-le en vente. Prix conseillé : 149 Robux.
-3. Pass "Verrou+" : description "Verrou de 75 s au lieu de 45 s". Prix conseillé : 79 Robux.
-4. Monetization > Developer Products > Create : "Pack de pièces", prix conseillé 25 Robux.
-5. Copie chaque ID (le nombre dans l'adresse de la page) dans `Config.luau` : `Config.GamePasses.DoubleCoins`, `Config.GamePasses.LongLock`, `Config.Products.CoinPack`.
-6. Republie le jeu.
+Pour créer un article : Creator Hub > Creations > Steal a Ghost > Monetization.
 
-Roblox garde environ 30 % de chaque vente. Rien de ce qu'on vend n'aide à voler.
+- **Game Pass** (acheté une fois, gardé pour toujours) : Passes > Create a Pass. Image carrée 512×512 (tes rendus font très bien l'affaire), nom, description. Une fois créé, ouvre-le > Sales > mets-le en vente et choisis le prix.
+- **Developer Product** (peut être acheté plusieurs fois) : Developer Products > Create. Nom, image, prix.
+- Copie ensuite l'ID de chaque article (le nombre dans l'adresse de la page) dans `Config.luau`, à la ligne qui porte le même nom, puis republie le jeu.
+
+| Article | Type | Ligne dans Config | Prix conseillé |
+|---|---|---|---|
+| x2 Pièces | Game Pass | `GamePasses.DoubleCoins` | 149 R$ |
+| Verrou+ (75 s au lieu de 45 s) | Game Pass | `GamePasses.LongLock` | 79 R$ |
+| Marteau Pouet Géant | Game Pass | `GamePasses.WeaponHammer` | 99 R$ |
+| Balai de Sorcière | Game Pass | `GamePasses.WeaponBroom` | 149 R$ |
+| Aspira-Fantôme | Game Pass | `GamePasses.WeaponVacuum` | 199 R$ |
+| 1 tour de roue | Developer Product | `Products.Spin1` | 25 R$ |
+| 5 tours de roue | Developer Product | `Products.Spin5` | 99 R$ |
+| Lâcher Gloutrouille | Developer Product | `Products.MonsterGloutrouille` | 39 R$ |
+| Lâcher la Chauve-Souris Turbo | Developer Product | `Products.MonsterBat` | 59 R$ |
+| Lâcher Mamie Toile | Developer Product | `Products.MonsterSpider` | 79 R$ |
+| Pack de pièces | Developer Product | `Products.CoinPack` | 25 R$ |
+
+Les prix conseillés sont aussi dans `Shop.luau`, avec les noms et descriptions affichés en jeu. Le prix qui compte est celui que tu mets sur le Creator Hub : la boutique le lit toute seule une fois l'ID renseigné.
+
+Pour afficher tes propres images dans la boutique (armes, monstres, roue) : importe-les sur le Creator Hub comme décalcomanies (Decals), puis colle `"rbxassetid://ID"` dans `Config.ShopIcons`.
+
+Roblox garde environ 30 % de chaque vente.
+
+Ce qui reste juste pour les joueurs qui ne paient pas :
+- les armes Robux servent seulement à défendre (on ne peut pas frapper en portant un fantôme volé), et la batte gratuite fait la même chose en un peu moins bien ;
+- les monstres payants ne prennent jamais de pièces et n'entrent pas dans les bases. Seul avantage pour l'acheteur : le monstre ne le poursuit pas pendant 30 à 45 secondes ;
+- la roue donne des pièces, des fantômes ou un bonus de revenus, qu'on peut aussi obtenir en jouant.
 
 ## 6. Codes promo
 
@@ -93,9 +115,11 @@ Achète des fantômes complètement absurdes, pose-les dans ta base et ramasse l
 👻 36 fantômes à collectionner : Drap Mou, Caquetôme, DJ Bouh-Boum, Méga Bouh Cosmique...
 ✨ Fantômes Dorés (x3) et Arc-en-ciel (x5) ultra rares
 🦹 Vole les fantômes des autres et cours jusqu'à ta base
-🔨 Un voleur passe près de toi ? Marteau Pouet !
+🏏 Un voleur passe près de toi ? Un coup de batte et il lâche tout !
 🔒 Verrouille ta base au bon moment
 🏰 Achète un 2e étage pour 10 fantômes de plus
+🎡 La Roue de la Fortune au milieu de la map
+👹 Lâche un monstre sur tout le serveur
 🌙 Toutes les 10 minutes, la Nuit Hantée : Brouillard, Bonbons... et Gloutrouille qui te poursuit
 🔥 Super Nuit chaque samedi soir : Gloutrouille GÉANT et Mythique garanti
 🎃 Fantômes Halloween en édition limitée jusqu'au 3 novembre
@@ -115,9 +139,11 @@ Buy totally ridiculous ghosts, put them in your base and collect the coins they 
 👻 36 ghosts to collect: Floppy Sheet, Cluck-a-Boo, DJ Boo-Boom, Cosmic Mega Boo...
 ✨ Ultra rare Golden (x3) and Rainbow (x5) ghosts
 🦹 Steal other players' ghosts and run back to your base
-🔨 Thief nearby? BONK them!
+🏏 Thief nearby? One swing of your bat and they drop everything!
 🔒 Lock your base at the right moment
 🏰 Buy a 2nd floor for 10 more ghosts
+🎡 The Wheel of Fortune in the middle of the map
+👹 Release a monster on the whole server
 🌙 Every 10 minutes, the Haunted Night: Fog, Candy... and Gloutrouille chasing you
 🔥 Super Night every Saturday evening: GIANT Gloutrouille and a guaranteed Mythic
 🎃 Limited Halloween ghosts until November 3
@@ -163,3 +189,4 @@ Les miniatures doivent montrer le vrai jeu : Roblox refuse les images trompeuses
 - [Labels de maturité (doc officielle)](https://create.roblox.com/docs/production/promotion/content-maturity)
 - [Ce que les familles doivent savoir sur Kids et Select (Roblox Newsroom, mai 2026)](https://about.roblox.com/newsroom/2026/05/what-families-should-know-roblox-kids-select)
 - [Icônes de jeu (doc officielle)](https://create.roblox.com/docs/production/promotion/game-icons)
+- [Objets aléatoires payants : règles clarifiées (DevForum)](https://devforum.roblox.com/t/clarifying-requirements-for-paid-random-items/4654622) et [Community Standards de Roblox](https://about.roblox.com/community-standards)

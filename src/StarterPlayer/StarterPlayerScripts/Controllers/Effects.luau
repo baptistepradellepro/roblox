@@ -11,8 +11,10 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Format = require(Shared:WaitForChild("Format"))
+local Monsters = require(Shared:WaitForChild("Monsters"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Sounds = require(Shared:WaitForChild("Sounds"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
 
 local Effects = {}
 
@@ -253,16 +255,43 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 		if data.Position then
 			Effects.stars(data.Position + Vector3.new(0, 3, 0))
 			if isNear(data.Position, 90) then
-				Effects.sound("Bonk")
+				local weapon = Weapons.get(data.Weapon)
+				Effects.sound(if weapon then weapon.Sound else "Bonk")
 			end
 		end
+	end,
+	Swing = function(data)
+		if data.Position and isNear(data.Position, 50) then
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			-- mon propre coup a déjà fait son bruit
+			if not root or (root.Position - data.Position).Magnitude > 3 then
+				Effects.sound("Swing")
+			end
+		end
+	end,
+	-- J'ai pris un coup : je recule (c'est mon écran qui bouge mon personnage)
+	Knockback = function(data)
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root and typeof(data.Direction) == "Vector3" then
+			local power = math.clamp(tonumber(data.Power) or 40, 0, 120)
+			root.AssemblyLinearVelocity = data.Direction * power + Vector3.new(0, 28, 0)
+			Effects.shake(0.8, 0.3)
+		end
+	end,
+	MonsterSummon = function()
+		Effects.sound("MonsterSummon")
+		Effects.shake(0.6, 0.5)
 	end,
 	Gift = function()
 		Effects.sound("Gift")
 	end,
 	MonsterCatch = function(data)
 		if data.Position then
-			Effects.poof(data.Position, Color3.fromRGB(255, 140, 30))
+			local monster = Monsters.get(data.Monster)
+			local color = if monster then Color3.fromRGB(monster.Color[1], monster.Color[2], monster.Color[3]) else Color3.fromRGB(255, 140, 30)
+			Effects.poof(data.Position, color)
 		end
 		if data.PlayerId == player.UserId then
 			Effects.sound("MonsterCatch")

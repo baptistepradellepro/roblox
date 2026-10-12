@@ -19,7 +19,7 @@ Config.SessionLockMaxWait = 25 -- au pire, on attend 25 s avant de reprendre la 
 Config.BaseCount = 12 -- une base par joueur (mets 12 joueurs max dans les paramètres)
 Config.PedestalsPerFloor = 10 -- 5 socles à gauche + 5 à droite
 Config.MaxPedestals = 20 -- 2 étages
-Config.FloorPrice = 25000 -- prix de l'étage 2 (en pièces)
+Config.FloorPrice = 50000 -- prix de l'étage 2 (en pièces)
 Config.RebirthKeepsFloors = true -- false = le rebirth fait aussi perdre l'étage 2
 Config.StartCoins = 100
 Config.StarterGhost = "DrapMou" -- le fantôme offert au premier lancement
@@ -46,9 +46,7 @@ Config.NormalWalkSpeed = 16
 Config.CarrierWalkSpeed = 10 -- le voleur est ralenti
 Config.StealTimeout = 45 -- au-delà, le fantôme rentre chez lui
 Config.RecoverRange = 6 -- le propriétaire touche le voleur = fantôme récupéré
-Config.BonkRange = 11 -- portée du Marteau Pouet
-Config.BonkCooldown = 3
-Config.BonkStunTime = 1.5
+-- Les armes contre les voleurs (portée, recharge...) sont réglées dans Weapons.luau
 
 -- ===== Verrou de base =====
 Config.LockDuration = 45
@@ -78,9 +76,10 @@ Config.SuperMutationBoost = 3
 
 -- Week-end x2 : revenus doublés du vendredi 17h UTC au dimanche 23h UTC
 Config.WeekendBoost = { Enabled = true, Mult = 2 }
+Config.WheelBoostMult = 2 -- case "x2 revenus" de la Roue de la Fortune
 
 -- ===== Rebirth =====
-Config.RebirthBaseCost = 5000000
+Config.RebirthBaseCost = 10000000
 Config.RebirthCostGrowth = 3
 Config.RebirthIncomeBonus = 0.5 -- +50 % de revenus par rebirth
 
@@ -133,12 +132,36 @@ Config.HalloweenEnd = 1793664000
 Config.ForceHalloween = false -- mets true pour tester les fantômes Halloween hors période
 
 -- ===== Monétisation (mets 0 tant que tu ne les as pas créés) =====
+-- La liste complète des articles, avec les prix conseillés, est dans Shop.luau.
+-- Dans Studio, un article dont l'ID vaut 0 est donné gratuitement quand on clique dessus
+-- (pour tester). Dans le vrai jeu, il affiche "Bientôt".
 Config.GamePasses = {
 	DoubleCoins = 0, -- ID du Game Pass "x2 Pièces"
 	LongLock = 0, -- ID du Game Pass "Verrou+"
+	WeaponHammer = 0, -- ID du Game Pass "Marteau Pouet Géant"
+	WeaponBroom = 0, -- ID du Game Pass "Balai de Sorcière"
+	WeaponVacuum = 0, -- ID du Game Pass "Aspira-Fantôme"
 }
 Config.Products = {
 	CoinPack = 0, -- ID du Developer Product "Pack de pièces"
+	Spin1 = 0, -- ID du Developer Product "1 tour de roue"
+	Spin5 = 0, -- ID du Developer Product "5 tours de roue"
+	MonsterGloutrouille = 0, -- ID du Developer Product "Lâcher Gloutrouille"
+	MonsterBat = 0, -- ID du Developer Product "Lâcher la Chauve-Souris Turbo"
+	MonsterSpider = 0, -- ID du Developer Product "Lâcher Mamie Toile"
+}
+-- Icônes de la boutique (facultatif). Pour mettre tes propres images :
+-- Creator Hub > Développement > Décalcomanies (Decals) > importe l'image, copie son ID,
+-- et colle "rbxassetid://ID" ci-dessous. Vide = l'emoji habituel.
+Config.ShopIcons = {
+	Batte = "",
+	MarteauPouet = "",
+	BalaiSorciere = "",
+	AspiraFantome = "",
+	Gloutrouille = "",
+	MamieToile = "",
+	ChauveSourisTurbo = "",
+	Wheel = "",
 }
 Config.CoinPackMinutes = 10 -- le pack donne 10 min de revenus...
 Config.CoinPackMin = 5000 -- ...et au moins 5 000 pièces

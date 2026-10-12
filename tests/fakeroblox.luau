@@ -213,6 +213,7 @@ local SIGNALS = {
 	InputBegan = true,
 	Completed = true,
 	Touched = true,
+	AncestryChanged = true,
 }
 
 local Methods = {}
@@ -521,6 +522,29 @@ end
 function Methods:Emit() end
 function Methods:Play() end
 function Methods:ScaleTo() end
+function Methods:GetScale()
+	return 1
+end
+-- Copie profonde (propriétés, attributs, enfants)
+function Methods:Clone()
+	local copy = newInstance(self.__props.ClassName)
+	for key, value in self.__props do
+		if key ~= "Parent" and key ~= "PrimaryPart" then
+			copy.__props[key] = value
+		end
+	end
+	for key, value in self.__attrs do
+		copy.__attrs[key] = value
+	end
+	for _, child in self.__children do
+		local childCopy = child:Clone()
+		childCopy.Parent = copy
+		if self.__props.PrimaryPart == child then
+			copy.__props.PrimaryPart = childCopy
+		end
+	end
+	return copy
+end
 
 -- RemoteEvent : on enregistre tout ce que le serveur envoie
 Fake.sentToClients = {}
@@ -668,6 +692,34 @@ ClassMethods.HttpService = {
 	end,
 }
 
+Fake.restrictedRandomItems = {}
+ClassMethods.PolicyService = {
+	GetPolicyInfoForPlayerAsync = function(_, player)
+		return { ArePaidRandomItemsRestricted = Fake.restrictedRandomItems[player.UserId] == true }
+	end,
+}
+
+ClassMethods.Humanoid = {
+	EquipTool = function(self, tool)
+		local character = self.__props.Parent
+		if character then
+			tool.Parent = character
+		end
+	end,
+	UnequipTools = function(self)
+		local character = self.__props.Parent
+		local player = character and Fake.playerFromCharacter(character)
+		local backpack = player and player:FindFirstChild("Backpack")
+		if character and backpack then
+			for _, child in character:GetChildren() do
+				if child.__props.ClassName == "Tool" then
+					child.Parent = backpack
+				end
+			end
+		end
+	end,
+}
+
 ClassMethods.MarketplaceService = {
 	UserOwnsGamePassAsync = function(_, userId, passId)
 		return Fake.ownedPasses and Fake.ownedPasses[userId .. ":" .. passId] == true
@@ -795,11 +847,27 @@ ClassMethods.Player = {
 		local head = newInstance("Part", { Name = "Head", CFrame = spawnCf * roblox.CFrame.new(0, 1.5, 0) })
 		head.Parent = character
 		character.PrimaryPart = root
+		-- comme Roblox : un sac (Backpack) neuf à chaque apparition
+		local oldBackpack = self:FindFirstChild("Backpack")
+		if oldBackpack then
+			oldBackpack:Destroy()
+		end
+		local backpack = newInstance("Backpack", { Name = "Backpack" })
+		backpack.Parent = self
 		character.Parent = workspace
 		self.Character = character
 		self.CharacterAdded:Fire(character)
 	end,
 }
+
+function Fake.playerFromCharacter(character)
+	for _, p in Players:GetPlayers() do
+		if p.Character == character then
+			return p
+		end
+	end
+	return nil
+end
 
 local nextUserId = 1
 function Fake.addPlayer(name: string, userId: number?)

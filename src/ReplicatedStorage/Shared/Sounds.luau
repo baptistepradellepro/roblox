@@ -35,6 +35,11 @@ local Sounds = {
 	MonsterCatch = { Id = OOF, Volume = 1, Pitch = 0.6 },
 	Heartbeat = { Id = PING, Volume = 0.5, Jingle = { 0.35, 0.3 } },
 	Rebirth = { Id = PING, Volume = 0.9, Jingle = { 1, 1.26, 1.5, 2, 2.52, 3 } },
+	Swing = { Id = SWOOSH, Volume = 0.6, Pitch = 1.7 },
+	Vacuum = { Id = SWOOSH, Volume = 0.9, Pitch = 0.6 },
+	WheelTick = { Id = PING, Volume = 0.2, Pitch = 2.8 },
+	WheelWin = { Id = PING, Volume = 0.8, Jingle = { 1, 1.5, 2, 1.5, 2, 2.5 } },
+	MonsterSummon = { Id = SWOOSH, Volume = 1, Pitch = 0.3 },
 	-- Musique de fond pendant la Nuit Hantée (aucune par défaut).
 	-- Mets ici l'ID d'une musique gratuite du Creator Store (catégorie Audio > Music).
 	NightMusic = { Id = "", Volume = 0.4, Looped = true },

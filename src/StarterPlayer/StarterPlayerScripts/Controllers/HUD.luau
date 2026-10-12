@@ -10,10 +10,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Config = require(Shared:WaitForChild("Config"))
 local Format = require(Shared:WaitForChild("Format"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -106,10 +104,7 @@ local friendLabel: TextLabel
 local lockButton: TextButton
 local lockIcon: TextLabel
 local lockText: TextLabel
-local bonkButton: TextButton
-local bonkText: TextLabel
 local carryBanner: TextLabel
-local bonkCooldownUntil = 0
 local shownCoins = 0
 
 -- Petite pastille d'info (ex. minuteur de nuit) dans la ligne sous les pièces
@@ -260,21 +255,6 @@ local function buildColumns()
 		Effects.sound("Click")
 		Remotes.get("RequestLock"):FireServer()
 	end)
-
-	local bonkCaption = Lang.t("Bonk") .. (if UI.isMobile() then "" else " (Q)")
-	local createdBonk, _, createdBonkText = UI.bigButton({
-		Name = "Bonk",
-		Icon = "🔨",
-		Text = bonkCaption,
-		Color = UI.Colors.Bad,
-		Size = 112,
-		LayoutOrder = 2,
-		Parent = HUD.rightColumn,
-	})
-	bonkButton = createdBonk
-	bonkText = createdBonkText
-	bonkButton.Visible = false
-	bonkText:SetAttribute("Default", bonkCaption)
 end
 
 ---------------------------------------------------------------- Mise à jour
@@ -318,49 +298,6 @@ local function updateLock(now: number)
 	end
 end
 
--- Y a-t-il un voleur (autre que moi) à portée de Marteau Pouet ?
-local function thiefInRange(): boolean
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root then
-		return false
-	end
-	for _, other in Players:GetPlayers() do
-		if other ~= player and other:GetAttribute("CarryGhost") then
-			local otherRoot = other.Character and other.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-			if otherRoot and (otherRoot.Position - root.Position).Magnitude <= Config.BonkRange + 2 then
-				return true
-			end
-		end
-	end
-	return false
-end
-
-local function tryBonk()
-	if os.clock() < bonkCooldownUntil or not thiefInRange() then
-		return
-	end
-	bonkCooldownUntil = os.clock() + Config.BonkCooldown
-	Remotes.get("Bonk"):FireServer()
-end
-
-local function updateBonk()
-	local inRange = thiefInRange()
-	local wasVisible = bonkButton.Visible
-	bonkButton.Visible = inRange
-	if inRange and not wasVisible then
-		UI.pop(bonkButton)
-	end
-	local cooldown = bonkCooldownUntil - os.clock()
-	if cooldown > 0 then
-		bonkButton.BackgroundColor3 = UI.Colors.Gray
-		bonkText.Text = string.format("%.1f", cooldown)
-	else
-		bonkButton.BackgroundColor3 = UI.Colors.Bad
-		bonkText.Text = bonkText:GetAttribute("Default")
-	end
-end
-
 local function updateCarry(now: number)
 	local ghostId = player:GetAttribute("CarryGhost")
 	if ghostId then
@@ -389,6 +326,18 @@ function HUD.start()
 	player:GetAttributeChangedSignal("Stored"):Connect(updateStored)
 	updateStored()
 
+	-- Pastille "Revenus x2" gagnée à la Roue de la Fortune
+	local boostPill = HUD.pill(UI.Colors.Info, 2)
+	boostPill.Name = "BoostPill"
+	local boostText = boostPill:FindFirstChild("Text") :: TextLabel
+	RunService.Heartbeat:Connect(function()
+		local remaining = (player:GetAttribute("BoostUntil") or 0) - os.time()
+		boostPill.Visible = remaining > 0
+		if remaining > 0 then
+			boostText.Text = "⚡ " .. Lang.t("BoostPill", { time = Format.time(remaining) })
+		end
+	end)
+
 	-- Pastille "Week-end x2"
 	local weekendPill = HUD.pill(UI.Colors.Gold, 3)
 	local weekendText = weekendPill:FindFirstChild("Text") :: TextLabel
@@ -404,12 +353,6 @@ function HUD.start()
 	player:GetAttributeChangedSignal("FriendBonus"):Connect(updateCoins)
 	updateCoins()
 
-	bonkButton.Activated:Connect(tryBonk)
-	UserInputService.InputBegan:Connect(function(input, processed)
-		if not processed and input.KeyCode == Enum.KeyCode.Q then
-			tryBonk()
-		end
-	end)
 
 	Remotes.get("Notify").OnClientEvent:Connect(function(key: string, params, kind: string)
 		HUD.toast(Lang.t(key, params), kind)
@@ -424,7 +367,6 @@ function HUD.start()
 		accumulator = 0
 		local now = workspace:GetServerTimeNow()
 		updateLock(now)
-		updateBonk()
 		updateCarry(now)
 	end)
 end

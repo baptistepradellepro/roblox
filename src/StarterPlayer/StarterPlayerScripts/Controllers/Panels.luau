@@ -15,8 +15,13 @@ local Format = require(Shared:WaitForChild("Format"))
 local GhostData = require(Shared:WaitForChild("GhostData"))
 local GhostFactory = require(Shared:WaitForChild("GhostFactory"))
 local Missions = require(Shared:WaitForChild("Missions"))
+local Monsters = require(Shared:WaitForChild("Monsters"))
 local Rarities = require(Shared:WaitForChild("Rarities"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Shop = require(Shared:WaitForChild("Shop"))
+local Strings = require(Shared:WaitForChild("Strings"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
+local Wheel = require(Shared:WaitForChild("Wheel"))
 
 local Effects = require(script.Parent.Effects)
 local HUD = require(script.Parent.HUD)
@@ -260,106 +265,322 @@ end
 
 ---------------------------------------------------------------- Boutique
 
+local IS_STUDIO = RunService:IsStudio()
+
+-- La roue est-elle assez près pour tourner ? (on joue devant elle, tout le monde regarde)
+local function nearWheel(): boolean
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local map = workspace:FindFirstChild("Map")
+	local anchor = map and map:FindFirstChild("FortuneWheelAnchor", true) :: BasePart?
+	return root ~= nil and anchor ~= nil and (root.Position - anchor.Position).Magnitude < 45
+end
+
+local shopSelect: ((string) -> ())? = nil
+
+-- L'icône d'un article : une image importée (Config.ShopIcons), sinon l'emoji
+local function iconFor(id: string, emoji: string): string
+	local image = Config.ShopIcons and Config.ShopIcons[id]
+	return if type(image) == "string" and image ~= "" then image else emoji
+end
+
 local function buildShop(): Frame
 	local panel, body = makePanel("Shop", "🛒 " .. Lang.t("ShopTitle"), UI.Colors.Orange)
-	local list = UI.new("Frame", {
-		Size = UDim2.fromScale(1, 1),
+	panel.Size = UDim2.fromOffset(660, 480)
+
+	-- les onglets
+	local tabs = UI.new("Frame", {
+		Name = "Tabs",
+		Size = UDim2.new(1, 0, 0, 54),
 		BackgroundTransparency = 1,
 		Parent = body,
 	}, {
 		UI.new("UIListLayout", {
-			Padding = UDim.new(0, 10),
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 6),
 			SortOrder = Enum.SortOrder.LayoutOrder,
 		}),
 	})
+	local content = UI.new("ScrollingFrame", {
+		Name = "Content",
+		Position = UDim2.fromOffset(0, 62),
+		Size = UDim2.new(1, 0, 1, -62),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 8,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		Parent = body,
+	})
 
-	local items = {
-		{ Key = "DoubleCoins", Icon = "💰", Title = "ShopDouble", Desc = "ShopDoubleDesc", Id = Config.GamePasses.DoubleCoins, Pass = true, Attribute = "DoubleCoins" },
-		{ Key = "LongLock", Icon = "🔒", Title = "ShopLock", Desc = "ShopLockDesc", Id = Config.GamePasses.LongLock, Pass = true, Attribute = "LongLock" },
-		{ Key = "CoinPack", Icon = "🪙", Title = "ShopCoins", Desc = "ShopCoinsDesc", Id = Config.Products.CoinPack, Pass = false },
-	}
-
+	local categories = table.clone(Shop.Categories)
+	table.insert(categories, { Id = "Codes", Icon = "🎟️", Name = { fr = "Codes", en = "Codes" } })
+	local pages: { [string]: Frame } = {}
+	local tabButtons: { [string]: TextButton } = {}
 	local updaters = {}
-	for order, item in items do
-		local card = UI.new("Frame", {
-			Size = UDim2.new(1, 0, 0, 72),
+
+	local function selectTab(id: string)
+		for key, page in pages do
+			page.Visible = key == id
+		end
+		for key, button in tabButtons do
+			button.BackgroundColor3 = if key == id then UI.Colors.Orange else UI.Colors.PanelLight
+		end
+		content.CanvasPosition = Vector2.zero
+	end
+	shopSelect = selectTab
+
+	for order, category in categories do
+		local tab = UI.new("TextButton", {
+			Name = "Tab_" .. category.Id,
+			Size = UDim2.new(1 / #categories, -6, 1, 0),
+			BackgroundColor3 = UI.Colors.PanelLight,
+			Text = "",
+			LayoutOrder = order,
+			Parent = tabs,
+		}, { UI.corner(14), UI.stroke(nil, 3) })
+		UI.label({
+			Size = UDim2.new(1, -6, 1, -6),
+			Position = UDim2.fromOffset(3, 3),
+			Text = category.Icon .. " " .. Lang.pick(category.Name),
+			MaxTextSize = 20,
+			Parent = tab,
+		})
+		tab.Activated:Connect(function()
+			Effects.sound("Click")
+			selectTab(category.Id)
+		end)
+		tabButtons[category.Id] = tab
+		pages[category.Id] = UI.new("Frame", {
+			Name = "Page_" .. category.Id,
+			Size = UDim2.new(1, -12, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1,
+			Visible = false,
+			Parent = content,
+		}, {
+			UI.new("UIListLayout", {
+				Padding = UDim.new(0, 8),
+				SortOrder = Enum.SortOrder.LayoutOrder,
+			}),
+		})
+	end
+
+	-- Une carte : icône, titre, description, et un bouton à droite (optionnel)
+	local function card(page: Frame, order: number, icon: string, title: string, withButton: boolean, height: number?)
+		local frame = UI.new("Frame", {
+			Size = UDim2.new(1, 0, 0, height or 76),
 			BackgroundColor3 = UI.Colors.PanelLight,
 			LayoutOrder = order,
-			Parent = list,
+			Parent = page,
 		}, { UI.corner(16), UI.stroke(nil, 3) })
-		UI.label({ Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(8, 8), Text = item.Icon, MaxTextSize = 44, Parent = card })
-		UI.label({ Size = UDim2.new(1, -250, 0, 30), Position = UDim2.fromOffset(72, 6), Text = Lang.t(item.Title), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 28, Parent = card })
-		local desc = UI.label({ Size = UDim2.new(1, -250, 0, 26), Position = UDim2.fromOffset(72, 38), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = card })
-		local buy = UI.new("TextButton", {
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -10, 0.5, 0),
-			Size = UDim2.fromOffset(160, 56),
-			BackgroundColor3 = UI.Colors.Good,
-			Text = "",
-			Parent = card,
-		}, { UI.corner(16), UI.stroke(nil, 3) })
-		local price = UI.label({ Size = UDim2.new(1, -12, 1, -10), Position = UDim2.fromOffset(6, 5), Text = "R$ ...", MaxTextSize = 30, Parent = buy })
+		local right = if withButton then 190 else 20
+		if string.sub(icon, 1, 13) == "rbxassetid://" then
+			UI.new("ImageLabel", {
+				Name = "IconImage",
+				Size = UDim2.fromOffset(58, 58),
+				Position = UDim2.fromOffset(8, 9),
+				BackgroundTransparency = 1,
+				Image = icon,
+				ScaleType = Enum.ScaleType.Fit,
+				Parent = frame,
+			})
+		else
+			UI.label({ Size = UDim2.fromOffset(58, 58), Position = UDim2.fromOffset(8, 9), Text = icon, MaxTextSize = 44, Parent = frame })
+		end
+		UI.label({
+			Name = "Title",
+			Size = UDim2.new(1, -(74 + right), 0, 30),
+			Position = UDim2.fromOffset(72, 6),
+			Text = title,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			MaxTextSize = 26,
+			Parent = frame,
+		})
+		local desc = UI.label({
+			Name = "Desc",
+			Size = UDim2.new(1, -(74 + right), 1, -42),
+			Position = UDim2.fromOffset(72, 38),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextColor3 = UI.Colors.Info,
+			MaxTextSize = 18,
+			Parent = frame,
+		})
+		local button, label = nil, nil
+		if withButton then
+			button = UI.new("TextButton", {
+				Name = "Buy",
+				AnchorPoint = Vector2.new(1, 0.5),
+				Position = UDim2.new(1, -10, 0.5, 0),
+				Size = UDim2.fromOffset(170, 56),
+				BackgroundColor3 = UI.Colors.Good,
+				Text = "",
+				Parent = frame,
+			}, { UI.corner(16), UI.stroke(nil, 3) })
+			label = UI.label({ Size = UDim2.new(1, -12, 1, -10), Position = UDim2.fromOffset(6, 5), MaxTextSize = 26, Parent = button })
+		end
+		return frame, desc, button, label
+	end
 
+	-- Le bouton d'achat d'un article Robux (prix, "Acheté", "Bientôt", test gratuit dans Studio)
+	local function itemCard(page: Frame, order: number, item, icon: string, title: string, describe: () -> string)
+		local _, desc, button, label = card(page, order, icon, title, true)
+		local id = Shop.idOf(item, Config)
 		local robux: number? = nil
-		if item.Id ~= 0 then
+		if id ~= 0 then
 			task.spawn(function()
 				local ok, info = pcall(function()
-					return MarketplaceService:GetProductInfo(item.Id, if item.Pass then Enum.InfoType.GamePass else Enum.InfoType.Product)
+					return MarketplaceService:GetProductInfo(id, if item.Kind == "Pass" then Enum.InfoType.GamePass else Enum.InfoType.Product)
 				end)
 				if ok and info then
 					robux = info.PriceInRobux
 				end
 			end)
 		end
-
-		buy.Activated:Connect(function()
-			if item.Id == 0 or (item.Attribute and player:GetAttribute(item.Attribute)) then
-				return
-			end
-			Effects.sound("Click")
-			if item.Pass then
-				MarketplaceService:PromptGamePassPurchase(player, item.Id)
-			else
-				MarketplaceService:PromptProductPurchase(player, item.Id)
+		local enabled = false
+		button.Activated:Connect(function()
+			if enabled then
+				Effects.sound("Click")
+				Remotes.get("ShopBuy"):FireServer(item.Key)
 			end
 		end)
-
 		table.insert(updaters, function()
-			if item.Key == "CoinPack" then
-				local income = player:GetAttribute("Income") or 0
-				local amount = math.max(Config.CoinPackMin, math.floor(income * 60 * Config.CoinPackMinutes))
-				desc.Text = Lang.t("ShopCoinsDesc", { coins = Format.short(amount) })
+			desc.Text = describe()
+			local color = UI.Colors.Good
+			enabled = false
+			if item.Kind == "Pass" and player:GetAttribute(item.Attribute) then
+				label.Text = "✅ " .. Lang.t("ShopOwned")
+				color = UI.Colors.Gray
+			elseif item.Random and player:GetAttribute("RandomItemsRestricted") ~= false then
+				label.Text = Lang.t("ShopRestrictedShort")
+				color = UI.Colors.Gray
+			elseif id == 0 then
+				if IS_STUDIO then
+					label.Text = "🧪 " .. Lang.t("ShopTestFree")
+					enabled = true
+				else
+					label.Text = Lang.t("ShopSoon")
+					color = UI.Colors.Gray
+				end
 			else
-				desc.Text = Lang.t(item.Desc, { long = Config.LockDurationPass, normal = Config.LockDuration })
+				label.Text = "R$ " .. tostring(robux or item.Robux)
+				enabled = true
 			end
-			if item.Id == 0 then
-				buy.BackgroundColor3 = UI.Colors.Gray
-				price.Text = Lang.t("ShopSoon")
-			elseif item.Attribute and player:GetAttribute(item.Attribute) then
-				buy.BackgroundColor3 = UI.Colors.Gray
-				price.Text = "✅ " .. Lang.t("ShopOwned")
-			else
-				buy.BackgroundColor3 = UI.Colors.Good
-				price.Text = if robux then "R$ " .. robux else "R$"
-			end
+			button.BackgroundColor3 = color
 		end)
 	end
 
-	-- Codes secrets : le joueur tape le code, le serveur vérifie tout
-	local codeCard = UI.new("Frame", {
-		Size = UDim2.new(1, 0, 0, 72),
-		BackgroundColor3 = UI.Colors.PanelLight,
-		LayoutOrder = #items + 1,
-		Parent = list,
-	}, { UI.corner(16), UI.stroke(UI.Colors.Purple, 3) })
-	UI.label({ Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(8, 8), Text = "🎟️", MaxTextSize = 44, Parent = codeCard })
-	UI.label({ Size = UDim2.new(1, -330, 0, 30), Position = UDim2.fromOffset(72, 6), Text = Lang.t("Codes"), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 26, Parent = codeCard })
-	UI.label({ Size = UDim2.new(1, -330, 0, 26), Position = UDim2.fromOffset(72, 38), Text = Lang.t("CodesDesc"), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = codeCard })
+	---- Passes
+	local order = 0
+	for _, item in Shop.Items do
+		order += 1
+		if item.Category == "Passes" then
+			itemCard(pages.Passes, order, item, item.Icon, Lang.pick(item.Name), function()
+				return Strings.fill(Lang.pick(item.Desc), { long = Config.LockDurationPass, normal = Config.LockDuration })
+			end)
+		elseif item.Category == "Coins" then
+			itemCard(pages.Coins, order, item, item.Icon, Lang.pick(item.Name), function()
+				local income = player:GetAttribute("Income") or 0
+				local amount = math.max(Config.CoinPackMin, math.floor(income * 60 * Config.CoinPackMinutes))
+				return Strings.fill(Lang.pick(item.Desc), { coins = Format.short(amount) })
+			end)
+		end
+	end
+
+	---- Armes : la Batte offerte, puis les armes Game Pass
+	for _, weapon in Weapons.List do
+		local stats = Lang.t("WeaponStats", { range = weapon.Range, cooldown = weapon.Cooldown })
+		local function describe(): string
+			return Lang.pick(weapon.Desc) .. "\n" .. stats .. (if weapon.Sweep then " · " .. Lang.t("WeaponSweep") else "")
+		end
+		if weapon.Free then
+			local _, desc = card(pages.Weapons, weapon.Order, iconFor(weapon.Id, weapon.Icon), Lang.pick(weapon.Name) .. "  ✅ " .. Lang.t("ShopFree"), false, 84)
+			desc.Text = describe()
+		else
+			for _, item in Shop.Items do
+				if item.Weapon == weapon.Id then
+					itemCard(pages.Weapons, weapon.Order, item, iconFor(weapon.Id, weapon.Icon), Lang.pick(weapon.Name), describe)
+				end
+			end
+		end
+	end
+
+	---- Monstres
+	for _, item in Shop.Items do
+		local monster = item.Monster and Monsters.get(item.Monster)
+		if monster then
+			itemCard(pages.Monsters, monster.Order + 1, item, iconFor(monster.Id, monster.Icon), Lang.pick(monster.Name), function()
+				return Lang.pick(monster.Desc) .. "\n" .. Lang.t("MonsterStats", { time = Format.time(monster.Duration) })
+			end)
+		end
+	end
+	local _, monsterInfo = card(pages.Monsters, 0, "👹", Lang.t("MonstersTitle"), false, 70)
+	monsterInfo.Text = Lang.t("MonstersInfo")
+
+	---- Roue de la Fortune : tours possédés, chances, achat
+	local spinCard, spinDesc, spinButton, spinLabel = card(pages.Wheel, 1, iconFor("Wheel", "🎡"), Lang.t("WheelTitle"), true)
+	spinButton.Name = "SpinButton"
+	spinCard.Name = "SpinCard"
+	spinButton.Activated:Connect(function()
+		if (player:GetAttribute("Spins") or 0) <= 0 then
+			return
+		end
+		Effects.sound("Click")
+		if not nearWheel() then
+			HUD.toast(Lang.t("WheelGoThere"), "info")
+			return
+		end
+		Remotes.get("SpinWheel"):FireServer()
+		close()
+	end)
+	table.insert(updaters, function()
+		local spins = player:GetAttribute("Spins") or 0
+		spinDesc.Text = Lang.t("WheelSpins", { count = spins })
+		spinLabel.Text = Lang.t("WheelSpin")
+		spinButton.BackgroundColor3 = if spins > 0 then UI.Colors.Gold else UI.Colors.Gray
+	end)
+
+	local oddsHeight = 44 + #Wheel.Segments * 26
+	local oddsCard = card(pages.Wheel, 2, "🎲", Lang.t("WheelOdds"), false, oddsHeight)
+	oddsCard.Name = "OddsCard"
+	local total = Wheel.totalChance()
+	for index, segment in Wheel.Segments do
+		local percent = math.floor(segment.Chance / total * 1000 + 0.5) / 10
+		UI.label({
+			Name = "Odds_" .. segment.Id,
+			Size = UDim2.new(1, -90, 0, 24),
+			Position = UDim2.fromOffset(72, 38 + (index - 1) * 26),
+			Text = segment.Icon .. "  " .. Lang.t("Wheel_" .. segment.Id) .. "  :  " .. Format.percent(percent),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			MaxTextSize = 20,
+			Parent = oddsCard,
+		})
+	end
+	for _, item in Shop.Items do
+		if item.Category == "Wheel" then
+			itemCard(pages.Wheel, 2 + item.Order, item, item.Icon, Lang.pick(item.Name), function()
+				if player:GetAttribute("RandomItemsRestricted") ~= false then
+					return Lang.t("ShopRestricted")
+				end
+				return Lang.pick(item.Desc)
+			end)
+		end
+	end
+
+	---- Codes secrets : le joueur tape le code, le serveur vérifie tout
+	local codeCard = card(pages.Codes, 1, "🎟️", Lang.t("Codes"), false)
+	local codeDesc = codeCard:FindFirstChild("Desc") :: TextLabel
+	codeDesc.Text = Lang.t("CodesDesc")
+	codeDesc.Size = UDim2.new(1, -340, 1, -42)
+	local title = codeCard:FindFirstChild("Title") :: TextLabel
+	title.Size = UDim2.new(1, -340, 0, 30)
 	local codeBox = UI.new("TextBox", {
 		Name = "CodeBox",
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -96, 0.5, 0),
-		Size = UDim2.fromOffset(160, 50),
+		Size = UDim2.fromOffset(170, 50),
 		BackgroundColor3 = UI.Colors.Panel,
 		PlaceholderText = Lang.t("CodePlaceholder"),
 		PlaceholderColor3 = UI.Colors.Gray,
@@ -389,6 +610,7 @@ local function buildShop(): Frame
 		end
 	end)
 
+	selectTab("Passes")
 	table.insert(refreshers, function()
 		for _, update in updaters do
 			update()
@@ -629,6 +851,20 @@ end
 
 ---------------------------------------------------------------- Démarrage
 
+-- Ouvre la boutique sur un onglet ("Passes", "Weapons", "Wheel", "Monsters", "Coins", "Codes")
+function Panels.openShop(category: string?)
+	local panel = gui and gui:FindFirstChild("Shop") :: Frame?
+	if not panel then
+		return
+	end
+	if openPanel ~= panel then
+		open(panel)
+	end
+	if shopSelect then
+		shopSelect(category or "Passes")
+	end
+end
+
 function Panels.openDaily()
 	local panel = gui and gui:FindFirstChild("Daily") :: Frame?
 	if panel and openPanel ~= panel then
@@ -734,6 +970,15 @@ function Panels.start()
 		end
 	end)
 	player:GetAttributeChangedSignal("TutorialDone"):Connect(maybeAutoOpen)
+	for _, attribute in { "Spins", "RandomItemsRestricted" } do
+		player:GetAttributeChangedSignal(attribute):Connect(function()
+			if openPanel then
+				for _, refresh in refreshers do
+					refresh()
+				end
+			end
+		end)
+	end
 
 	-- Rafraîchit la fenêtre ouverte (prix, compte à rebours)
 	local accumulator = 0

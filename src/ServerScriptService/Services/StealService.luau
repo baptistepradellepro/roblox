@@ -6,7 +6,7 @@
 	  2. Le serveur vérifie tout (base pas verrouillée, distance, place libre...)
 	  3. Le voleur porte le fantôme : ralenti, surligné en rouge pour tout le monde
 	  4. Réussite : il entre dans SA base -> le fantôme change de propriétaire + annonce
-	     Échec : le propriétaire le touche, Marteau Pouet, 45 s écoulées, mort,
+	     Échec : le propriétaire le touche, un coup d'arme, 45 s écoulées, mort,
 	             monstre de la Nuit Hantée -> le fantôme rentre chez lui
 	  Pendant le vol, le fantôme reste sauvegardé chez son propriétaire (aucune perte
 	  possible si un serveur plante).
@@ -43,7 +43,6 @@ type Carry = {
 
 local carries: { [Player]: Carry } = {}
 local holdStarts: { [Player]: { BaseIndex: number, Slot: number, Time: number } } = {}
-local bonkReadyAt: { [Player]: number } = {}
 local stunnedUntil: { [Player]: number } = {}
 
 local function setSpeed(player: Player, speed: number)
@@ -247,50 +246,33 @@ local function onSteal(player: Player, baseIndex: any, slot: any)
 	AnnounceService.effect("StealAlert", {}, owner)
 end
 
-local function onBonk(player: Player)
-	if not Guard.rate(player, "Bonk", 0.2) then
-		return
-	end
-	local t = os.clock()
-	if (bonkReadyAt[player] or 0) > t then
-		return
-	end
-	local root = Guard.root(player)
-	if not root then
-		return
-	end
-	-- le voleur le plus proche à portée
-	local target: Player? = nil
-	local best = Config.BonkRange
-	for thief in carries do
-		if thief ~= player then
-			local thiefRoot = Guard.root(thief)
-			if thiefRoot then
-				local dist = (thiefRoot.Position - root.Position).Magnitude
-				if dist <= best then
-					best = dist
-					target = thief
-				end
-			end
-		end
-	end
-	if not target then
-		return
-	end
-	local thief = target :: Player
-	bonkReadyAt[player] = t + Config.BonkCooldown
-	local thiefRoot = Guard.root(thief)
-	AnnounceService.effect("Bonk", { Position = if thiefRoot then thiefRoot.Position else root.Position })
-	StealService.failCarry(thief, "Bonk", player)
-	Hooks.fire("Bonk", player, 1)
-	-- petit étourdissement du voleur
-	stunnedUntil[thief] = os.clock() + Config.BonkStunTime
-	setSpeed(thief, 4)
-	task.delay(Config.BonkStunTime, function()
-		if thief.Parent then
-			setSpeed(thief, normalSpeedFor(thief))
+-- Étourdit un joueur (il marche très lentement pendant "seconds" secondes)
+function StealService.stun(player: Player, seconds: number)
+	stunnedUntil[player] = os.clock() + seconds
+	setSpeed(player, 4)
+	task.delay(seconds, function()
+		if player.Parent and (stunnedUntil[player] or 0) <= os.clock() then
+			setSpeed(player, normalSpeedFor(player))
 		end
 	end)
+end
+
+function StealService.isStunned(player: Player): boolean
+	return (stunnedUntil[player] or 0) > os.clock()
+end
+
+-- Annule un vol en préparation (le joueur maintenait "Voler" sur un socle)
+function StealService.cancelHold(player: Player)
+	holdStarts[player] = nil
+end
+
+-- Les voleurs en cours (pour les armes)
+function StealService.thieves(): { Player }
+	local list = {}
+	for thief in carries do
+		table.insert(list, thief)
+	end
+	return list
 end
 
 -- Vérifie tous les vols en cours (10 fois par seconde)
@@ -344,7 +326,6 @@ end
 -- Appelé quand un joueur quitte le jeu (AVANT la sauvegarde de ses données)
 function StealService.onPlayerRemoving(player: Player)
 	holdStarts[player] = nil
-	bonkReadyAt[player] = nil
 	stunnedUntil[player] = nil
 	-- Le voleur part : le fantôme rentre chez lui
 	if carries[player] then
@@ -369,7 +350,6 @@ end
 function StealService.start()
 	Remotes.get("StealBegin").OnServerEvent:Connect(onHoldBegin)
 	Remotes.get("Steal").OnServerEvent:Connect(onSteal)
-	Remotes.get("Bonk").OnServerEvent:Connect(onBonk)
 	Players.PlayerRemoving:Connect(function(player)
 		-- sécurité si l'ordre des événements change
 		if carries[player] then

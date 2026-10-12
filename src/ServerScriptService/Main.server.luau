@@ -28,13 +28,17 @@ local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 local MapBuilder = require(Services:WaitForChild("MapBuilder"))
 local MissionService = require(Services:WaitForChild("MissionService"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
+local MonsterService = require(Services:WaitForChild("MonsterService"))
 local NightService = require(Services:WaitForChild("NightService"))
 local RebirthService = require(Services:WaitForChild("RebirthService"))
 local StealService = require(Services:WaitForChild("StealService"))
+local WeaponService = require(Services:WaitForChild("WeaponService"))
+local WheelService = require(Services:WaitForChild("WheelService"))
 
 -- 1. La map
 local map = MapBuilder.build()
 BaseService.init(map)
+WheelService.init(map)
 
 -- 2. Les services
 DataService.start()
@@ -42,7 +46,10 @@ BaseService.start()
 EconomyService.start()
 GhostService.start()
 StealService.start()
+WeaponService.start()
+MonsterService.start()
 NightService.start()
+WheelService.start()
 RebirthService.start()
 MonetizationService.start()
 CodeService.start()
@@ -71,7 +78,9 @@ local function onPlayerAdded(player: Player)
 		return
 	end
 
-	MonetizationService.setup(player) -- Game Passes (x2 pièces, verrou+)
+	MonetizationService.setup(player) -- Game Passes (x2 pièces, verrou+, armes)
+	WeaponService.setup(player) -- la Batte et les armes achetées, à chaque apparition
+	WheelService.setup(player) -- tours de Roue de la Fortune
 	RebirthService.setup(player) -- aura des rebirths
 	EconomyService.setup(player)
 	IndexService.setup(player) -- collection (avant le cadeau, pour ne pas afficher 2 messages)
@@ -99,6 +108,7 @@ end
 
 local function onPlayerRemoving(player: Player)
 	StealService.onPlayerRemoving(player)
+	WheelService.onPlayerRemoving(player) -- gain de la roue pas encore donné
 	EconomyService.onPlayerRemoving(player)
 	BaseService.release(player)
 	Guard.clear(player)

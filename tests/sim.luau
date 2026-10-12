@@ -55,7 +55,9 @@ Fake.mountProject()
 -- Réglages de test (le module Config est partagé avec le serveur)
 local Config = Fake.require("ReplicatedStorage.Shared.Config")
 Config.Products.CoinPack = 999
+Config.Products.Spin1 = 1001
 Config.GamePasses.DoubleCoins = 555
+Config.GamePasses.WeaponBroom = 556
 
 Fake.runServer()
 Sched.advance(1)
@@ -68,6 +70,7 @@ local GhostService = Fake.require("ServerScriptService.Services.GhostService")
 local StealService = Fake.require("ServerScriptService.Services.StealService")
 local EconomyService = Fake.require("ServerScriptService.Services.EconomyService")
 local GhostData = Fake.require("ReplicatedStorage.Shared.GhostData")
+local Weapons = Fake.require("ReplicatedStorage.Shared.Weapons")
 
 section("Démarrage du serveur")
 check(workspace:FindFirstChild("Map") ~= nil, "la map est construite")
@@ -357,11 +360,80 @@ Fake.fire(chloe, "Bonk")
 check(bob:GetAttribute("CarryGhost") == nil, "Bob a lâché le fantôme")
 check(notified(chloe, "BonkHit", m) and notified(bob, "StealFailBonk", m), "messages du Marteau Pouet")
 check(bob.Character.Humanoid.WalkSpeed == 4, "Bob est étourdi")
-Sched.advance(Config.BonkStunTime + 0.1)
+Sched.advance(Weapons.ById.Batte.Stun + 0.1)
 check(bob.Character.Humanoid.WalkSpeed == Config.NormalWalkSpeed, "Bob n'est plus étourdi")
 m = mark()
 Fake.fire(chloe, "Bonk")
 check(not notified(chloe, "BonkHit", m), "pas de Pouet sans voleur")
+
+section("Batte et armes")
+local WeaponService = Fake.require("ServerScriptService.Services.WeaponService")
+local function hasTool(player, id: string): boolean
+	for _, container in { player:FindFirstChild("Backpack"), player.Character } do
+		if container then
+			for _, child in container:GetChildren() do
+				if child:GetAttribute("WeaponId") == id then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+check(hasTool(alice, "Batte") and hasTool(bob, "Batte") and hasTool(chloe, "Batte"), "tout le monde a sa batte")
+check(not hasTool(chloe, "MarteauPouet"), "pas d'arme payante sans Game Pass")
+steal(bob, alice, slot)
+check(bob:GetAttribute("CarryGhost") == "Caquetome", "encore un vol")
+Fake.moveTo(bob, Vector3.new(0, 3, 12))
+Fake.moveTo(chloe, Vector3.new(10.5, 3, 12))
+Sched.advance(2)
+Fake.fire(chloe, "Bonk", "MarteauPouet")
+check(bob:GetAttribute("CarryGhost") ~= nil, "arme pas achetée : rien ne se passe")
+Sched.advance(0.3)
+Fake.fire(chloe, "Bonk", "Batte")
+check(bob:GetAttribute("CarryGhost") ~= nil, "trop loin pour la batte (portée " .. Weapons.ById.Batte.Range .. ")")
+chloe:SetAttribute("Weapon_MarteauPouet", true)
+WeaponService.giveTools(chloe)
+check(hasTool(chloe, "MarteauPouet"), "le Marteau Pouet Géant arrive dans le sac")
+WeaponService.giveTools(chloe)
+local hammers = 0
+for _, child in chloe.Backpack:GetChildren() do
+	if child:GetAttribute("WeaponId") == "MarteauPouet" then
+		hammers += 1
+	end
+end
+check(hammers == 1, "pas de doublon dans le sac")
+Sched.advance(2)
+m = mark()
+Fake.fire(chloe, "Bonk", "MarteauPouet")
+check(bob:GetAttribute("CarryGhost") == nil and notified(chloe, "BonkHit", m), "le marteau porte plus loin que la batte")
+check(bob.Character.Humanoid.WalkSpeed == 4, "Bob est étourdi plus longtemps")
+Sched.advance(Weapons.ById.MarteauPouet.Stun + 0.1)
+-- un intrus dans ma base se fait chasser
+Fake.moveTo(alice, baseCenter(alice))
+Fake.moveTo(bob, baseCenter(alice) + Vector3.new(3, 0, 0))
+Sched.advance(2)
+m = mark()
+Fake.fire(alice, "Bonk")
+check(not BaseService.isInside(BaseService.getBase(alice), Fake.position(bob)), "Bob est chassé de la base d'Alice")
+check(notified(bob, "PushedOut", m), "message pour Bob")
+Sched.advance(Weapons.ById.Batte.Stun + 0.1)
+-- on ne frappe pas en portant un fantôme volé : deux voleurs côte à côte
+local otherSlot = GhostService.giveGhost(alice, "DrapMou")
+steal(bob, alice, slot)
+steal(chloe, alice, otherSlot)
+check(bob:GetAttribute("CarryGhost") ~= nil and chloe:GetAttribute("CarryGhost") ~= nil, "deux voleurs en même temps")
+Fake.moveTo(bob, Vector3.new(0, 3, -12))
+Fake.moveTo(chloe, Vector3.new(2, 3, -12))
+Fake.fire(bob, "Bonk")
+check(chloe:GetAttribute("CarryGhost") ~= nil, "un voleur qui porte un fantôme ne peut pas frapper")
+StealService.failCarry(bob, "Timeout")
+StealService.failCarry(chloe, "Timeout")
+Sched.advance(1)
+-- la batte revient après une réapparition
+bob:LoadCharacter()
+Sched.advance(0.5)
+check(hasTool(bob, "Batte"), "la batte revient après une réapparition")
 
 section("Anti-triche vitesse")
 park(chloe, -160, -75)
@@ -556,7 +628,7 @@ aData.Coins = 10
 Fake.fire(alice, "Rebirth")
 check(notified(alice, "RebirthNotEnough", m) and aData.Rebirths == 0, "rebirth refusé sans argent")
 Sched.advance(3)
-aData.Coins = 6_000_000
+aData.Coins = 12_000_000
 Fake.fire(alice, "Rebirth")
 check(aData.Rebirths == 1, "rebirth fait")
 check(aData.Coins == Config.StartCoins, "pièces remises à zéro")
@@ -595,6 +667,141 @@ check(unknown == roblox.Enum.ProductPurchaseDecision.NotProcessedYet, "produit i
 local mult = alice:GetAttribute("Multiplier")
 MarketplaceService.PromptGamePassPurchaseFinished:Fire(alice, 555, true)
 check(alice:GetAttribute("DoubleCoins") == true and alice:GetAttribute("Multiplier") == mult * 2, "Game Pass x2 actif")
+MarketplaceService.PromptGamePassPurchaseFinished:Fire(chloe, 556, true)
+Sched.advance(0.1)
+check(chloe:GetAttribute("Weapon_BalaiSorciere") == true and hasTool(chloe, "BalaiSorciere"), "Game Pass d'arme : le balai arrive dans le sac")
+
+section("Roue de la Fortune")
+local Wheel = Fake.require("ReplicatedStorage.Shared.Wheel")
+local MonetizationService = Fake.require("ServerScriptService.Services.MonetizationService")
+local Granted = roblox.Enum.ProductPurchaseDecision.PurchaseGranted
+local wheelAnchor = workspace.Map:FindFirstChild("FortuneWheelAnchor", true)
+check(wheelAnchor ~= nil, "la roue est au milieu de la map")
+check(alice:GetAttribute("Spins") == 0, "aucun tour au départ")
+check(alice:GetAttribute("RandomItemsRestricted") == false, "règles du pays vérifiées (autorisé)")
+Sched.advance(1)
+m = mark()
+Fake.fire(alice, "SpinWheel")
+check(notified(alice, "WheelNoSpins", m), "pas de tour sans achat")
+local spinReceipt = { PlayerId = alice.UserId, PurchaseId = "spin-1", ProductId = 1001 }
+check(MarketplaceService.ProcessReceipt(spinReceipt) == Granted, "tour de roue acheté")
+check(aData.Spins == 1 and alice:GetAttribute("Spins") == 1, "1 tour crédité")
+MarketplaceService.ProcessReceipt(spinReceipt)
+check(aData.Spins == 1, "le même achat n'est pas crédité deux fois")
+local spinId = wheelAnchor:GetAttribute("SpinId")
+Sched.advance(1)
+m = mark()
+Fake.fire(alice, "SpinWheel")
+check(aData.Spins == 0, "le tour est utilisé")
+check(wheelAnchor:GetAttribute("SpinId") == spinId + 1, "la roue tourne pour tout le monde")
+local segIndex = wheelAnchor:GetAttribute("SpinSegment")
+check(type(segIndex) == "number" and Wheel.Segments[segIndex] ~= nil, "case tirée par le serveur")
+check(wheelAnchor:GetAttribute("SpinnerId") == alice.UserId, "on sait qui joue")
+bData.Spins = 1
+Sched.advance(0.6)
+local mb = mark()
+Fake.fire(bob, "SpinWheel")
+check(notified(bob, "WheelBusy", mb) and bData.Spins == 1, "un seul joueur à la fois")
+local function wonSomething(player, since: number): boolean
+	for _, key in { "WheelWinCoins", "WheelWinBoost", "WheelWinGhost", "WheelBaseFull" } do
+		if notified(player, key, since) then
+			return true
+		end
+	end
+	return false
+end
+check(not wonSomething(alice, m), "le gain n'arrive pas avant l'arrêt de la roue")
+Sched.advance(Wheel.SpinDuration)
+check(wonSomething(alice, m), "gain donné quand la roue s'arrête")
+aData.Spins = 12
+local wins = 0
+for _ = 1, 12 do
+	Sched.advance(0.6)
+	local mi = mark()
+	Fake.fire(alice, "SpinWheel")
+	Sched.advance(Wheel.SpinDuration + 0.1)
+	if wonSomething(alice, mi) then
+		wins += 1
+	end
+end
+check(wins == 12, "chaque tour fait gagner quelque chose (" .. wins .. "/12)")
+-- case "revenus x2"
+aData.BoostUntil = 0 -- la roue a peut-être déjà donné un boost
+local multNoBoost = EconomyService.multiplier(alice)
+aData.BoostUntil = math.floor(workspace:GetServerTimeNow()) + 60
+check(math.abs(EconomyService.multiplier(alice) - multNoBoost * Config.WheelBoostMult) < 0.001, "le boost de la roue double les revenus")
+aData.BoostUntil = 0
+-- pays où les objets aléatoires payants sont interdits
+Fake.restrictedRandomItems[bob.UserId] = true
+MonetizationService.setup(bob)
+check(bob:GetAttribute("RandomItemsRestricted") == true, "règles du pays : interdit pour Bob")
+MonetizationService.studioMode = true
+Sched.advance(0.6)
+m = mark()
+local bobSpins = bData.Spins
+Fake.fire(bob, "ShopBuy", "Spin5")
+check(bData.Spins == bobSpins and notified(bob, "ShopRestricted", m), "pas de tours de roue pour Bob")
+-- mode test de Studio : article sans ID donné gratuitement
+Sched.advance(0.6)
+m = mark()
+Fake.fire(alice, "ShopBuy", "Spin5")
+check(aData.Spins == 5 and notified(alice, "ShopStudioFree", m), "Studio : 5 tours donnés pour tester")
+MonetizationService.studioMode = false
+Sched.advance(0.6)
+m = mark()
+Fake.fire(alice, "ShopBuy", "Spin5")
+check(aData.Spins == 5 and notified(alice, "ShopSoon", m), "vrai jeu sans ID : \"Bientôt\"")
+Sched.advance(0.6)
+m = mark()
+Fake.fire(alice, "ShopBuy", "DoubleCoins")
+check(notified(alice, "ShopOwned", m), "Game Pass déjà possédé")
+Fake.fire(alice, "ShopBuy", "n'importe quoi")
+aData.Spins = 0
+
+section("Monstres achetés avec des Robux")
+local Monsters = Fake.require("ReplicatedStorage.Shared.Monsters")
+-- on évite la Nuit Hantée pendant ce test
+local untilNight = RS:GetAttribute("NextNightAt") - workspace:GetServerTimeNow()
+if RS:GetAttribute("NightActive") or untilNight < 150 then
+	Sched.advance(math.max(untilNight, 0) + Config.NightDuration + 2)
+end
+MonetizationService.studioMode = true
+park(alice, 140, 8)
+park(chloe, 60, -8)
+Fake.moveTo(bob, baseCenter(bob))
+Sched.advance(0.6)
+m = mark()
+Fake.fire(alice, "ShopBuy", "MonsterBat")
+local batAnchor = workspace:FindFirstChild("ChauveSourisTurboAnchor")
+check(batAnchor ~= nil, "la Chauve-Souris Turbo est lâchée")
+check(announced("AnnMonsterSummon", m), "annonce pour tout le serveur")
+check(batAnchor and batAnchor:GetAttribute("SummonerId") == alice.UserId, "on sait qui l'a lâchée")
+Sched.advance(0.6)
+m = mark()
+Fake.fire(bob, "ShopBuy", "MonsterSpider")
+check(notified(bob, "MonsterQueued", m) and workspace:FindFirstChild("MamieToileAnchor") == nil, "le 2e monstre attend son tour")
+local targetedAlice, targetedChloe = false, false
+for _ = 1, 20 do
+	Sched.advance(0.2)
+	local target = batAnchor:GetAttribute("TargetUserId")
+	targetedAlice = targetedAlice or target == alice.UserId
+	targetedChloe = targetedChloe or target == chloe.UserId
+end
+check(targetedChloe and not targetedAlice, "elle poursuit Chloé, jamais celle qui l'a lâchée")
+local chloeCoins = cData.Coins
+m = mark()
+Fake.moveTo(chloe, batAnchor.Position + Vector3.new(1, -4, 0))
+Sched.advance(0.3)
+check(notified(chloe, "MonsterCaughtYouFree", m), "Chloé est attrapée")
+check(cData.Coins >= chloeCoins, "aucune pièce perdue avec un monstre acheté")
+check(inOwnBase(chloe), "retour à la base")
+Sched.advance(Monsters.ById.ChauveSourisTurbo.Duration)
+check(workspace:FindFirstChild("ChauveSourisTurboAnchor") == nil, "elle repart à la fin")
+local spider = workspace:FindFirstChild("MamieToileAnchor")
+check(spider ~= nil and spider:GetAttribute("SummonerId") == bob.UserId, "Mamie Toile arrive ensuite")
+Sched.advance(Monsters.ById.MamieToile.Duration + 1)
+check(workspace:FindFirstChild("MamieToileAnchor") == nil, "plus de monstre")
+MonetizationService.studioMode = false
 
 section("Fantômédex")
 local IndexService = Fake.require("ServerScriptService.Services.IndexService")

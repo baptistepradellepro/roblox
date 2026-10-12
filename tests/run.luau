@@ -1,7 +1,7 @@
 --[[
 	Tests automatiques (hors Roblox) avec Lune : `lune run tests/run.luau`
 	  - logique pure : formats, raretés, données des fantômes, textes FR/EN
-	  - construction réelle des 32 fantômes et de la map avec la bibliothèque
+	  - construction réelle des 36 fantômes et de la map avec la bibliothèque
 	    @lune/roblox (vérifie que chaque propriété / Enum utilisé existe vraiment)
 ]]
 
@@ -72,7 +72,7 @@ for _, ghost in GhostData.List do
 	check(ghost.Name.fr and ghost.Name.en, "nom FR + EN : " .. ghost.Id)
 	check(ghost.Gag.fr and ghost.Gag.en, "blague FR + EN : " .. ghost.Id)
 	local payback = ghost.Price / ghost.Income
-	check(payback >= 15 and payback <= 400, string.format("rentabilisé en 15-400 s : %s (%.0f s)", ghost.Id, payback))
+	check(payback >= 60 and payback <= 1500, string.format("rentabilisé en 1 à 25 min : %s (%.0f s)", ghost.Id, payback))
 	if maxPrice[ghost.Rarity] then
 		maxPrice[ghost.Rarity] = math.max(maxPrice[ghost.Rarity], ghost.Price)
 	end
@@ -206,6 +206,124 @@ local function scanKeys(dir: string)
 end
 scanKeys("src")
 
+---------------------------------------------------------------- Boutique, roue, armes, monstres
+local Shop = loadModule(SHARED .. "Shop.luau")
+local Wheel = loadModule(SHARED .. "Wheel.luau")
+local Weapons = loadModule(SHARED .. "Weapons.luau")
+local Monsters = loadModule(SHARED .. "Monsters.luau")
+
+-- Roue : chances à 100 %, chaque case atteignable et utile (règles Roblox des objets aléatoires payants)
+check(Wheel.totalChance() == 100, "les chances de la roue font 100 % (" .. Wheel.totalChance() .. ")")
+check(Wheel.pick(0) == 1 and Wheel.pick(0.999999) == #Wheel.Segments, "tirage de la roue aux deux bouts")
+local reached = {}
+for i = 0, 9999 do
+	reached[Wheel.pick(i / 10000)] = true
+end
+for index, segment in Wheel.Segments do
+	check(reached[index], "case de la roue atteignable : " .. segment.Id)
+	check(segment.Chance > 0, "chance positive : " .. segment.Id)
+	check(Strings.fr["Wheel_" .. segment.Id] and Strings.en["Wheel_" .. segment.Id], "texte de la case : " .. segment.Id)
+	check(Strings.fr["WheelShort_" .. segment.Id] and Strings.en["WheelShort_" .. segment.Id], "texte court de la case : " .. segment.Id)
+	if segment.Kind == "Coins" then
+		check(Wheel.coins(segment, 0) > 0, "une case de pièces donne toujours quelque chose : " .. segment.Id)
+	elseif segment.Kind == "Ghost" then
+		check(GhostData.ByRarity[segment.Rarity] ~= nil and #GhostData.ByRarity[segment.Rarity] > 0, "rareté de la case : " .. segment.Id)
+		check(segment.Mutation == nil or GhostData.Mutations[segment.Mutation] ~= nil, "variante de la case : " .. segment.Id)
+	elseif segment.Kind == "Boost" then
+		check(segment.Seconds > 0 and Config.WheelBoostMult > 1, "boost de la roue")
+	else
+		check(false, "type de case inconnu : " .. tostring(segment.Kind))
+	end
+end
+check(math.abs(Wheel.segmentAngle(1)) < 1e-9, "la case 1 est en haut")
+
+-- Boutique : chaque article a un ID dans Config, un nom et ce qu'il faut pour être donné
+for _, item in Shop.Items do
+	local ids = if item.Kind == "Pass" then Config.GamePasses else Config.Products
+	check(ids[item.Key] ~= nil, "ID prévu dans Config pour " .. item.Key)
+	check(item.Robux and item.Robux > 0, "prix conseillé pour " .. item.Key)
+	if item.Weapon then
+		local weapon = Weapons.get(item.Weapon)
+		check(weapon ~= nil and weapon.Pass == item.Key and not weapon.Free, "arme liée à son Game Pass : " .. item.Key)
+		check(item.Attribute == "Weapon_" .. item.Weapon, "attribut de l'arme : " .. item.Key)
+	elseif item.Monster then
+		local monster = Monsters.get(item.Monster)
+		check(monster ~= nil and monster.Product == item.Key, "monstre lié à son produit : " .. item.Key)
+	else
+		check(item.Name and item.Name.fr and item.Name.en and item.Desc, "nom et description : " .. item.Key)
+	end
+	if item.Kind == "Pass" then
+		check(type(item.Attribute) == "string", "attribut du Game Pass : " .. item.Key)
+	end
+	check(not item.Random or item.Category == "Wheel", "seuls les tours de roue sont aléatoires : " .. item.Key)
+end
+for key in Config.GamePasses do
+	check(Shop.get(key) ~= nil, "Game Pass de Config connu de la boutique : " .. key)
+end
+for key in Config.Products do
+	check(Shop.get(key) ~= nil, "produit de Config connu de la boutique : " .. key)
+end
+for _, category in Shop.Categories do
+	local count = 0
+	for _, item in Shop.Items do
+		if item.Category == category.Id then
+			count += 1
+		end
+	end
+	check(count > 0, "onglet de boutique non vide : " .. category.Id)
+end
+
+-- Armes : la batte est offerte, les autres sont des Game Passes, et l'outil se construit
+local freeCount = 0
+for _, weapon in Weapons.List do
+	if weapon.Free then
+		freeCount += 1
+	end
+	check(weapon.Range > 0 and weapon.Cooldown > 0 and weapon.Stun > 0, "réglages de l'arme : " .. weapon.Id)
+	check(weapon.Name.fr and weapon.Name.en and weapon.Desc.fr and weapon.Desc.en, "textes de l'arme : " .. weapon.Id)
+	check(weapon.Free or Shop.get(weapon.Pass) ~= nil, "Game Pass de l'arme dans la boutique : " .. weapon.Id)
+	local tool = Weapons.buildTool(weapon.Id)
+	check(tool:IsA("Tool") and tool:FindFirstChild("Handle") ~= nil, "outil avec poignée : " .. weapon.Id)
+	check(tool:GetAttribute("WeaponId") == weapon.Id, "outil marqué : " .. weapon.Id)
+	local parts, welded = 0, 0
+	for _, d in tool:GetDescendants() do
+		if d:IsA("BasePart") and d.Name ~= "Handle" then
+			parts += 1
+			check(not d.Anchored and not d.CanCollide, "pièce d'arme libre et sans collision : " .. weapon.Id)
+			if d:FindFirstChildOfClass("WeldConstraint") then
+				welded += 1
+			end
+		end
+	end
+	check(parts > 0 and welded == parts, "toutes les pièces sont soudées à la poignée : " .. weapon.Id)
+end
+check(freeCount == 1 and Weapons.ById.Batte.Free, "seule la batte est offerte")
+
+-- Monstres : modèles et réglages
+for _, monster in Monsters.List do
+	check(monster.Speed > 0 and monster.CatchRange > 0 and monster.Duration > 0, "réglages du monstre : " .. monster.Id)
+	local model = Monsters.build(monster.Id)
+	check(model.PrimaryPart ~= nil and model.Name == monster.Id, "modèle du monstre : " .. monster.Id)
+	local count = 0
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			count += 1
+			check(d.Anchored and not d.CanCollide, "pièce de monstre ancrée sans collision : " .. monster.Id)
+		end
+	end
+	check(count <= 60, monster.Id .. " : " .. count .. " pièces (max 60)")
+end
+
+-- Roue 3D : 8 cases, chaque case a son support de texte
+local wheelModel = Wheel.build(nil)
+local labels = 0
+for _, d in wheelModel:GetDescendants() do
+	if d:GetAttribute("Segment") then
+		labels += 1
+	end
+end
+check(labels == #Wheel.Segments, "un texte par case sur la roue 3D")
+
 ---------------------------------------------------------------- Remotes
 local remoteSource = fs.readFile(SHARED .. "Remotes.luau")
 local remoteNames = {}
@@ -243,7 +361,7 @@ for _, ghost in GhostData.List do
 			end
 		end
 		totalParts += parts
-		check(parts <= 32, string.format("%s : %d pièces (max 32)", ghost.Id, parts))
+		check(parts <= 36, string.format("%s : %d pièces (max 36)", ghost.Id, parts))
 		check(model.PrimaryPart ~= nil and model.PrimaryPart.Name == "Root", ghost.Id .. " a une racine")
 		check(model:GetAttribute("GhostId") == ghost.Id, ghost.Id .. " attribut GhostId")
 		check((model:GetAttribute("Bottom") or 0) > 0, ghost.Id .. " attribut Bottom")

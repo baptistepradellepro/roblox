@@ -20,7 +20,7 @@ Strings.fr = {
 	Steal = "Voler",
 	Sell = "Vendre",
 	Lock = "Verrouiller",
-	Bonk = "Pouet !",
+	Bonk = "Tape !",
 	PerSecond = "{coins}/s",
 	SellFor = "Vendre {coins}",
 	BuyFor = "{coins}",
@@ -52,7 +52,7 @@ Strings.fr = {
 	StealGo = "Cours jusqu'à ta base !",
 	StealAlert = "{thief} vole ton {ghost} ! Attrape-le !",
 	StealFailTimeout = "Trop lent ! {ghost} est rentré chez lui.",
-	StealFailBonk = "POUET ! Tu as lâché {ghost} !",
+	StealFailBonk = "BAM ! Tu as lâché {ghost} !",
 	StealFailCaught = "{owner} t'a rattrapé !",
 	StealFailMonster = "Gloutrouille t'a fait lâcher {ghost} !",
 	StealFailNoSpace = "Ta base est pleine, {ghost} est reparti !",
@@ -68,7 +68,7 @@ Strings.fr = {
 	AnnRainbowSpawn = "Un fantôme ARC-EN-CIEL apparaît : {ghost} !",
 	AnnBigBuy = "{player} a attrapé {ghost} !",
 	AnnRebirth = "{player} a fait son rebirth n°{count} !",
-	AnnCaught = "Gloutrouille a attrapé {player} !",
+	AnnCaught = "{monster} a attrapé {player} !",
 
 	-- HUD
 	Income = "+{coins}/s",
@@ -115,15 +115,61 @@ Strings.fr = {
 	-- Boutique
 	Shop = "Boutique",
 	ShopTitle = "BOUTIQUE",
-	ShopDouble = "x2 Pièces",
-	ShopDoubleDesc = "Double tous tes revenus, pour toujours",
-	ShopLock = "Verrou+",
-	ShopLockDesc = "Verrou de {long} s au lieu de {normal} s",
-	ShopCoins = "Pack de pièces",
-	ShopCoinsDesc = "+{coins} pièces tout de suite",
 	ShopOwned = "Possédé",
 	ShopSoon = "Bientôt",
 	ShopThanks = "Merci ! Achat reçu",
+	ShopFree = "Offerte",
+	ShopTestFree = "Gratuit (test)",
+	ShopStudioFree = "Mode test de Studio : article donné gratuitement",
+	ShopRestricted = "Les tours de roue payants ne sont pas disponibles dans ton pays.",
+	ShopRestrictedShort = "Indisponible",
+
+	-- Armes
+	WeaponStats = "Portée {range} · recharge {cooldown} s",
+	WeaponSweep = "touche tous les voleurs autour",
+	PushedOut = "{player} t'a chassé de sa base !",
+
+	-- Monstres à lâcher
+	MonstersTitle = "Lâcher un monstre",
+	MonstersInfo = "Il poursuit tout le serveur, sauf toi ! Il n'entre pas dans les bases et ne prend pas de pièces.",
+	MonsterStats = "Dure {time} · fait lâcher les fantômes volés",
+	MonsterBy = "lâché par {player}",
+	MonsterQueued = "{monster} attend son tour (n°{count} dans la file)",
+	MonsterCaughtYouFree = "BOUH ! {monster} t'a attrapé, retour à la base !",
+	AnnMonsterSummon = "{player} a lâché {monster} sur le serveur !",
+
+	-- Roue de la Fortune
+	WheelTitle = "Roue de la Fortune",
+	WheelSpins = "Tu as {count} tour(s). Va devant la roue au milieu de la map pour jouer.",
+	WheelSpin = "TOURNER",
+	WheelOdds = "Les chances de chaque case",
+	WheelGoThere = "Va devant la roue, au milieu de la map !",
+	WheelSpinning = "{player} tourne la roue...",
+	WheelNoSpins = "Tu n'as plus de tours de roue",
+	WheelBusy = "La roue tourne déjà, réessaie dans {time}",
+	SpinsAdded = "+{count} tour(s) de roue !",
+	WheelWinCoins = "Roue de la Fortune : +{coins} pièces !",
+	WheelWinBoost = "Roue de la Fortune : revenus x{mult} pendant {time} !",
+	WheelWinGhost = "Roue de la Fortune : {ghost} est à toi !",
+	WheelBaseFull = "Base pleine : {ghost} t'est payé {coins} pièces",
+	AnnWheel = "{player} a gagné {ghost} à la Roue de la Fortune !",
+	BoostPill = "Revenus x2 : {time}",
+	Wheel_Coins10 = "10 min de revenus",
+	Wheel_Epic = "Un fantôme Épique",
+	Wheel_Coins30 = "30 min de revenus",
+	Wheel_Legendary = "Un fantôme Légendaire",
+	Wheel_Boost = "Revenus x2 pendant 15 min",
+	Wheel_GoldEpic = "Un fantôme Épique Doré",
+	Wheel_Coins120 = "2 h de revenus",
+	Wheel_Mythic = "Un fantôme Mythique",
+	WheelShort_Coins10 = "10 min",
+	WheelShort_Epic = "Épique",
+	WheelShort_Coins30 = "30 min",
+	WheelShort_Legendary = "Légendaire",
+	WheelShort_Boost = "x2",
+	WheelShort_GoldEpic = "Épique Doré",
+	WheelShort_Coins120 = "2 h",
+	WheelShort_Mythic = "Mythique",
 
 	-- Tutoriel (3 flèches, très peu de texte)
 	Tuto1 = "Achète !",
@@ -175,7 +221,7 @@ Strings.fr = {
 	Mission_BuyRare = "Achète un fantôme Rare ou mieux",
 	Mission_NightOutside = "Reste {n} s hors de ta base pendant une Nuit Hantée",
 	Mission_Steal = "Vole un fantôme à un autre joueur",
-	Mission_Bonk = "Arrête un voleur au Marteau Pouet",
+	Mission_Bonk = "Arrête un voleur avec ta batte",
 	Mission_BuyEpic = "Achète un fantôme Épique ou mieux",
 	MissionTier_easy = "Facile",
 	MissionTier_medium = "Moyen",
@@ -253,7 +299,7 @@ Strings.en = {
 	AnnRainbowSpawn = "A RAINBOW ghost appeared: {ghost}!",
 	AnnBigBuy = "{player} grabbed {ghost}!",
 	AnnRebirth = "{player} just did rebirth #{count}!",
-	AnnCaught = "Gloutrouille caught {player}!",
+	AnnCaught = "{monster} caught {player}!",
 
 	Income = "+{coins}/s",
 	FriendsBonus = "Friends +{percent}%",
@@ -295,15 +341,61 @@ Strings.en = {
 
 	Shop = "Shop",
 	ShopTitle = "SHOP",
-	ShopDouble = "x2 Coins",
-	ShopDoubleDesc = "Doubles all your income, forever",
-	ShopLock = "Lock+",
-	ShopLockDesc = "{long} s lock instead of {normal} s",
-	ShopCoins = "Coin pack",
-	ShopCoinsDesc = "+{coins} coins right now",
 	ShopOwned = "Owned",
 	ShopSoon = "Soon",
 	ShopThanks = "Thanks! Purchase received",
+	ShopFree = "Free",
+	ShopTestFree = "Free (test)",
+	ShopStudioFree = "Studio test mode: item given for free",
+	ShopRestricted = "Paid wheel spins are not available in your country.",
+	ShopRestrictedShort = "Unavailable",
+
+	-- Weapons
+	WeaponStats = "Range {range} · cooldown {cooldown} s",
+	WeaponSweep = "hits every thief around",
+	PushedOut = "{player} kicked you out of their base!",
+
+	-- Monsters to release
+	MonstersTitle = "Release a monster",
+	MonstersInfo = "It chases the whole server, except you! It never enters bases and takes no coins.",
+	MonsterStats = "Lasts {time} · makes thieves drop stolen ghosts",
+	MonsterBy = "released by {player}",
+	MonsterQueued = "{monster} is waiting for its turn (#{count} in line)",
+	MonsterCaughtYouFree = "BOO! {monster} caught you, back to your base!",
+	AnnMonsterSummon = "{player} released {monster} on the server!",
+
+	-- Wheel of Fortune
+	WheelTitle = "Wheel of Fortune",
+	WheelSpins = "You have {count} spin(s). Go to the wheel in the middle of the map to play.",
+	WheelSpin = "SPIN",
+	WheelOdds = "Odds for each slot",
+	WheelGoThere = "Go to the wheel in the middle of the map!",
+	WheelSpinning = "{player} is spinning the wheel...",
+	WheelNoSpins = "You have no wheel spins left",
+	WheelBusy = "The wheel is already spinning, try again in {time}",
+	SpinsAdded = "+{count} wheel spin(s)!",
+	WheelWinCoins = "Wheel of Fortune: +{coins} coins!",
+	WheelWinBoost = "Wheel of Fortune: x{mult} income for {time}!",
+	WheelWinGhost = "Wheel of Fortune: {ghost} is yours!",
+	WheelBaseFull = "Base full: you get {coins} coins for {ghost}",
+	AnnWheel = "{player} won {ghost} on the Wheel of Fortune!",
+	BoostPill = "x2 income: {time}",
+	Wheel_Coins10 = "10 min of income",
+	Wheel_Epic = "An Epic ghost",
+	Wheel_Coins30 = "30 min of income",
+	Wheel_Legendary = "A Legendary ghost",
+	Wheel_Boost = "x2 income for 15 min",
+	Wheel_GoldEpic = "A Golden Epic ghost",
+	Wheel_Coins120 = "2 h of income",
+	Wheel_Mythic = "A Mythic ghost",
+	WheelShort_Coins10 = "10 min",
+	WheelShort_Epic = "Epic",
+	WheelShort_Coins30 = "30 min",
+	WheelShort_Legendary = "Legendary",
+	WheelShort_Boost = "x2",
+	WheelShort_GoldEpic = "Golden Epic",
+	WheelShort_Coins120 = "2 h",
+	WheelShort_Mythic = "Mythic",
 
 	Tuto1 = "Buy!",
 	Tuto2 = "Collect!",
@@ -350,7 +442,7 @@ Strings.en = {
 	Mission_BuyRare = "Buy a Rare ghost or better",
 	Mission_NightOutside = "Stay {n} s outside your base during a Haunted Night",
 	Mission_Steal = "Steal a ghost from another player",
-	Mission_Bonk = "Stop a thief with a BONK",
+	Mission_Bonk = "Stop a thief with your bat",
 	Mission_BuyEpic = "Buy an Epic ghost or better",
 	MissionTier_easy = "Easy",
 	MissionTier_medium = "Medium",
@@ -370,20 +462,25 @@ Strings.en = {
 	Close = "Close",
 }
 
--- Remplace {mots} par les valeurs données. Ex : format("fr", "Sold", { coins = "1.2K" })
+-- Remplace {mots} dans un texte par les valeurs données
+function Strings.fill(text: string, params: { [string]: any }?): string
+	if not params then
+		return text
+	end
+	return (string.gsub(text, "{(%w+)}", function(name)
+		local value = params[name]
+		if value == nil then
+			return "{" .. name .. "}"
+		end
+		return tostring(value)
+	end))
+end
+
+-- Texte traduit avec ses {mots} remplacés. Ex : format("fr", "Sold", { coins = "1.2K" })
 function Strings.format(lang: string, key: string, params: { [string]: any }?): string
 	local tableForLang = Strings[lang] or Strings.en
 	local text = tableForLang[key] or Strings.en[key] or key
-	if params then
-		text = string.gsub(text, "{(%w+)}", function(name)
-			local value = params[name]
-			if value == nil then
-				return "{" .. name .. "}"
-			end
-			return tostring(value)
-		end)
-	end
-	return text
+	return Strings.fill(text, params)
 end
 
 return Strings

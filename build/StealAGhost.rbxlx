@@ -43,7 +43,7 @@ Config.SessionLockMaxWait = 25 -- au pire, on attend 25 s avant de reprendre la 
 Config.BaseCount = 12 -- une base par joueur (mets 12 joueurs max dans les paramètres)
 Config.PedestalsPerFloor = 10 -- 5 socles à gauche + 5 à droite
 Config.MaxPedestals = 20 -- 2 étages
-Config.FloorPrice = 25000 -- prix de l'étage 2 (en pièces)
+Config.FloorPrice = 50000 -- prix de l'étage 2 (en pièces)
 Config.RebirthKeepsFloors = true -- false = le rebirth fait aussi perdre l'étage 2
 Config.StartCoins = 100
 Config.StarterGhost = "DrapMou" -- le fantôme offert au premier lancement
@@ -70,9 +70,7 @@ Config.NormalWalkSpeed = 16
 Config.CarrierWalkSpeed = 10 -- le voleur est ralenti
 Config.StealTimeout = 45 -- au-delà, le fantôme rentre chez lui
 Config.RecoverRange = 6 -- le propriétaire touche le voleur = fantôme récupéré
-Config.BonkRange = 11 -- portée du Marteau Pouet
-Config.BonkCooldown = 3
-Config.BonkStunTime = 1.5
+-- Les armes contre les voleurs (portée, recharge...) sont réglées dans Weapons.luau
 
 -- ===== Verrou de base =====
 Config.LockDuration = 45
@@ -102,9 +100,10 @@ Config.SuperMutationBoost = 3
 
 -- Week-end x2 : revenus doublés du vendredi 17h UTC au dimanche 23h UTC
 Config.WeekendBoost = { Enabled = true, Mult = 2 }
+Config.WheelBoostMult = 2 -- case "x2 revenus" de la Roue de la Fortune
 
 -- ===== Rebirth =====
-Config.RebirthBaseCost = 5000000
+Config.RebirthBaseCost = 10000000
 Config.RebirthCostGrowth = 3
 Config.RebirthIncomeBonus = 0.5 -- +50 % de revenus par rebirth
 
@@ -157,12 +156,36 @@ Config.HalloweenEnd = 1793664000
 Config.ForceHalloween = false -- mets true pour tester les fantômes Halloween hors période
 
 -- ===== Monétisation (mets 0 tant que tu ne les as pas créés) =====
+-- La liste complète des articles, avec les prix conseillés, est dans Shop.luau.
+-- Dans Studio, un article dont l'ID vaut 0 est donné gratuitement quand on clique dessus
+-- (pour tester). Dans le vrai jeu, il affiche "Bientôt".
 Config.GamePasses = {
 	DoubleCoins = 0, -- ID du Game Pass "x2 Pièces"
 	LongLock = 0, -- ID du Game Pass "Verrou+"
+	WeaponHammer = 0, -- ID du Game Pass "Marteau Pouet Géant"
+	WeaponBroom = 0, -- ID du Game Pass "Balai de Sorcière"
+	WeaponVacuum = 0, -- ID du Game Pass "Aspira-Fantôme"
 }
 Config.Products = {
 	CoinPack = 0, -- ID du Developer Product "Pack de pièces"
+	Spin1 = 0, -- ID du Developer Product "1 tour de roue"
+	Spin5 = 0, -- ID du Developer Product "5 tours de roue"
+	MonsterGloutrouille = 0, -- ID du Developer Product "Lâcher Gloutrouille"
+	MonsterBat = 0, -- ID du Developer Product "Lâcher la Chauve-Souris Turbo"
+	MonsterSpider = 0, -- ID du Developer Product "Lâcher Mamie Toile"
+}
+-- Icônes de la boutique (facultatif). Pour mettre tes propres images :
+-- Creator Hub > Développement > Décalcomanies (Decals) > importe l'image, copie son ID,
+-- et colle "rbxassetid://ID" ci-dessous. Vide = l'emoji habituel.
+Config.ShopIcons = {
+	Batte = "",
+	MarteauPouet = "",
+	BalaiSorciere = "",
+	AspiraFantome = "",
+	Gloutrouille = "",
+	MamieToile = "",
+	ChauveSourisTurbo = "",
+	Wheel = "",
 }
 Config.CoinPackMinutes = 10 -- le pack donne 10 min de revenus...
 Config.CoinPackMin = 5000 -- ...et au moins 5 000 pièces
@@ -226,6 +249,13 @@ function Format.time(seconds: number): string
 	return string.format("%d:%02d:%02d", s // 3600, (s % 3600) // 60, s % 60)
 end
 
+-- 30 -> "30 %", 2.5 -> "2.5 %"
+function Format.percent(n: number): string
+	local rounded = math.floor(n * 10 + 0.5) / 10
+	local text = if rounded == math.floor(rounded) then tostring(math.floor(rounded)) else tostring(rounded)
+	return text .. " %"
+end
+
 return Format
 ]]></string>
         </Properties>
@@ -251,55 +281,55 @@ local GhostData = {}
 GhostData.List = {
 	-- ===================== COMMUNS =====================
 	{
-		Id = "DrapMou", Rarity = "Common", Price = 20, Income = 1,
+		Id = "DrapMou", Rarity = "Common", Price = 80, Income = 1,
 		Name = { fr = "Drap Mou", en = "Floppy Sheet" },
 		Gag = { fr = "A oublié comment flotter.", en = "Forgot how to float." },
 		Look = { Body = "Sheet", Color = { 245, 245, 250 }, Face = "Sleepy", Accessories = {} },
 	},
 	{
-		Id = "ChaussetteOrpheline", Rarity = "Common", Price = 30, Income = 1,
+		Id = "ChaussetteOrpheline", Rarity = "Common", Price = 100, Income = 1,
 		Name = { fr = "Chaussette Orpheline", en = "Lonely Sock" },
 		Gag = { fr = "Cherche sa jumelle depuis 1987.", en = "Looking for its twin since 1987." },
 		Look = { Body = "Sock", Color = { 120, 200, 255 }, Accent = { 255, 90, 90 }, Face = "Sad", Accessories = {} },
 	},
 	{
-		Id = "TartineBoudeuse", Rarity = "Common", Price = 55, Income = 2,
+		Id = "TartineBoudeuse", Rarity = "Common", Price = 200, Income = 2,
 		Name = { fr = "Tartine Boudeuse", en = "Grumpy Toast" },
 		Gag = { fr = "Tombée côté confiture. Ne s'en remet pas.", en = "Landed jam side down. Still upset." },
 		Look = { Body = "Block", Size = { 3.6, 3.6, 1 }, Color = { 222, 170, 100 }, Accent = { 200, 40, 70 }, Face = "Angry", Accessories = { "Jam" } },
 	},
 	{
-		Id = "BouhBouhTimide", Rarity = "Common", Price = 65, Income = 2,
+		Id = "BouhBouhTimide", Rarity = "Common", Price = 220, Income = 2,
 		Name = { fr = "Bouh-Bouh le Timide", en = "Shy Boo-Boo" },
 		Gag = { fr = "Se fait peur tout seul.", en = "Scares himself." },
 		Look = { Body = "Blob", Color = { 230, 235, 255 }, Face = "Shy", Accessories = {} },
 	},
 	{
-		Id = "MamieCourantDair", Rarity = "Common", Price = 80, Income = 3,
+		Id = "MamieCourantDair", Rarity = "Common", Price = 330, Income = 3,
 		Name = { fr = "Mamie Courant d'Air", en = "Granny Draft" },
 		Gag = { fr = "Ferme les portes derrière toi. Fort.", en = "Slams doors behind you. Loudly." },
 		Look = { Body = "Sheet", Color = { 225, 240, 255 }, Accent = { 170, 170, 180 }, Face = "Happy", Accessories = { "Bun" } },
 	},
 	{
-		Id = "GobeMiettes", Rarity = "Common", Price = 95, Income = 3,
+		Id = "GobeMiettes", Rarity = "Common", Price = 360, Income = 3,
 		Name = { fr = "Gobe-Miettes", en = "Crumb Gobbler" },
 		Gag = { fr = "Mange les miettes sous ton canapé.", en = "Eats the crumbs under your couch." },
 		Look = { Body = "Blob", Color = { 255, 240, 200 }, Accent = { 160, 110, 60 }, Face = "BigMouth", Accessories = { "Crumbs" } },
 	},
 	{
-		Id = "SpectreSpaghetti", Rarity = "Common", Price = 110, Income = 4,
+		Id = "SpectreSpaghetti", Rarity = "Common", Price = 460, Income = 4,
 		Name = { fr = "Spectre Spaghetti", en = "Spaghetti Spook" },
 		Gag = { fr = "Toujours un peu trop cuit.", en = "Always a bit overcooked." },
 		Look = { Body = "Sheet", Color = { 255, 225, 130 }, Accent = { 200, 60, 40 }, Face = "Happy", Accessories = { "Spaghetti" } },
 	},
 	{
-		Id = "FantomePasFini", Rarity = "Common", Price = 125, Income = 4,
+		Id = "FantomePasFini", Rarity = "Common", Price = 500, Income = 4,
 		Name = { fr = "Fantôme Pas Fini", en = "Unfinished Ghost" },
 		Gag = { fr = "Encore en chargement... 99 %.", en = "Still loading... 99%." },
 		Look = { Body = "Sheet", Color = { 190, 190, 200 }, Accent = { 80, 255, 255 }, Face = "Blank", Transparency = 0.35, Accessories = { "LoadingRing" } },
 	},
 	{
-		Id = "FeuilleMorteRaleuse", Rarity = "Common", Price = 100, Income = 3,
+		Id = "FeuilleMorteRaleuse", Rarity = "Common", Price = 380, Income = 3,
 		Name = { fr = "Feuille Morte Râleuse", en = "Grumpy Dead Leaf" },
 		Gag = { fr = "Tombée de l'arbre. Elle ne l'a pas digéré.", en = "Fell off the tree. Still mad about it." },
 		Look = { Body = "Leaf", Color = { 230, 110, 30 }, Accent = { 120, 60, 25 }, Face = "Angry", FaceScale = 0.85, Accessories = {} },
@@ -307,49 +337,49 @@ GhostData.List = {
 
 	-- ===================== RARES =====================
 	{
-		Id = "Caquetome", Rarity = "Rare", Price = 450, Income = 7,
+		Id = "Caquetome", Rarity = "Rare", Price = 1500, Income = 5,
 		Name = { fr = "Caquetôme", en = "Cluck-a-Boo" },
 		Gag = { fr = "Pond des œufs invisibles.", en = "Lays invisible eggs." },
 		Look = { Body = "Blob", Color = { 255, 255, 255 }, Accent = { 230, 40, 40 }, Face = "Shocked", Accessories = { "ChickenComb" } },
 	},
 	{
-		Id = "FrigoFrisson", Rarity = "Rare", Price = 560, Income = 8,
+		Id = "FrigoFrisson", Rarity = "Rare", Price = 1800, Income = 6,
 		Name = { fr = "Frigo-Frisson", en = "Fridge Fright" },
 		Gag = { fr = "S'ouvre tout seul à 3 h du matin.", en = "Opens by itself at 3 a.m." },
 		Look = { Body = "Block", Size = { 3, 4.6, 2.4 }, Color = { 205, 235, 255 }, Accent = { 140, 150, 165 }, Face = "Shocked", Accessories = { "FridgeHandle" } },
 	},
 	{
-		Id = "BrocoliBouh", Rarity = "Rare", Price = 640, Income = 10,
+		Id = "BrocoliBouh", Rarity = "Rare", Price = 2100, Income = 7,
 		Name = { fr = "Brocoli Bouh", en = "Broccoli Boo" },
 		Gag = { fr = "Le seul légume qui fait peur aux parents.", en = "The only veggie that scares parents." },
 		Look = { Body = "Cloud", Color = { 80, 170, 70 }, Accent = { 160, 210, 120 }, Face = "Happy", Accessories = { "Stalk" } },
 	},
 	{
-		Id = "PantouflePossedee", Rarity = "Rare", Price = 770, Income = 11,
+		Id = "PantouflePossedee", Rarity = "Rare", Price = 2400, Income = 8,
 		Name = { fr = "Pantoufle Possédée", en = "Possessed Slipper" },
 		Gag = { fr = "Disparaît quand tu la cherches.", en = "Vanishes when you need it." },
 		Look = { Body = "Block", Size = { 2.6, 1.6, 4.2 }, Color = { 255, 150, 200 }, Accent = { 255, 255, 255 }, Face = "Angry", FaceScale = 0.6, Accessories = { "Pompom" } },
 	},
 	{
-		Id = "SpatuleErrante", Rarity = "Rare", Price = 900, Income = 13,
+		Id = "SpatuleErrante", Rarity = "Rare", Price = 2700, Income = 9,
 		Name = { fr = "Spatule Errante", en = "Wandering Spatula" },
 		Gag = { fr = "Retourne les crêpes... et les gens.", en = "Flips pancakes... and people." },
 		Look = { Body = "Block", Size = { 2.8, 3, 0.5 }, Color = { 255, 120, 40 }, Accent = { 150, 100, 60 }, Face = "Happy", Accessories = { "Handle" } },
 	},
 	{
-		Id = "NuageGrognon", Rarity = "Rare", Price = 1100, Income = 16,
+		Id = "NuageGrognon", Rarity = "Rare", Price = 3300, Income = 11,
 		Name = { fr = "Nuage Grognon", en = "Grumpy Cloud" },
 		Gag = { fr = "Il pleut seulement sur toi.", en = "It only rains on you." },
 		Look = { Body = "Cloud", Color = { 150, 155, 170 }, Accent = { 90, 160, 255 }, Face = "Angry", Accessories = { "Rain" } },
 	},
 	{
-		Id = "WifiFantome", Rarity = "Rare", Price = 1250, Income = 18,
+		Id = "WifiFantome", Rarity = "Rare", Price = 3600, Income = 12,
 		Name = { fr = "Wifi-Fantôme", en = "Wi-Fi Ghost" },
 		Gag = { fr = "Coupe la connexion quand tu gagnes.", en = "Cuts your connection when you win." },
 		Look = { Body = "Sheet", Color = { 120, 255, 200 }, Accent = { 40, 255, 120 }, Face = "Cool", Accessories = { "Antenna" } },
 	},
 	{
-		Id = "ChampignonChuchoteur", Rarity = "Rare", Price = 950, Income = 14,
+		Id = "ChampignonChuchoteur", Rarity = "Rare", Price = 3000, Income = 10,
 		Name = { fr = "Champignon Chuchoteur", en = "Whispering Mushroom" },
 		Gag = { fr = "Raconte des secrets aux racines.", en = "Tells secrets to the roots." },
 		Look = { Body = "Mushroom", Color = { 230, 50, 60 }, Accent = { 250, 240, 215 }, Face = "Shy", FaceScale = 0.6, Accessories = {} },
@@ -357,43 +387,43 @@ GhostData.List = {
 
 	-- ===================== ÉPIQUES =====================
 	{
-		Id = "CrepeFrisson", Rarity = "Epic", Price = 6500, Income = 50,
+		Id = "CrepeFrisson", Rarity = "Epic", Price = 16000, Income = 30,
 		Name = { fr = "Crêpe-Frisson", en = "Creepy Crêpe" },
 		Gag = { fr = "Sauté trop haut, jamais retombé.", en = "Flipped too high, never came down." },
 		Look = { Body = "Disc", Color = { 240, 190, 110 }, Accent = { 255, 255, 255 }, Face = "Happy", Accessories = { "ChefHat" } },
 	},
 	{
-		Id = "SirBougieFondue", Rarity = "Epic", Price = 8000, Income = 60,
+		Id = "SirBougieFondue", Rarity = "Epic", Price = 19000, Income = 36,
 		Name = { fr = "Sir Bougie Fondue", en = "Sir Melty Candle" },
 		Gag = { fr = "Très distingué. Un peu coulant.", en = "Very posh. A bit drippy." },
 		Look = { Body = "Tube", Size = { 2.6, 3.8 }, Color = { 255, 245, 220 }, Accent = { 255, 150, 30 }, Face = "Monocle", Accessories = { "Flame" } },
 	},
 	{
-		Id = "Miaoufantome", Rarity = "Epic", Price = 9500, Income = 70,
+		Id = "Miaoufantome", Rarity = "Epic", Price = 22000, Income = 42,
 		Name = { fr = "Miaoufantôme", en = "Meowghost" },
 		Gag = { fr = "Fait tomber tes affaires de la table.", en = "Knocks your stuff off the table." },
 		Look = { Body = "Sheet", Color = { 200, 180, 255 }, Accent = { 255, 160, 200 }, Face = "Cat", Accessories = { "CatEars" } },
 	},
 	{
-		Id = "TornadeDeDraps", Rarity = "Epic", Price = 11000, Income = 85,
+		Id = "TornadeDeDraps", Rarity = "Epic", Price = 26000, Income = 50,
 		Name = { fr = "Tornade de Draps", en = "Sheet Tornado" },
 		Gag = { fr = "A pris la machine à laver trop au sérieux.", en = "Took the washing machine too seriously." },
 		Look = { Body = "Tornado", Color = { 235, 240, 255 }, Accent = { 150, 200, 255 }, Face = "Dizzy", Accessories = {}, Spin = 4 },
 	},
 	{
-		Id = "CapitaineCornichon", Rarity = "Epic", Price = 13500, Income = 100,
+		Id = "CapitaineCornichon", Rarity = "Epic", Price = 31000, Income = 60,
 		Name = { fr = "Capitaine Cornichon", en = "Captain Gherkin" },
 		Gag = { fr = "Navigue dans un bocal.", en = "Sails in a jar." },
 		Look = { Body = "Tube", Size = { 2.4, 4.4 }, Color = { 90, 160, 60 }, Accent = { 30, 30, 35 }, Face = "Pirate", Accessories = { "Bumps", "PirateHat" } },
 	},
 	{
-		Id = "Ballonfantome", Rarity = "Epic", Price = 15000, Income = 115,
+		Id = "Ballonfantome", Rarity = "Epic", Price = 36000, Income = 70,
 		Name = { fr = "Ballonfantôme", en = "Balloon Boo" },
 		Gag = { fr = "Éclate de rire. Littéralement.", en = "Bursts out laughing. Literally." },
 		Look = { Body = "Blob", Color = { 255, 80, 90 }, Accent = { 255, 255, 255 }, Face = "Happy", Reflectance = 0.15, Accessories = { "String" } },
 	},
 	{
-		Id = "MarronToutTremblant", Rarity = "Epic", Price = 12500, Income = 95,
+		Id = "MarronToutTremblant", Rarity = "Epic", Price = 29000, Income = 56,
 		Name = { fr = "Marron Tout Tremblant", en = "Shivering Chestnut" },
 		Gag = { fr = "A peur des écureuils. Avec raison.", en = "Scared of squirrels. Rightly so." },
 		Look = { Body = "Blob", Color = { 125, 70, 40 }, Accent = { 215, 175, 120 }, Face = "Shocked", Accessories = { "Hilum" } },
@@ -401,31 +431,31 @@ GhostData.List = {
 
 	-- ===================== LÉGENDAIRES =====================
 	{
-		Id = "RoiPatatome", Rarity = "Legendary", Price = 90000, Income = 420,
+		Id = "RoiPatatome", Rarity = "Legendary", Price = 200000, Income = 220,
 		Name = { fr = "Roi Patatôme", en = "King Spudghost" },
 		Gag = { fr = "Règne sur toutes les frites du monde.", en = "Rules over every fry in the world." },
 		Look = { Body = "Blob", Color = { 175, 125, 75 }, Accent = { 255, 200, 40 }, Face = "Happy", Accessories = { "Lumps", "Crown" } },
 	},
 	{
-		Id = "DJBouhBoum", Rarity = "Legendary", Price = 130000, Income = 600,
+		Id = "DJBouhBoum", Rarity = "Legendary", Price = 270000, Income = 300,
 		Name = { fr = "DJ Bouh-Boum", en = "DJ Boo-Boom" },
 		Gag = { fr = "Ses basses font trembler les tombes.", en = "His bass shakes the graveyard." },
 		Look = { Body = "Sheet", Color = { 70, 70, 110 }, Accent = { 0, 255, 220 }, Face = "Cool", Accessories = { "Headphones" } },
 	},
 	{
-		Id = "BaronBiscotte", Rarity = "Legendary", Price = 170000, Income = 770,
+		Id = "BaronBiscotte", Rarity = "Legendary", Price = 340000, Income = 380,
 		Name = { fr = "Baron Biscotte", en = "Baron Biscuit" },
 		Gag = { fr = "Se brise en mille morceaux d'émotion.", en = "Crumbles with emotion." },
 		Look = { Body = "Block", Size = { 3.4, 3.4, 1.2 }, Color = { 230, 180, 90 }, Accent = { 25, 25, 30 }, Face = "Monocle", Accessories = { "TopHat", "Mustache" } },
 	},
 	{
-		Id = "GrandMereTurbo", Rarity = "Legendary", Price = 220000, Income = 1000,
+		Id = "GrandMereTurbo", Rarity = "Legendary", Price = 430000, Income = 480,
 		Name = { fr = "Grand-Mère Turbo", en = "Rocket Granny" },
 		Gag = { fr = "0 à 100 km/h en 2 secondes. Avec ses biscuits.", en = "0 to 60 in 2 seconds. With cookies." },
 		Look = { Body = "Sheet", Color = { 255, 230, 240 }, Accent = { 170, 170, 180 }, Face = "Happy", Accessories = { "Bun", "Rocket" } },
 	},
 	{
-		Id = "EcureuilFantomeStresse", Rarity = "Legendary", Price = 150000, Income = 680,
+		Id = "EcureuilFantomeStresse", Rarity = "Legendary", Price = 305000, Income = 340,
 		Name = { fr = "Écureuil Fantôme Stressé", en = "Stressed Ghost Squirrel" },
 		Gag = { fr = "A caché ses noisettes en 1923. Les cherche encore.", en = "Hid his nuts in 1923. Still looking." },
 		Look = { Body = "Sheet", Color = { 175, 115, 60 }, Accent = { 230, 190, 140 }, Face = "Shocked", Accessories = { "CatEars", "SquirrelTail" } },
@@ -433,19 +463,19 @@ GhostData.List = {
 
 	-- ===================== MYTHIQUES =====================
 	{
-		Id = "MegaBouhCosmique", Rarity = "Mythic", Price = 1800000, Income = 5500,
+		Id = "MegaBouhCosmique", Rarity = "Mythic", Price = 3500000, Income = 2500,
 		Name = { fr = "Méga Bouh Cosmique", en = "Cosmic Mega Boo" },
 		Gag = { fr = "A fait peur à une galaxie entière.", en = "Once scared an entire galaxy." },
 		Look = { Body = "Sheet", Color = { 60, 40, 150 }, Accent = { 255, 120, 255 }, Face = "Happy", Accessories = { "Rings" } },
 	},
 	{
-		Id = "EmpereurDesChaussettes", Rarity = "Mythic", Price = 3000000, Income = 9000,
+		Id = "EmpereurDesChaussettes", Rarity = "Mythic", Price = 5600000, Income = 4000,
 		Name = { fr = "Empereur des Chaussettes", en = "Sock Emperor" },
 		Gag = { fr = "Toutes les chaussettes perdues finissent chez lui.", en = "Every lost sock ends up at his palace." },
 		Look = { Body = "Sock", Color = { 255, 215, 80 }, Accent = { 200, 30, 50 }, Face = "Monocle", Accessories = { "Crown", "Cape" } },
 	},
 	{
-		Id = "SpectroPizzaSupreme", Rarity = "Mythic", Price = 4500000, Income = 14000,
+		Id = "SpectroPizzaSupreme", Rarity = "Mythic", Price = 8400000, Income = 6000,
 		Name = { fr = "Spectro-Pizza Suprême", en = "Supreme Spectro-Pizza" },
 		Gag = { fr = "Livrée en 30 secondes ou elle te hante.", en = "Delivered in 30 seconds or it haunts you." },
 		Look = { Body = "Pizza", Color = { 255, 205, 70 }, Accent = { 200, 40, 40 }, Face = "Happy", Accessories = { "Pepperoni" } },
@@ -453,25 +483,25 @@ GhostData.List = {
 
 	-- ===================== HALLOWEEN (édition limitée) =====================
 	{
-		Id = "CitrouilleToupie", Rarity = "Halloween", Price = 400000, Income = 2000,
+		Id = "CitrouilleToupie", Rarity = "Halloween", Price = 750000, Income = 1000,
 		Name = { fr = "Citrouille Toupie", en = "Spinning Pumpkin" },
 		Gag = { fr = "Tourne tellement qu'elle fait de la soupe.", en = "Spins so fast it makes soup." },
 		Look = { Body = "Blob", Color = { 255, 130, 20 }, Accent = { 60, 140, 40 }, Face = "JackO", Accessories = { "Stem" }, Spin = 6 },
 	},
 	{
-		Id = "SorciereTrottinette", Rarity = "Halloween", Price = 520000, Income = 2600,
+		Id = "SorciereTrottinette", Rarity = "Halloween", Price = 980000, Income = 1300,
 		Name = { fr = "Sorcière Trottinette", en = "Scooter Witch" },
 		Gag = { fr = "Le balai, c'était trop lent.", en = "The broom was too slow." },
 		Look = { Body = "Sheet", Color = { 170, 120, 230 }, Accent = { 40, 30, 50 }, Face = "Happy", Accessories = { "WitchHat", "Scooter" } },
 	},
 	{
-		Id = "SqueletteDisco", Rarity = "Halloween", Price = 680000, Income = 3400,
+		Id = "SqueletteDisco", Rarity = "Halloween", Price = 1240000, Income = 1650,
 		Name = { fr = "Squelette Disco", en = "Disco Skeleton" },
 		Gag = { fr = "Danse jusqu'à l'os.", en = "Dances down to the bone." },
 		Look = { Body = "Sheet", Color = { 240, 235, 220 }, Accent = { 220, 220, 255 }, Face = "Skull", Accessories = { "DiscoBall" } },
 	},
 	{
-		Id = "BonbonHurleur", Rarity = "Halloween", Price = 850000, Income = 4200,
+		Id = "BonbonHurleur", Rarity = "Halloween", Price = 1500000, Income = 2000,
 		Name = { fr = "Bonbon Hurleur", en = "Howling Candy" },
 		Gag = { fr = "Crie quand on veut le manger.", en = "Screams when you try to eat it." },
 		Look = { Body = "Candy", Color = { 255, 90, 180 }, Accent = { 255, 230, 120 }, Face = "Shocked", Accessories = {} },
@@ -585,6 +615,15 @@ return GhostData
 	  - on le déplace avec model:PivotTo(cframe)
 	  - attribut "Bottom" = distance entre le centre et le bas du fantôme
 	  - attribut "Top" = distance entre le centre et le haut du fantôme
+
+	FANTÔMES DESSINÉS À LA MAIN DANS STUDIO
+	Construis ton fantôme avec des Parts, groupe-les (Ctrl+G) et range le Model dans
+	ReplicatedStorage > GhostModels, avec comme nom l'Id du fantôme (ex. "DrapMou",
+	voir GhostData). Le jeu l'utilise à la place du modèle fabriqué ici :
+	  - il est redimensionné tout seul (attribut "Height" sur le Model pour choisir sa
+	    hauteur en studs, sinon environ 5 studs)
+	  - s'il regarde dans la mauvaise direction : attribut "Turn" = 90, 180 ou -90
+	  - le halo de rareté, les variantes Dorée et Arc-en-ciel sont ajoutés automatiquement
 ]]
 
 local GhostData = require(script.Parent.GhostData)
@@ -659,6 +698,21 @@ local function block(ctx, size: Vector3, cf: CFrame, color: Color3, extra: { [st
 	return newPart(ctx, "Block", size, cf, color, extra)
 end
 
+-- Bloc aux coins arrondis (vu de face) : deux blocs en croix + 4 cylindres dans les coins.
+-- C'est ce qui donne l'aspect "jouet en pâte à modeler" sans modèle 3D externe.
+local function roundedBlock(ctx, size: Vector3, cf: CFrame, color: Color3, extra: { [string]: any }?, radius: number?)
+	local r = math.min(radius or 0.3 * math.min(size.X, size.Y), size.X / 2, size.Y / 2)
+	local main = block(ctx, Vector3.new(size.X - 2 * r, size.Y, size.Z), cf, color, extra)
+	block(ctx, Vector3.new(size.X, size.Y - 2 * r, size.Z), cf, color, extra)
+	for _, sx in { -1, 1 } do
+		for _, sy in { -1, 1 } do
+			local corner = cf * CFrame.new(sx * (size.X / 2 - r), sy * (size.Y / 2 - r), 0) * ROT_FRONT
+			newPart(ctx, "Cylinder", Vector3.new(size.Z, 2 * r, 2 * r), corner, color, extra)
+		end
+	end
+	return main
+end
+
 -- Cylindre debout (axe vertical)
 local function upCyl(ctx, h: number, d: number, pos: Vector3, color: Color3, extra: { [string]: any }?)
 	return newPart(ctx, "Cylinder", Vector3.new(h, d, d), CFrame.new(pos) * ROT_UP, color, extra)
@@ -704,6 +758,7 @@ function Bodies.Sheet(ctx)
 	local body = { Material = ctx.material, Transparency = ctx.transparency, Reflectance = ctx.reflectance }
 	ball(ctx, 4 * s, Vector3.new(0, 0.6 * s, 0), ctx.color, body)
 	upCyl(ctx, 2.2 * s, 4 * s, Vector3.new(0, -0.9 * s, 0), ctx.color, body)
+	-- trois petits pieds ronds (deux devant, un derrière)
 	for i = 0, 2 do
 		local a = math.rad(90 + i * 120)
 		ball(ctx, 1.5 * s, Vector3.new(math.cos(a) * 1.25 * s, -2 * s, math.sin(a) * 1.25 * s), ctx.color, body)
@@ -737,7 +792,7 @@ function Bodies.Block(ctx)
 	local s = ctx.s
 	local size = ctx.look.Size or { 3.4, 3.4, 1.2 }
 	local v = Vector3.new(size[1], size[2], size[3]) * s
-	block(ctx, v, CFrame.identity, ctx.color, { Material = ctx.material, Transparency = ctx.transparency, Reflectance = ctx.reflectance })
+	roundedBlock(ctx, v, CFrame.identity, ctx.color, { Material = ctx.material, Transparency = ctx.transparency, Reflectance = ctx.reflectance })
 	return {
 		top = v.Y / 2,
 		bottom = -v.Y / 2,
@@ -786,10 +841,10 @@ end
 function Bodies.Sock(ctx)
 	local s = ctx.s
 	local body = { Material = ctx.material, Transparency = ctx.transparency }
-	block(ctx, Vector3.new(2, 3.4, 2) * s, CFrame.new(0, 0.6 * s, 0), ctx.color, body)
+	roundedBlock(ctx, Vector3.new(2, 3.4, 2) * s, CFrame.new(0, 0.6 * s, 0), ctx.color, body, 0.45 * s)
 	block(ctx, Vector3.new(2.2, 0.6, 2.2) * s, CFrame.new(0, 2.1 * s, 0), ctx.accent)
 	block(ctx, Vector3.new(2.1, 0.4, 2.1) * s, CFrame.new(0, -0.4 * s, 0), ctx.accent)
-	block(ctx, Vector3.new(2, 1.5, 3.2) * s, CFrame.new(0, -1.85 * s, -0.6 * s), ctx.color, body)
+	roundedBlock(ctx, Vector3.new(3.2, 1.5, 2) * s, CFrame.new(0, -1.85 * s, -0.6 * s) * CFrame.Angles(0, math.rad(90), 0), ctx.color, body, 0.5 * s)
 	return {
 		top = 2.4 * s,
 		bottom = -2.6 * s,
@@ -931,19 +986,21 @@ end
 
 local function twoEyes(ctx, m, d: number?)
 	local f = ctx.f
-	local eyeD = (d or 0.7) * f
+	local eyeD = (d or 0.75) * f
 	eyeAt(ctx, m, m.faceX - 0.65 * f, m.faceY + 0.35 * f, eyeD)
 	eyeAt(ctx, m, m.faceX + 0.65 * f, m.faceY + 0.35 * f, eyeD)
 end
 
 local function smile(ctx, m, sad: boolean?)
 	local f = ctx.f
-	local y = m.faceY - 0.45 * f
-	local tilt = if sad then -30 else 30
-	local sideY = if sad then y - 0.12 * f else y + 0.12 * f
-	flatAt(ctx, m, Vector3.new(0.6 * f, 0.2 * f, 0.3 * f), m.faceX, y, 0, BLACK)
-	flatAt(ctx, m, Vector3.new(0.45 * f, 0.2 * f, 0.3 * f), m.faceX - 0.45 * f, sideY, -tilt, BLACK)
-	flatAt(ctx, m, Vector3.new(0.45 * f, 0.2 * f, 0.3 * f), m.faceX + 0.45 * f, sideY, tilt, BLACK)
+	local y = m.faceY - 0.5 * f
+	local curve = if sad then -0.9 else 0.9
+	for i = -3, 3 do
+		local x = i * 0.16 * f
+		local dy = curve * (x / f) ^ 2
+		local px, py = m.faceX + x, y + dy
+		ball(ctx, 0.19 * f, Vector3.new(px, py, frontZ(m, px, py) + 0.03 * ctx.s), BLACK)
+	end
 end
 
 function Faces.Happy(ctx, m)
@@ -981,7 +1038,7 @@ end
 
 function Faces.Shocked(ctx, m)
 	local f = ctx.f
-	twoEyes(ctx, m, 0.85)
+	twoEyes(ctx, m, 0.95)
 	eyeAt(ctx, m, m.faceX, m.faceY - 0.5 * f, 0.8 * f)
 end
 
@@ -1036,7 +1093,7 @@ end
 
 function Faces.Pirate(ctx, m)
 	local f = ctx.f
-	eyeAt(ctx, m, m.faceX - 0.65 * f, m.faceY + 0.35 * f, 0.7 * f)
+	eyeAt(ctx, m, m.faceX - 0.65 * f, m.faceY + 0.35 * f, 0.8 * f)
 	local x, y = m.faceX + 0.65 * f, m.faceY + 0.35 * f
 	frontDisc(ctx, 0.25 * f, 0.85 * f, Vector3.new(x, y, frontZ(m, x, y) + 0.05 * f), BLACK)
 	flatAt(ctx, m, Vector3.new(2.6 * f, 0.12 * f, 0.25 * f), m.faceX, m.faceY + 0.55 * f, -12, BLACK)
@@ -1045,7 +1102,7 @@ end
 
 function Faces.Skull(ctx, m)
 	local f = ctx.f
-	twoEyes(ctx, m, 1.0)
+	twoEyes(ctx, m, 1.05)
 	flatAt(ctx, m, Vector3.new(0.25, 0.35, 0.3) * f, m.faceX, m.faceY - 0.15 * f, 0, BLACK)
 	flatAt(ctx, m, Vector3.new(1.2, 0.3, 0.3) * f, m.faceX, m.faceY - 0.6 * f, 0, BLACK)
 	for i = -1, 1 do
@@ -1436,6 +1493,68 @@ function GhostFactory.scaleOf(ghostId: string): number
 	return ghost.Look.Scale or Rarities.Info[ghost.Rarity].Scale
 end
 
+-- Modèle fait à la main dans Studio : ReplicatedStorage > GhostModels > <Id>
+function GhostFactory.customSource(ghostId: string): Model?
+	local shared = script.Parent
+	local container = shared and shared.Parent
+	local folder = container and container:FindFirstChild("GhostModels")
+	local source = folder and folder:FindFirstChild(ghostId)
+	if source and source:IsA("Model") then
+		return source
+	end
+	return nil
+end
+
+-- Prépare une copie du modèle Studio : centrée, à la bonne taille, sans collision.
+-- Renvoie le modèle et ses mesures (comme un corps fabriqué).
+local function fromCustom(ctx, source: Model)
+	local model = source:Clone()
+	model.Name = ctx.model.Name
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true
+			d.CanCollide = false
+			d.CanTouch = false
+			d.CanQuery = false
+			d.CastShadow = false
+		elseif d:IsA("Script") or d:IsA("LocalScript") then
+			d:Destroy()
+		end
+	end
+	-- même hauteur que les autres fantômes de la rareté (ou l'attribut "Height")
+	local _, size = model:GetBoundingBox()
+	local height = source:GetAttribute("Height") or 5.2 * ctx.s
+	if size.Y > 0 then
+		model:ScaleTo(model:GetScale() * height / size.Y)
+	end
+	local boxCf, box = model:GetBoundingBox()
+	local root = Instance.new("Part")
+	root.Name = "Root"
+	root.Anchored = true
+	root.CanCollide = false
+	root.CanTouch = false
+	root.CanQuery = false
+	root.Transparency = 1
+	root.Size = Vector3.one
+	-- attribut "Turn" (en degrés) si le fantôme regarde dans la mauvaise direction
+	local turn = tonumber(source:GetAttribute("Turn")) or 0
+	root.CFrame = CFrame.new(boxCf.Position) * model:GetPivot().Rotation * CFrame.Angles(0, math.rad(turn), 0)
+	root.Parent = model
+	model.PrimaryPart = root
+	model:PivotTo(CFrame.identity)
+	ctx.model:Destroy()
+	ctx.model = model
+	return {
+		top = box.Y / 2,
+		bottom = -box.Y / 2,
+		faceY = 0,
+		faceX = 0,
+		halfWidth = box.X / 2,
+		back = box.Z / 2,
+		front = -box.Z / 2,
+	}
+end
+
 -- ghostKey = "DrapMou" ou "DrapMou#Gold" (avec variante)
 function GhostFactory.build(ghostKey: string): Model
 	local ghost = GhostData.get(ghostKey) or GhostData.get("DrapMou")
@@ -1461,25 +1580,33 @@ function GhostFactory.build(ghostKey: string): Model
 		reflectance = look.Reflectance,
 	}
 
-	-- La "racine" invisible : c'est elle qu'on déplace
-	local root = newPart(ctx, "Block", Vector3.one, CFrame.identity, WHITE, { Transparency = 1, Name = "Root" })
-	model.PrimaryPart = root
+	local m
+	local custom = GhostFactory.customSource(ghost.Id)
+	if custom then
+		m = fromCustom(ctx, custom)
+		model = ctx.model
+	else
+		-- La "racine" invisible : c'est elle qu'on déplace
+		local root = newPart(ctx, "Block", Vector3.one, CFrame.identity, WHITE, { Transparency = 1, Name = "Root" })
+		model.PrimaryPart = root
 
-	local bodyBuilder = Bodies[look.Body] or Bodies.Sheet
-	local m = bodyBuilder(ctx)
-	ctx.f = ctx.s * (look.FaceScale or m.faceScale or 1)
+		local bodyBuilder = Bodies[look.Body] or Bodies.Sheet
+		m = bodyBuilder(ctx)
+		ctx.f = ctx.s * (look.FaceScale or m.faceScale or 1)
 
-	local faceBuilder = Faces[look.Face] or Faces.Happy
-	faceBuilder(ctx, m)
+		local faceBuilder = Faces[look.Face] or Faces.Happy
+		faceBuilder(ctx, m)
 
-	for _, accessoryName in look.Accessories or {} do
-		local builder = Accessories[accessoryName]
-		if builder then
-			builder(ctx, m)
-		else
-			warn("[GhostFactory] Accessoire inconnu : " .. tostring(accessoryName))
+		for _, accessoryName in look.Accessories or {} do
+			local builder = Accessories[accessoryName]
+			if builder then
+				builder(ctx, m)
+			else
+				warn("[GhostFactory] Accessoire inconnu : " .. tostring(accessoryName))
+			end
 		end
 	end
+	local root = model.PrimaryPart :: BasePart
 
 	-- Effets selon la rareté : lumière dès Légendaire, étincelles dès Mythique
 	local rank = rarityInfo.Rank
@@ -1602,6 +1729,251 @@ return Missions
       </Item>
       <Item class="ModuleScript" referent="9">
         <Properties>
+          <string name="Name">Monsters</string>
+          <string name="Source"><![CDATA[--[[
+	Monsters : les monstres (partagé entre le serveur et les joueurs).
+	  - Gloutrouille sort pendant la Nuit Hantée
+	  - les joueurs peuvent aussi lâcher un monstre avec des Robux (Developer Product)
+
+	Un monstre lâché avec des Robux :
+	  - poursuit les joueurs qui sont HORS de leur base (il n'entre jamais dans les bases)
+	  - ne touche pas celui qui l'a lâché
+	  - attrapé : retour à la base et on lâche le fantôme volé, mais on ne perd PAS de pièces
+	  - un seul à la fois par serveur : les suivants attendent leur tour
+
+	Speed = vitesse, CatchRange = distance pour attraper, Duration = durée en secondes,
+	Hover = hauteur au-dessus du sol. L'avant du modèle est en -Z.
+]]
+
+local Monsters = {}
+
+Monsters.List = {
+	{
+		Id = "Gloutrouille",
+		Icon = "🎃",
+		Name = { fr = "Gloutrouille", en = "Gloutrouille" },
+		Desc = { fr = "La citrouille en gelée qui a toujours faim.", en = "The jelly pumpkin who is always hungry." },
+		Product = "MonsterGloutrouille",
+		Speed = 15,
+		CatchRange = 5,
+		Duration = 40,
+		Hover = 5,
+		Color = { 255, 125, 25 },
+	},
+	{
+		Id = "MamieToile",
+		Icon = "🕷️",
+		Name = { fr = "Mamie Toile", en = "Granny Web" },
+		Desc = { fr = "Une araignée géante à lunettes. Elle lance sa toile de loin.", en = "A giant spider with glasses. She throws her web from far away." },
+		Product = "MonsterSpider",
+		Speed = 12,
+		CatchRange = 9,
+		Duration = 45,
+		Hover = 4,
+		Color = { 170, 90, 255 },
+	},
+	{
+		Id = "ChauveSourisTurbo",
+		Icon = "🦇",
+		Name = { fr = "Chauve-Souris Turbo", en = "Turbo Bat" },
+		Desc = { fr = "Petite, mais beaucoup trop rapide.", en = "Small, but way too fast." },
+		Product = "MonsterBat",
+		Speed = 20,
+		CatchRange = 4,
+		Duration = 30,
+		Hover = 7,
+		Color = { 90, 200, 255 },
+	},
+}
+
+Monsters.ById = {}
+for order, monster in Monsters.List do
+	monster.Order = order
+	Monsters.ById[monster.Id] = monster
+end
+
+function Monsters.get(id: any)
+	return if type(id) == "string" then Monsters.ById[id] else nil
+end
+
+---------------------------------------------------------------- Modèles 3D
+
+local function part(model: Model, shape: Enum.PartType?, size: Vector3, cf: CFrame, color: Color3, extra: { [string]: any }?)
+	local p = Instance.new("Part")
+	if shape then
+		p.Shape = shape
+	end
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = Enum.Material.SmoothPlastic
+	if extra then
+		local writable: any = p
+		for key, value in extra do
+			writable[key] = value
+		end
+	end
+	p.Parent = model
+	return p
+end
+
+local BALL = Enum.PartType.Ball
+local CYL = Enum.PartType.Cylinder
+local WHITE = Color3.fromRGB(255, 255, 255)
+local BLACK = Color3.fromRGB(25, 20, 30)
+
+-- Un gros œil brillant avec pupille et reflet (regarde vers -Z)
+local function eye(model: Model, pos: Vector3, d: number, iris: Color3?)
+	part(model, BALL, Vector3.one * d, CFrame.new(pos), WHITE)
+	local pupil = d * 0.55
+	local pupilPos = pos + Vector3.new(0, -0.05 * d, -d * 0.32)
+	part(model, BALL, Vector3.one * pupil, CFrame.new(pupilPos), iris or BLACK)
+	part(model, BALL, Vector3.one * pupil * 0.35, CFrame.new(pupilPos + Vector3.new(0.12 * d, 0.12 * d, -pupil * 0.4)), WHITE)
+end
+
+local Builders = {}
+
+-- Gloutrouille : une citrouille en gelée avec des dents en bonbons
+function Builders.Gloutrouille(model: Model)
+	local orange = Color3.fromRGB(255, 125, 25)
+	local darker = orange:Lerp(Color3.new(0, 0, 0), 0.15)
+	part(model, BALL, Vector3.one * 9, CFrame.identity, orange)
+	-- côtes de citrouille
+	for _, x in { -2.8, 2.8 } do
+		part(model, BALL, Vector3.new(7.2, 8.6, 7.2), CFrame.new(x, 0, 0.5), darker)
+	end
+	part(model, BALL, Vector3.one * 10.3, CFrame.identity, Color3.fromRGB(170, 80, 255), {
+		Transparency = 0.7,
+		Material = Enum.Material.Glass,
+	})
+	-- yeux qui brillent, sourcils froncés
+	local glow = Color3.fromRGB(190, 255, 80)
+	for _, x in { -1.8, 1.8 } do
+		part(model, nil, Vector3.new(1.7, 1.7, 0.6), CFrame.new(x, 1.4, -4.2) * CFrame.Angles(0, 0, math.rad(45)), glow, {
+			Material = Enum.Material.Neon,
+		})
+		part(model, nil, Vector3.new(2, 0.4, 0.5), CFrame.new(x, 2.6, -4.05) * CFrame.Angles(0, 0, math.rad(x > 0 and 20 or -20)), BLACK)
+	end
+	-- grande bouche + dents en bonbons + langue
+	part(model, nil, Vector3.new(5.6, 1.9, 0.6), CFrame.new(0, -1.4, -4.05), Color3.fromRGB(40, 10, 45))
+	part(model, BALL, Vector3.new(2.2, 0.8, 1), CFrame.new(0.6, -2, -4.1), Color3.fromRGB(255, 90, 130))
+	local candy = { Color3.fromRGB(255, 255, 240), Color3.fromRGB(255, 210, 60), Color3.fromRGB(255, 130, 30) }
+	for i = 0, 4 do
+		part(model, nil, Vector3.new(0.75, 0.85, 0.5), CFrame.new(-2.1 + i * 1.05, -0.75, -4.35), candy[i % 3 + 1])
+	end
+	-- tige, feuille et petits bras
+	part(model, CYL, Vector3.new(2, 1, 1), CFrame.new(0, 5.2, 0) * CFrame.Angles(0, 0, math.rad(80)), Color3.fromRGB(70, 140, 40))
+	part(model, BALL, Vector3.new(2.2, 0.4, 1.4), CFrame.new(1, 5.2, 0) * CFrame.Angles(0, 0, math.rad(-25)), Color3.fromRGB(90, 180, 60))
+	for _, x in { -5, 5 } do
+		part(model, BALL, Vector3.one * 2.4, CFrame.new(x, -1.5, -1), orange, { Name = "Arm" })
+	end
+end
+
+-- Mamie Toile : une araignée violette avec un chignon blanc, de grands yeux et 8 pattes
+function Builders.MamieToile(model: Model)
+	local purple = Color3.fromRGB(120, 60, 170)
+	local dark = Color3.fromRGB(70, 35, 100)
+	part(model, BALL, Vector3.new(7, 6, 8), CFrame.new(0, 0.6, 2.6), dark) -- abdomen
+	part(model, BALL, Vector3.one * 5.2, CFrame.new(0, 0.4, -1.6), purple) -- tête
+	-- motif sur le dos
+	part(model, BALL, Vector3.new(2.4, 1, 2.4), CFrame.new(0, 3.4, 2.8), Color3.fromRGB(255, 120, 200))
+	-- chignon blanc de mamie
+	part(model, BALL, Vector3.new(2.8, 1.8, 2.6), CFrame.new(0, 2.9, -1.2), Color3.fromRGB(245, 245, 250))
+	part(model, BALL, Vector3.one * 1.5, CFrame.new(0, 3.8, -1.1), Color3.fromRGB(245, 245, 250))
+	-- deux grands yeux de dessin animé
+	for _, x in { -1.15, 1.15 } do
+		eye(model, Vector3.new(x, 1, -3.6), 1.9, Color3.fromRGB(120, 70, 30))
+	end
+	-- petits yeux en plus (c'est une araignée !)
+	for _, x in { -0.5, 0.5 } do
+		part(model, BALL, Vector3.one * 0.5, CFrame.new(x, 2.1, -3.7), BLACK)
+	end
+	-- sourire avec deux dents de lapin
+	part(model, nil, Vector3.new(1.6, 0.25, 0.3), CFrame.new(0, -0.6, -4.1), BLACK)
+	for _, x in { -0.2, 0.2 } do
+		part(model, nil, Vector3.new(0.36, 0.5, 0.25), CFrame.new(x, -0.9, -4.1), WHITE)
+	end
+	-- 8 pattes (4 de chaque côté)
+	for side = -1, 1, 2 do
+		for i = 0, 3 do
+			local z = -1.8 + i * 1.6
+			local upper = part(model, CYL, Vector3.new(4, 0.6, 0.6), CFrame.new(side * 3.6, 1.6, z) * CFrame.Angles(0, 0, math.rad(side * 30)), purple, { Name = "Leg" })
+			upper:SetAttribute("Side", side)
+			part(model, CYL, Vector3.new(4.4, 0.5, 0.5), CFrame.new(side * 6.4, -0.8, z) * CFrame.Angles(0, 0, math.rad(side * -60)), dark, { Name = "Leg" })
+		end
+	end
+	-- un fil de toile au-dessus
+	part(model, CYL, Vector3.new(14, 0.08, 0.08), CFrame.new(0, 9, 2.6) * CFrame.Angles(0, 0, math.rad(90)), WHITE, { Transparency = 0.3 })
+end
+
+-- Chauve-Souris Turbo : une petite boule bleue avec de grandes ailes et des lunettes d'aviateur
+function Builders.ChauveSourisTurbo(model: Model)
+	local blue = Color3.fromRGB(70, 90, 160)
+	local wing = Color3.fromRGB(45, 55, 110)
+	part(model, BALL, Vector3.one * 4.2, CFrame.identity, blue)
+	part(model, BALL, Vector3.new(3, 2.2, 1), CFrame.new(0, -0.6, -1.8), Color3.fromRGB(140, 160, 230)) -- ventre
+	-- oreilles pointues
+	for _, x in { -1.1, 1.1 } do
+		local ear = CFrame.new(x, 2.3, 0) * CFrame.Angles(0, 0, math.rad(x > 0 and -15 or 15))
+		part(model, nil, Vector3.new(0.9, 1.8, 0.5), ear, blue)
+		part(model, nil, Vector3.new(0.5, 1.2, 0.2), ear * CFrame.new(0, -0.1, -0.2), Color3.fromRGB(255, 140, 190))
+	end
+	-- lunettes d'aviateur
+	part(model, nil, Vector3.new(4.4, 0.35, 0.35), CFrame.new(0, 0.7, -1.2), Color3.fromRGB(120, 70, 30))
+	for _, x in { -0.85, 0.85 } do
+		part(model, CYL, Vector3.new(0.3, 1.4, 1.4), CFrame.new(x, 0.7, -1.95) * CFrame.Angles(0, math.rad(90), 0), Color3.fromRGB(150, 230, 255), {
+			Transparency = 0.25,
+			Reflectance = 0.4,
+		})
+		part(model, BALL, Vector3.one * 0.55, CFrame.new(x, 0.65, -2.05), BLACK)
+	end
+	-- petits crocs
+	for _, x in { -0.35, 0.35 } do
+		part(model, nil, Vector3.new(0.25, 0.45, 0.25), CFrame.new(x, -0.55, -2.05), WHITE)
+	end
+	-- grandes ailes en trois morceaux
+	for side = -1, 1, 2 do
+		for i = 1, 3 do
+			local wingPart = part(model, nil, Vector3.new(2.4, 0.25, 2.2 - i * 0.3), CFrame.new(side * (1.6 + i * 1.9), 0.4 + i * 0.15, 0.3) * CFrame.Angles(0, 0, math.rad(side * (8 + i * 6))), wing, { Name = "Wing" })
+			wingPart:SetAttribute("Side", side)
+		end
+	end
+	-- une traînée de vitesse
+	part(model, nil, Vector3.new(0.3, 0.3, 4), CFrame.new(0, 0, 3.6), Color3.fromRGB(150, 220, 255), { Material = Enum.Material.Neon, Transparency = 0.4 })
+end
+
+-- Fabrique le modèle d'un monstre (avec son nom au-dessus)
+function Monsters.build(id: string): Model
+	local monster = Monsters.ById[id] or Monsters.ById.Gloutrouille
+	local model = Instance.new("Model")
+	model.Name = monster.Id
+	local root = part(model, nil, Vector3.one, CFrame.identity, WHITE, { Transparency = 1, Name = "Root" })
+	model.PrimaryPart = root
+	local builder = Builders[monster.Id] or Builders.Gloutrouille
+	builder(model)
+
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(monster.Color[1], monster.Color[2], monster.Color[3])
+	light.Range = 22
+	light.Brightness = 2
+	light.Shadows = false
+	light.Parent = root
+	return model
+end
+
+return Monsters
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="10">
+        <Properties>
           <string name="Name">Rarities</string>
           <string name="Source"><![CDATA[--[[
 	Rarities : les 6 raretés, leurs couleurs et leurs chances d'apparition.
@@ -1660,7 +2032,7 @@ return Rarities
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="10">
+      <Item class="ModuleScript" referent="11">
         <Properties>
           <string name="Name">Remotes</string>
           <string name="Source"><![CDATA[--[[
@@ -1679,13 +2051,15 @@ Remotes.Names = {
 	"SellGhost", -- (slot) revendre un fantôme de sa base
 	"StealBegin", -- (baseIndex, slot) début du maintien sur "Voler"
 	"Steal", -- (baseIndex, slot) fin du maintien sur "Voler"
-	"Bonk", -- () coup de Marteau Pouet
+	"Bonk", -- (weaponId) coup d'arme (Batte par défaut)
 	"RequestLock", -- () verrouiller sa base
 	"ClaimDaily", -- () récupérer le cadeau du jour
 	"Rebirth", -- () faire un rebirth
 	"TutorialDone", -- () le tutoriel est terminé
 	"RedeemCode", -- (code) utiliser un code promo
 	"BuyFloor", -- () acheter l'étage 2 de sa base
+	"SpinWheel", -- () utiliser un tour de Roue de la Fortune
+	"ShopBuy", -- (key) acheter un article de la boutique (le serveur ouvre la fenêtre Robux)
 	-- Serveur -> Client
 	"Notify", -- (key, params, kind) petit message pour un joueur
 	"Announce", -- (key, params, kind) grande annonce pour tout le serveur
@@ -1725,7 +2099,130 @@ return Remotes
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="11">
+      <Item class="ModuleScript" referent="12">
+        <Properties>
+          <string name="Name">Shop</string>
+          <string name="Source"><![CDATA[--[[
+	Shop : tout ce qui s'achète avec des Robux (partagé serveur + joueurs).
+
+	Pass = Game Pass (acheté une fois, gardé pour toujours) : son ID va dans Config.GamePasses
+	Product = Developer Product (peut s'acheter plusieurs fois) : son ID va dans Config.Products
+	Robux = prix conseillé, à reprendre quand tu crées l'article sur le Creator Hub.
+
+	Tant qu'un ID vaut 0 :
+	  - dans Studio, le bouton d'achat donne l'article gratuitement (pour tester)
+	  - dans le vrai jeu, l'article affiche "Bientôt"
+]]
+
+local Shop = {}
+
+Shop.Categories = {
+	{ Id = "Passes", Icon = "⭐", Name = { fr = "Passes", en = "Passes" } },
+	{ Id = "Weapons", Icon = "⚔️", Name = { fr = "Armes", en = "Weapons" } },
+	{ Id = "Wheel", Icon = "🎡", Name = { fr = "Roue", en = "Wheel" } },
+	{ Id = "Monsters", Icon = "👹", Name = { fr = "Monstres", en = "Monsters" } },
+	{ Id = "Coins", Icon = "🪙", Name = { fr = "Pièces", en = "Coins" } },
+}
+
+Shop.Items = {
+	-- Passes
+	{
+		Key = "DoubleCoins",
+		Kind = "Pass",
+		Category = "Passes",
+		Icon = "💰",
+		Robux = 149,
+		Attribute = "DoubleCoins",
+		Name = { fr = "x2 Pièces", en = "x2 Coins" },
+		Desc = { fr = "Double tous tes revenus, pour toujours", en = "Double all your income, forever" },
+	},
+	{
+		Key = "LongLock",
+		Kind = "Pass",
+		Category = "Passes",
+		Icon = "🔒",
+		Robux = 79,
+		Attribute = "LongLock",
+		Name = { fr = "Verrou+", en = "Lock+" },
+		Desc = { fr = "Verrou de {long} s au lieu de {normal} s", en = "{long} s lock instead of {normal} s" },
+	},
+	-- Armes (les infos viennent de Weapons.luau)
+	{ Key = "WeaponHammer", Kind = "Pass", Category = "Weapons", Weapon = "MarteauPouet", Robux = 99, Attribute = "Weapon_MarteauPouet" },
+	{ Key = "WeaponBroom", Kind = "Pass", Category = "Weapons", Weapon = "BalaiSorciere", Robux = 149, Attribute = "Weapon_BalaiSorciere" },
+	{ Key = "WeaponVacuum", Kind = "Pass", Category = "Weapons", Weapon = "AspiraFantome", Robux = 199, Attribute = "Weapon_AspiraFantome" },
+	-- Tours de roue (objets aléatoires payants : chances affichées avant l'achat)
+	{
+		Key = "Spin1",
+		Kind = "Product",
+		Category = "Wheel",
+		Icon = "🎡",
+		Robux = 25,
+		Spins = 1,
+		Random = true,
+		Name = { fr = "1 tour de roue", en = "1 wheel spin" },
+		Desc = { fr = "Chaque case fait gagner quelque chose", en = "Every slot wins something" },
+	},
+	{
+		Key = "Spin5",
+		Kind = "Product",
+		Category = "Wheel",
+		Icon = "🎡",
+		Robux = 99,
+		Spins = 5,
+		Random = true,
+		Name = { fr = "5 tours de roue", en = "5 wheel spins" },
+		Desc = { fr = "1 tour offert par rapport à 5 x 1", en = "1 free spin compared to 5 x 1" },
+	},
+	-- Monstres (les infos viennent de Monsters.luau)
+	{ Key = "MonsterGloutrouille", Kind = "Product", Category = "Monsters", Monster = "Gloutrouille", Robux = 39 },
+	{ Key = "MonsterBat", Kind = "Product", Category = "Monsters", Monster = "ChauveSourisTurbo", Robux = 59 },
+	{ Key = "MonsterSpider", Kind = "Product", Category = "Monsters", Monster = "MamieToile", Robux = 79 },
+	-- Pièces
+	{
+		Key = "CoinPack",
+		Kind = "Product",
+		Category = "Coins",
+		Icon = "🪙",
+		Robux = 25,
+		Name = { fr = "Pack de pièces", en = "Coin pack" },
+		Desc = { fr = "{coins} pièces tout de suite", en = "{coins} coins right now" },
+	},
+}
+
+Shop.ByKey = {}
+for order, item in Shop.Items do
+	item.Order = order
+	Shop.ByKey[item.Key] = item
+end
+
+function Shop.get(key: any)
+	return if type(key) == "string" then Shop.ByKey[key] else nil
+end
+
+-- L'ID Roblox de l'article (0 = pas encore créé)
+function Shop.idOf(item, config): number
+	local list = if item.Kind == "Pass" then config.GamePasses else config.Products
+	return tonumber(list[item.Key]) or 0
+end
+
+-- Retrouve l'article à partir d'un ID Roblox
+function Shop.fromId(kind: string, id: number, config)
+	if id == 0 then
+		return nil
+	end
+	for _, item in Shop.Items do
+		if item.Kind == kind and Shop.idOf(item, config) == id then
+			return item
+		end
+	end
+	return nil
+end
+
+return Shop
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="13">
         <Properties>
           <string name="Name">Sounds</string>
           <string name="Source"><![CDATA[--[[
@@ -1765,6 +2262,11 @@ local Sounds = {
 	MonsterCatch = { Id = OOF, Volume = 1, Pitch = 0.6 },
 	Heartbeat = { Id = PING, Volume = 0.5, Jingle = { 0.35, 0.3 } },
 	Rebirth = { Id = PING, Volume = 0.9, Jingle = { 1, 1.26, 1.5, 2, 2.52, 3 } },
+	Swing = { Id = SWOOSH, Volume = 0.6, Pitch = 1.7 },
+	Vacuum = { Id = SWOOSH, Volume = 0.9, Pitch = 0.6 },
+	WheelTick = { Id = PING, Volume = 0.2, Pitch = 2.8 },
+	WheelWin = { Id = PING, Volume = 0.8, Jingle = { 1, 1.5, 2, 1.5, 2, 2.5 } },
+	MonsterSummon = { Id = SWOOSH, Volume = 1, Pitch = 0.3 },
 	-- Musique de fond pendant la Nuit Hantée (aucune par défaut).
 	-- Mets ici l'ID d'une musique gratuite du Creator Store (catégorie Audio > Music).
 	NightMusic = { Id = "", Volume = 0.4, Looped = true },
@@ -1775,7 +2277,7 @@ return Sounds
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="12">
+      <Item class="ModuleScript" referent="14">
         <Properties>
           <string name="Name">Strings</string>
           <string name="Source"><![CDATA[--[[
@@ -1800,7 +2302,7 @@ Strings.fr = {
 	Steal = "Voler",
 	Sell = "Vendre",
 	Lock = "Verrouiller",
-	Bonk = "Pouet !",
+	Bonk = "Tape !",
 	PerSecond = "{coins}/s",
 	SellFor = "Vendre {coins}",
 	BuyFor = "{coins}",
@@ -1832,7 +2334,7 @@ Strings.fr = {
 	StealGo = "Cours jusqu'à ta base !",
 	StealAlert = "{thief} vole ton {ghost} ! Attrape-le !",
 	StealFailTimeout = "Trop lent ! {ghost} est rentré chez lui.",
-	StealFailBonk = "POUET ! Tu as lâché {ghost} !",
+	StealFailBonk = "BAM ! Tu as lâché {ghost} !",
 	StealFailCaught = "{owner} t'a rattrapé !",
 	StealFailMonster = "Gloutrouille t'a fait lâcher {ghost} !",
 	StealFailNoSpace = "Ta base est pleine, {ghost} est reparti !",
@@ -1848,7 +2350,7 @@ Strings.fr = {
 	AnnRainbowSpawn = "Un fantôme ARC-EN-CIEL apparaît : {ghost} !",
 	AnnBigBuy = "{player} a attrapé {ghost} !",
 	AnnRebirth = "{player} a fait son rebirth n°{count} !",
-	AnnCaught = "Gloutrouille a attrapé {player} !",
+	AnnCaught = "{monster} a attrapé {player} !",
 
 	-- HUD
 	Income = "+{coins}/s",
@@ -1895,15 +2397,61 @@ Strings.fr = {
 	-- Boutique
 	Shop = "Boutique",
 	ShopTitle = "BOUTIQUE",
-	ShopDouble = "x2 Pièces",
-	ShopDoubleDesc = "Double tous tes revenus, pour toujours",
-	ShopLock = "Verrou+",
-	ShopLockDesc = "Verrou de {long} s au lieu de {normal} s",
-	ShopCoins = "Pack de pièces",
-	ShopCoinsDesc = "+{coins} pièces tout de suite",
 	ShopOwned = "Possédé",
 	ShopSoon = "Bientôt",
 	ShopThanks = "Merci ! Achat reçu",
+	ShopFree = "Offerte",
+	ShopTestFree = "Gratuit (test)",
+	ShopStudioFree = "Mode test de Studio : article donné gratuitement",
+	ShopRestricted = "Les tours de roue payants ne sont pas disponibles dans ton pays.",
+	ShopRestrictedShort = "Indisponible",
+
+	-- Armes
+	WeaponStats = "Portée {range} · recharge {cooldown} s",
+	WeaponSweep = "touche tous les voleurs autour",
+	PushedOut = "{player} t'a chassé de sa base !",
+
+	-- Monstres à lâcher
+	MonstersTitle = "Lâcher un monstre",
+	MonstersInfo = "Il poursuit tout le serveur, sauf toi ! Il n'entre pas dans les bases et ne prend pas de pièces.",
+	MonsterStats = "Dure {time} · fait lâcher les fantômes volés",
+	MonsterBy = "lâché par {player}",
+	MonsterQueued = "{monster} attend son tour (n°{count} dans la file)",
+	MonsterCaughtYouFree = "BOUH ! {monster} t'a attrapé, retour à la base !",
+	AnnMonsterSummon = "{player} a lâché {monster} sur le serveur !",
+
+	-- Roue de la Fortune
+	WheelTitle = "Roue de la Fortune",
+	WheelSpins = "Tu as {count} tour(s). Va devant la roue au milieu de la map pour jouer.",
+	WheelSpin = "TOURNER",
+	WheelOdds = "Les chances de chaque case",
+	WheelGoThere = "Va devant la roue, au milieu de la map !",
+	WheelSpinning = "{player} tourne la roue...",
+	WheelNoSpins = "Tu n'as plus de tours de roue",
+	WheelBusy = "La roue tourne déjà, réessaie dans {time}",
+	SpinsAdded = "+{count} tour(s) de roue !",
+	WheelWinCoins = "Roue de la Fortune : +{coins} pièces !",
+	WheelWinBoost = "Roue de la Fortune : revenus x{mult} pendant {time} !",
+	WheelWinGhost = "Roue de la Fortune : {ghost} est à toi !",
+	WheelBaseFull = "Base pleine : {ghost} t'est payé {coins} pièces",
+	AnnWheel = "{player} a gagné {ghost} à la Roue de la Fortune !",
+	BoostPill = "Revenus x2 : {time}",
+	Wheel_Coins10 = "10 min de revenus",
+	Wheel_Epic = "Un fantôme Épique",
+	Wheel_Coins30 = "30 min de revenus",
+	Wheel_Legendary = "Un fantôme Légendaire",
+	Wheel_Boost = "Revenus x2 pendant 15 min",
+	Wheel_GoldEpic = "Un fantôme Épique Doré",
+	Wheel_Coins120 = "2 h de revenus",
+	Wheel_Mythic = "Un fantôme Mythique",
+	WheelShort_Coins10 = "10 min",
+	WheelShort_Epic = "Épique",
+	WheelShort_Coins30 = "30 min",
+	WheelShort_Legendary = "Légendaire",
+	WheelShort_Boost = "x2",
+	WheelShort_GoldEpic = "Épique Doré",
+	WheelShort_Coins120 = "2 h",
+	WheelShort_Mythic = "Mythique",
 
 	-- Tutoriel (3 flèches, très peu de texte)
 	Tuto1 = "Achète !",
@@ -1955,7 +2503,7 @@ Strings.fr = {
 	Mission_BuyRare = "Achète un fantôme Rare ou mieux",
 	Mission_NightOutside = "Reste {n} s hors de ta base pendant une Nuit Hantée",
 	Mission_Steal = "Vole un fantôme à un autre joueur",
-	Mission_Bonk = "Arrête un voleur au Marteau Pouet",
+	Mission_Bonk = "Arrête un voleur avec ta batte",
 	Mission_BuyEpic = "Achète un fantôme Épique ou mieux",
 	MissionTier_easy = "Facile",
 	MissionTier_medium = "Moyen",
@@ -2033,7 +2581,7 @@ Strings.en = {
 	AnnRainbowSpawn = "A RAINBOW ghost appeared: {ghost}!",
 	AnnBigBuy = "{player} grabbed {ghost}!",
 	AnnRebirth = "{player} just did rebirth #{count}!",
-	AnnCaught = "Gloutrouille caught {player}!",
+	AnnCaught = "{monster} caught {player}!",
 
 	Income = "+{coins}/s",
 	FriendsBonus = "Friends +{percent}%",
@@ -2075,15 +2623,61 @@ Strings.en = {
 
 	Shop = "Shop",
 	ShopTitle = "SHOP",
-	ShopDouble = "x2 Coins",
-	ShopDoubleDesc = "Doubles all your income, forever",
-	ShopLock = "Lock+",
-	ShopLockDesc = "{long} s lock instead of {normal} s",
-	ShopCoins = "Coin pack",
-	ShopCoinsDesc = "+{coins} coins right now",
 	ShopOwned = "Owned",
 	ShopSoon = "Soon",
 	ShopThanks = "Thanks! Purchase received",
+	ShopFree = "Free",
+	ShopTestFree = "Free (test)",
+	ShopStudioFree = "Studio test mode: item given for free",
+	ShopRestricted = "Paid wheel spins are not available in your country.",
+	ShopRestrictedShort = "Unavailable",
+
+	-- Weapons
+	WeaponStats = "Range {range} · cooldown {cooldown} s",
+	WeaponSweep = "hits every thief around",
+	PushedOut = "{player} kicked you out of their base!",
+
+	-- Monsters to release
+	MonstersTitle = "Release a monster",
+	MonstersInfo = "It chases the whole server, except you! It never enters bases and takes no coins.",
+	MonsterStats = "Lasts {time} · makes thieves drop stolen ghosts",
+	MonsterBy = "released by {player}",
+	MonsterQueued = "{monster} is waiting for its turn (#{count} in line)",
+	MonsterCaughtYouFree = "BOO! {monster} caught you, back to your base!",
+	AnnMonsterSummon = "{player} released {monster} on the server!",
+
+	-- Wheel of Fortune
+	WheelTitle = "Wheel of Fortune",
+	WheelSpins = "You have {count} spin(s). Go to the wheel in the middle of the map to play.",
+	WheelSpin = "SPIN",
+	WheelOdds = "Odds for each slot",
+	WheelGoThere = "Go to the wheel in the middle of the map!",
+	WheelSpinning = "{player} is spinning the wheel...",
+	WheelNoSpins = "You have no wheel spins left",
+	WheelBusy = "The wheel is already spinning, try again in {time}",
+	SpinsAdded = "+{count} wheel spin(s)!",
+	WheelWinCoins = "Wheel of Fortune: +{coins} coins!",
+	WheelWinBoost = "Wheel of Fortune: x{mult} income for {time}!",
+	WheelWinGhost = "Wheel of Fortune: {ghost} is yours!",
+	WheelBaseFull = "Base full: you get {coins} coins for {ghost}",
+	AnnWheel = "{player} won {ghost} on the Wheel of Fortune!",
+	BoostPill = "x2 income: {time}",
+	Wheel_Coins10 = "10 min of income",
+	Wheel_Epic = "An Epic ghost",
+	Wheel_Coins30 = "30 min of income",
+	Wheel_Legendary = "A Legendary ghost",
+	Wheel_Boost = "x2 income for 15 min",
+	Wheel_GoldEpic = "A Golden Epic ghost",
+	Wheel_Coins120 = "2 h of income",
+	Wheel_Mythic = "A Mythic ghost",
+	WheelShort_Coins10 = "10 min",
+	WheelShort_Epic = "Epic",
+	WheelShort_Coins30 = "30 min",
+	WheelShort_Legendary = "Legendary",
+	WheelShort_Boost = "x2",
+	WheelShort_GoldEpic = "Golden Epic",
+	WheelShort_Coins120 = "2 h",
+	WheelShort_Mythic = "Mythic",
 
 	Tuto1 = "Buy!",
 	Tuto2 = "Collect!",
@@ -2130,7 +2724,7 @@ Strings.en = {
 	Mission_BuyRare = "Buy a Rare ghost or better",
 	Mission_NightOutside = "Stay {n} s outside your base during a Haunted Night",
 	Mission_Steal = "Steal a ghost from another player",
-	Mission_Bonk = "Stop a thief with a BONK",
+	Mission_Bonk = "Stop a thief with your bat",
 	Mission_BuyEpic = "Buy an Epic ghost or better",
 	MissionTier_easy = "Easy",
 	MissionTier_medium = "Medium",
@@ -2150,33 +2744,413 @@ Strings.en = {
 	Close = "Close",
 }
 
--- Remplace {mots} par les valeurs données. Ex : format("fr", "Sold", { coins = "1.2K" })
+-- Remplace {mots} dans un texte par les valeurs données
+function Strings.fill(text: string, params: { [string]: any }?): string
+	if not params then
+		return text
+	end
+	return (string.gsub(text, "{(%w+)}", function(name)
+		local value = params[name]
+		if value == nil then
+			return "{" .. name .. "}"
+		end
+		return tostring(value)
+	end))
+end
+
+-- Texte traduit avec ses {mots} remplacés. Ex : format("fr", "Sold", { coins = "1.2K" })
 function Strings.format(lang: string, key: string, params: { [string]: any }?): string
 	local tableForLang = Strings[lang] or Strings.en
 	local text = tableForLang[key] or Strings.en[key] or key
-	if params then
-		text = string.gsub(text, "{(%w+)}", function(name)
-			local value = params[name]
-			if value == nil then
-				return "{" .. name .. "}"
-			end
-			return tostring(value)
-		end)
-	end
-	return text
+	return Strings.fill(text, params)
 end
 
 return Strings
 ]]></string>
         </Properties>
       </Item>
+      <Item class="ModuleScript" referent="15">
+        <Properties>
+          <string name="Name">Weapons</string>
+          <string name="Source"><![CDATA[--[[
+	Weapons : les armes pour chasser les voleurs (partagé entre le serveur et les joueurs).
+	  - la Batte est offerte à tout le monde
+	  - les autres s'achètent avec un Game Pass (ID dans Config.GamePasses)
+
+	Ce qu'une arme fait quand on frappe (le serveur vérifie tout) :
+	  - un voleur qui porte un fantôme : il le lâche (le fantôme rentre chez lui),
+	    il est repoussé et étourdi un moment
+	  - un intrus dans TA base : il est repoussé dehors
+	  - les autres joueurs : rien (pas de bagarre gratuite)
+	On ne peut pas frapper en portant un fantôme volé : les armes servent à défendre.
+
+	Range = portée en studs, Cooldown = temps entre deux coups, Stun = étourdissement,
+	Knock = force du recul, Sweep = touche tous les voleurs à portée (sinon le plus proche)
+]]
+
+local Weapons = {}
+
+Weapons.List = {
+	{
+		Id = "Batte",
+		Icon = "🏏",
+		Name = { fr = "Batte", en = "Bat" },
+		Desc = { fr = "Offerte. Un bon coup et le voleur lâche tout !", en = "Free. One good hit and the thief drops everything!" },
+		Free = true,
+		Range = 9,
+		Cooldown = 1.6,
+		Stun = 1.5,
+		Knock = 45,
+		Sound = "Bonk",
+		Color = { 190, 130, 70 },
+	},
+	{
+		Id = "MarteauPouet",
+		Icon = "🔨",
+		Name = { fr = "Marteau Pouet Géant", en = "Giant Squeaky Hammer" },
+		Desc = { fr = "Plus loin, plus fort, et ça fait POUET.", en = "Longer reach, stronger, and it goes SQUEAK." },
+		Pass = "WeaponHammer",
+		Range = 11,
+		Cooldown = 1.3,
+		Stun = 2.2,
+		Knock = 70,
+		Sound = "Bonk",
+		Color = { 255, 90, 160 },
+	},
+	{
+		Id = "BalaiSorciere",
+		Icon = "🧹",
+		Name = { fr = "Balai de Sorcière", en = "Witch Broom" },
+		Desc = { fr = "Un grand coup de balai : touche tous les voleurs autour.", en = "A big sweep: hits every thief around you." },
+		Pass = "WeaponBroom",
+		Range = 12,
+		Cooldown = 1.5,
+		Stun = 1.6,
+		Knock = 55,
+		Sweep = true,
+		Sound = "Bonk",
+		Color = { 170, 90, 255 },
+	},
+	{
+		Id = "AspiraFantome",
+		Icon = "🌀",
+		Name = { fr = "Aspira-Fantôme", en = "Ghost Vacuum" },
+		Desc = { fr = "Aspire le fantôme volé de très loin.", en = "Sucks the stolen ghost back from far away." },
+		Pass = "WeaponVacuum",
+		Range = 20,
+		Cooldown = 2.5,
+		Stun = 0.8,
+		Knock = 25,
+		Sound = "Vacuum",
+		Color = { 80, 255, 170 },
+	},
+}
+
+Weapons.ById = {}
+for order, weapon in Weapons.List do
+	weapon.Order = order
+	Weapons.ById[weapon.Id] = weapon
+end
+
+function Weapons.get(id: any)
+	return if type(id) == "string" then Weapons.ById[id] else nil
+end
+
+---------------------------------------------------------------- Modèles 3D
+
+local function newPart(tool: Instance, shape: Enum.PartType?, size: Vector3, offset: CFrame, color: Color3, handle: BasePart?, extra: { [string]: any }?)
+	local p = Instance.new("Part")
+	if shape then
+		p.Shape = shape
+	end
+	p.Size = size
+	p.Color = color
+	p.Material = Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.CanCollide = false
+	p.CanTouch = false
+	p.CanQuery = false
+	p.Massless = true
+	p.CastShadow = false
+	if extra then
+		local writable: any = p
+		for key, value in extra do
+			writable[key] = value
+		end
+	end
+	if handle then
+		p.CFrame = handle.CFrame * offset
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = handle
+		weld.Part1 = p
+		weld.Parent = p
+	end
+	p.Parent = tool
+	return p
+end
+
+-- Les cylindres de Roblox sont couchés sur X : on les tourne pour suivre l'axe Z de l'arme
+local ALONG_Z = CFrame.Angles(0, math.rad(90), 0)
+
+local Builders = {}
+
+-- L'arme est dessinée le long de l'axe Z de la poignée ("Handle"), le manche vers -Z
+function Builders.Batte(tool: Tool, handle: BasePart)
+	local wood = Color3.fromRGB(205, 145, 80)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(1.6, 0.42, 0.42), CFrame.new(0, 0, -1.2) * ALONG_Z, Color3.fromRGB(40, 40, 50), handle)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(1.6, 0.55, 0.55), CFrame.new(0, 0, 0.2) * ALONG_Z, wood, handle)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(2, 0.85, 0.85), CFrame.new(0, 0, 1.8) * ALONG_Z, wood, handle)
+	-- le bout noir et le pommeau
+	newPart(tool, Enum.PartType.Ball, Vector3.one * 0.95, CFrame.new(0, 0, 2.8), Color3.fromRGB(35, 35, 45), handle)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(0.25, 0.65, 0.65), CFrame.new(0, 0, -2.05) * ALONG_Z, Color3.fromRGB(150, 80, 40), handle)
+	-- une grande bande rouge pour faire "batte de champion"
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(0.8, 0.9, 0.9), CFrame.new(0, 0, 0.9) * ALONG_Z, Color3.fromRGB(230, 50, 60), handle)
+end
+
+function Builders.MarteauPouet(tool: Tool, handle: BasePart)
+	local pink = Color3.fromRGB(255, 90, 160)
+	local yellow = Color3.fromRGB(255, 220, 60)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(4, 0.45, 0.45), CFrame.new(0, 0, 0) * ALONG_Z, yellow, handle)
+	-- la tête du marteau, en travers
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(2.6, 1.7, 1.7), CFrame.new(0, 0, 2.4), pink, handle)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(0.3, 1.8, 1.8), CFrame.new(1.3, 0, 2.4), Color3.fromRGB(255, 255, 255), handle)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(0.3, 1.8, 1.8), CFrame.new(-1.3, 0, 2.4), Color3.fromRGB(255, 255, 255), handle)
+	-- une étoile jaune sur le côté (un rond, vu de loin)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(0.12, 0.9, 0.9), CFrame.new(0, 0.86, 2.4) * CFrame.Angles(0, 0, math.rad(90)), yellow, handle)
+end
+
+function Builders.BalaiSorciere(tool: Tool, handle: BasePart)
+	local wood = Color3.fromRGB(120, 75, 40)
+	local straw = Color3.fromRGB(255, 190, 70)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(4.6, 0.35, 0.35), CFrame.new(0, 0, 0.3) * ALONG_Z, wood, handle)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(0.4, 0.75, 0.75), CFrame.new(0, 0, 2.4) * ALONG_Z, Color3.fromRGB(150, 70, 230), handle)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(1.6, 1.3, 1.3), CFrame.new(0, 0, 3.3) * ALONG_Z, straw, handle)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(0.9, 1.7, 1.7), CFrame.new(0, 0, 4.3) * ALONG_Z, straw, handle)
+	-- petites étincelles magiques
+	newPart(tool, Enum.PartType.Ball, Vector3.one * 0.35, CFrame.new(0.6, 0.5, 4.6), Color3.fromRGB(200, 140, 255), handle, { Material = Enum.Material.Neon })
+end
+
+function Builders.AspiraFantome(tool: Tool, handle: BasePart)
+	local body = Color3.fromRGB(60, 70, 90)
+	local neon = Color3.fromRGB(80, 255, 170)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(1.4, 0.5, 0.5), CFrame.new(0, -0.1, -0.9) * ALONG_Z, Color3.fromRGB(40, 40, 50), handle)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(2.2, 1.2, 1.2), CFrame.new(0, 0.5, 0.6) * ALONG_Z, body, handle)
+	-- la grosse bouche qui aspire, avec son anneau vert lumineux
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(0.9, 1.5, 1.5), CFrame.new(0, 0.5, 2) * ALONG_Z, body, handle)
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(0.2, 1.2, 1.2), CFrame.new(0, 0.5, 2.48) * ALONG_Z, neon, handle, { Material = Enum.Material.Neon })
+	newPart(tool, Enum.PartType.Cylinder, Vector3.new(0.22, 0.6, 0.6), CFrame.new(0, 0.5, 2.5) * ALONG_Z, Color3.fromRGB(230, 255, 240), handle, { Material = Enum.Material.Neon })
+	-- le tuyau vert qui fait une boucle sous l'appareil
+	local hose = Color3.fromRGB(60, 200, 120)
+	for i = 0, 4 do
+		local a = math.rad(-30 - i * 60)
+		newPart(tool, Enum.PartType.Cylinder, Vector3.new(0.8, 0.35, 0.35), CFrame.new(0, -0.3 + math.sin(a) * 0.7, -0.6 + math.cos(a) * 0.7) * CFrame.Angles(a + math.pi / 2, 0, 0) * ALONG_Z, hose, handle)
+	end
+end
+
+-- Fabrique l'outil (Tool) à mettre dans le sac du joueur
+function Weapons.buildTool(id: string): Tool
+	local weapon = Weapons.ById[id] or Weapons.ById.Batte
+	local tool = Instance.new("Tool")
+	tool.Name = weapon.Name.fr
+	tool.ToolTip = weapon.Icon
+	tool.CanBeDropped = false
+	tool.RequiresHandle = true
+	tool:SetAttribute("WeaponId", weapon.Id)
+
+	local handle = newPart(tool, nil, Vector3.new(0.5, 0.5, 1.2), CFrame.identity, Color3.fromRGB(40, 40, 50), nil, {
+		Name = "Handle",
+		Transparency = 1,
+	})
+	handle.CFrame = CFrame.new()
+	local builder = Builders[weapon.Id] or Builders.Batte
+	builder(tool, handle)
+	-- la main tient le manche, l'arme pointe vers l'avant de la main
+	tool.Grip = CFrame.new(0, 0, -1.2)
+	tool:SetAttribute("BaseGrip", tool.Grip)
+	return tool
+end
+
+return Weapons
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="16">
+        <Properties>
+          <string name="Name">Wheel</string>
+          <string name="Source"><![CDATA[--[[
+	Wheel : la Roue de la Fortune au milieu de la map (partagé serveur + joueurs).
+	Les tours s'achètent avec des Robux (Developer Products "Spin1" et "Spin5").
+
+	Règles Roblox sur les objets aléatoires payants, respectées ici :
+	  - les chances de chaque case sont affichées en % AVANT l'achat, et font 100 % au total
+	  - chaque case donne quelque chose (on ne perd jamais son achat)
+	  - les joueurs des pays où c'est interdit ne peuvent pas acheter de tours
+	    (PolicyService.ArePaidRandomItemsRestricted, vérifié par le serveur)
+
+	Kind = "Coins" (Minutes de revenus, au moins Min pièces), "Boost" (revenus multipliés
+	par Config.WheelBoostMult pendant Seconds), "Ghost" (un fantôme au hasard de cette rareté, avec Mutation possible).
+	Chance = pourcentage. Si la base est pleine, un fantôme gagné est payé en pièces.
+]]
+
+local Wheel = {}
+
+Wheel.Segments = {
+	{ Id = "Coins10", Kind = "Coins", Minutes = 10, Min = 500, Chance = 30, Icon = "🪙", Color = { 255, 200, 60 } },
+	{ Id = "Epic", Kind = "Ghost", Rarity = "Epic", Chance = 14, Icon = "👻", Color = { 175, 90, 255 } },
+	{ Id = "Coins30", Kind = "Coins", Minutes = 30, Min = 1500, Chance = 18, Icon = "💰", Color = { 90, 210, 110 } },
+	{ Id = "Legendary", Kind = "Ghost", Rarity = "Legendary", Chance = 8, Icon = "🌟", Color = { 255, 170, 30 } },
+	{ Id = "Boost", Kind = "Boost", Seconds = 900, Chance = 15, Icon = "⚡", Color = { 70, 170, 255 } },
+	{ Id = "GoldEpic", Kind = "Ghost", Rarity = "Epic", Mutation = "Gold", Chance = 6, Icon = "✨", Color = { 255, 225, 90 } },
+	{ Id = "Coins120", Kind = "Coins", Minutes = 120, Min = 5000, Chance = 7, Icon = "🤑", Color = { 60, 200, 200 } },
+	{ Id = "Mythic", Kind = "Ghost", Rarity = "Mythic", Chance = 2, Icon = "💎", Color = { 255, 60, 130 } },
+}
+
+Wheel.SpinDuration = 6 -- secondes d'animation
+Wheel.Radius = 8
+
+function Wheel.totalChance(): number
+	local total = 0
+	for _, segment in Wheel.Segments do
+		total += segment.Chance
+	end
+	return total
+end
+
+-- roll = nombre entre 0 et 1 -> index de la case gagnante
+function Wheel.pick(roll: number): number
+	local target = roll * Wheel.totalChance()
+	local acc = 0
+	for index, segment in Wheel.Segments do
+		acc += segment.Chance
+		if target < acc then
+			return index
+		end
+	end
+	return #Wheel.Segments
+end
+
+-- Angle du centre d'une case (0 = en haut, sens inverse des aiguilles)
+function Wheel.segmentAngle(index: number): number
+	return (index - 1) * (2 * math.pi / #Wheel.Segments)
+end
+
+-- Pièces gagnées sur une case "Coins"
+function Wheel.coins(segment, incomePerSecond: number): number
+	return math.max(segment.Min or 0, math.floor(incomePerSecond * 60 * (segment.Minutes or 0)))
+end
+
+---------------------------------------------------------------- Modèle 3D
+
+local function part(model: Model, class: string, size: Vector3, cf: CFrame, color: Color3, extra: { [string]: any }?)
+	local p = Instance.new(class) :: BasePart
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = Enum.Material.SmoothPlastic
+	if extra then
+		local writable: any = p
+		for key, value in extra do
+			writable[key] = value
+		end
+	end
+	p.Parent = model
+	return p
+end
+
+-- Un triangle rectangle plat (dans le plan XY de la roue), fait avec une WedgePart :
+-- angle droit en m, la pointe en o, le troisième coin en q. thickness = épaisseur.
+local function triangle(model: Model, o: Vector3, m: Vector3, q: Vector3, z: number, thickness: number, color: Color3)
+	local height = (o - m).Magnitude
+	local width = (q - m).Magnitude
+	local yAxis = (o - m).Unit
+	local zAxis = (m - q).Unit
+	local xAxis = yAxis:Cross(zAxis)
+	local center = m + yAxis * (height / 2) - zAxis * (width / 2) + Vector3.new(0, 0, z)
+	local cf = CFrame.fromMatrix(center, xAxis, yAxis, zAxis)
+	return part(model, "WedgePart", Vector3.new(thickness, height, width), cf, color)
+end
+
+--[[
+	Construit la roue (sans le support). Le centre est en (0, 0, 0), la face avant
+	regarde vers -Z, la case 1 est en haut. On la fait tourner autour de l'axe Z.
+	labelMaker(segment, part) peut ajouter un texte sur chaque case.
+]]
+function Wheel.build(labelMaker: ((any, BasePart) -> ())?): Model
+	local model = Instance.new("Model")
+	model.Name = "FortuneWheel"
+	local root = part(model, "Part", Vector3.one, CFrame.identity, Color3.new(1, 1, 1), { Transparency = 1, Name = "Root" })
+	model.PrimaryPart = root
+
+	local r = Wheel.Radius
+	local count = #Wheel.Segments
+	local half = math.pi / count
+	-- le cadre en bois de la roue
+	part(model, "Part", Vector3.new(0.8, r * 2 + 1.6, r * 2 + 1.6), CFrame.new(0, 0, 0.5) * CFrame.Angles(0, math.rad(90), 0), Color3.fromRGB(140, 85, 45), {
+		Shape = Enum.PartType.Cylinder,
+		Material = Enum.Material.Wood,
+	})
+	for index, segment in Wheel.Segments do
+		local c = Wheel.segmentAngle(index)
+		local color = Color3.fromRGB(segment.Color[1], segment.Color[2], segment.Color[3])
+		local function at(angle: number, radius: number): Vector3
+			return Vector3.new(-math.sin(angle) * radius, math.cos(angle) * radius, 0)
+		end
+		local mid = at(c, r * math.cos(half))
+		local p0 = at(c - half, r)
+		local p1 = at(c + half, r)
+		triangle(model, Vector3.zero, mid, p0, -0.2, 0.3, color)
+		triangle(model, Vector3.zero, mid, p1, -0.2, 0.3, color)
+		-- un trait blanc entre les cases
+		local edge = at(c - half, r / 2)
+		part(model, "Part", Vector3.new(0.25, r, 0.35), CFrame.new(edge.X, edge.Y, -0.25) * CFrame.Angles(0, 0, c - half), Color3.fromRGB(255, 255, 255))
+		-- support invisible du texte
+		local labelPos = at(c, r * 0.64)
+		local holder = part(model, "Part", Vector3.one * 0.2, CFrame.new(labelPos.X, labelPos.Y, -0.6), Color3.new(1, 1, 1), {
+			Transparency = 1,
+			Name = "Label_" .. index,
+		})
+		holder:SetAttribute("Segment", index)
+		if labelMaker then
+			labelMaker(segment, holder)
+		end
+	end
+	-- ampoules sur le bord
+	for i = 0, count * 2 - 1 do
+		local a = i * half
+		part(model, "Part", Vector3.one * 0.7, CFrame.new(-math.sin(a) * (r + 0.1), math.cos(a) * (r + 0.1), -0.3), Color3.fromRGB(255, 240, 150), {
+			Shape = Enum.PartType.Ball,
+			Material = Enum.Material.Neon,
+			Name = "Bulb",
+		})
+	end
+	-- moyeu
+	part(model, "Part", Vector3.new(0.8, 2.6, 2.6), CFrame.new(0, 0, -0.5) * CFrame.Angles(0, math.rad(90), 0), Color3.fromRGB(255, 200, 40), {
+		Shape = Enum.PartType.Cylinder,
+		Reflectance = 0.2,
+	})
+	part(model, "Part", Vector3.one * 1.2, CFrame.new(0, 0, -0.9), Color3.fromRGB(255, 90, 160), { Shape = Enum.PartType.Ball })
+	return model
+end
+
+return Wheel
+]]></string>
+        </Properties>
+      </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="13">
+  <Item class="ServerScriptService" referent="17">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="14">
+    <Item class="Script" referent="18">
       <Properties>
         <string name="Name">Main</string>
         <token name="RunContext">0</token>
@@ -2210,13 +3184,17 @@ local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 local MapBuilder = require(Services:WaitForChild("MapBuilder"))
 local MissionService = require(Services:WaitForChild("MissionService"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
+local MonsterService = require(Services:WaitForChild("MonsterService"))
 local NightService = require(Services:WaitForChild("NightService"))
 local RebirthService = require(Services:WaitForChild("RebirthService"))
 local StealService = require(Services:WaitForChild("StealService"))
+local WeaponService = require(Services:WaitForChild("WeaponService"))
+local WheelService = require(Services:WaitForChild("WheelService"))
 
 -- 1. La map
 local map = MapBuilder.build()
 BaseService.init(map)
+WheelService.init(map)
 
 -- 2. Les services
 DataService.start()
@@ -2224,7 +3202,10 @@ BaseService.start()
 EconomyService.start()
 GhostService.start()
 StealService.start()
+WeaponService.start()
+MonsterService.start()
 NightService.start()
+WheelService.start()
 RebirthService.start()
 MonetizationService.start()
 CodeService.start()
@@ -2253,7 +3234,9 @@ local function onPlayerAdded(player: Player)
 		return
 	end
 
-	MonetizationService.setup(player) -- Game Passes (x2 pièces, verrou+)
+	MonetizationService.setup(player) -- Game Passes (x2 pièces, verrou+, armes)
+	WeaponService.setup(player) -- la Batte et les armes achetées, à chaque apparition
+	WheelService.setup(player) -- tours de Roue de la Fortune
 	RebirthService.setup(player) -- aura des rebirths
 	EconomyService.setup(player)
 	IndexService.setup(player) -- collection (avant le cadeau, pour ne pas afficher 2 messages)
@@ -2281,6 +3264,7 @@ end
 
 local function onPlayerRemoving(player: Player)
 	StealService.onPlayerRemoving(player)
+	WheelService.onPlayerRemoving(player) -- gain de la roue pas encore donné
 	EconomyService.onPlayerRemoving(player)
 	BaseService.release(player)
 	Guard.clear(player)
@@ -2303,11 +3287,11 @@ end
 ]]></string>
       </Properties>
     </Item>
-    <Item class="Folder" referent="15">
+    <Item class="Folder" referent="19">
       <Properties>
         <string name="Name">Services</string>
       </Properties>
-      <Item class="ModuleScript" referent="16">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">AnnounceService</string>
           <string name="Source"><![CDATA[--[[
@@ -2353,7 +3337,7 @@ return AnnounceService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="17">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">BaseService</string>
           <string name="Source"><![CDATA[--[[
@@ -3001,7 +3985,7 @@ return BaseService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="18">
+      <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">CodeService</string>
           <string name="Source"><![CDATA[--[[
@@ -3105,7 +4089,7 @@ return CodeService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">DataService</string>
           <string name="Source"><![CDATA[--[[
@@ -3174,6 +4158,8 @@ local function template()
 		IndexComplete = false, -- bonus permanent du Fantômédex complet
 		RedeemedCodes = {}, -- codes promo déjà utilisés : ["BOUH2026"] = true
 		Missions = {}, -- missions du jour : { Day, List, BonusDone }
+		Spins = 0, -- tours de Roue de la Fortune achetés et pas encore utilisés
+		BoostUntil = 0, -- fin du bonus "x2 revenus" de la roue (temps Unix)
 	}
 end
 
@@ -3384,7 +4370,7 @@ return DataService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">EconomyService</string>
           <string name="Source"><![CDATA[--[[
@@ -3460,6 +4446,10 @@ function EconomyService.multiplier(player: Player): number
 	if ReplicatedStorage:GetAttribute("WeekendBoost") then
 		m *= Config.WeekendBoost.Mult
 	end
+	-- Roue de la Fortune : revenus x2 pendant un moment
+	if (data.BoostUntil or 0) > os.time() then
+		m *= Config.WheelBoostMult
+	end
 	return m
 end
 
@@ -3507,6 +4497,7 @@ function EconomyService.refresh(player: Player)
 	player:SetAttribute("Multiplier", math.floor(EconomyService.multiplier(player) * 100) / 100)
 	player:SetAttribute("Rebirths", data.Rebirths)
 	player:SetAttribute("FriendBonus", friendBonus[player] or 0)
+	player:SetAttribute("BoostUntil", data.BoostUntil or 0)
 	if data.Stored then
 		updateStoredTotal(player, data)
 	end
@@ -3819,7 +4810,7 @@ return EconomyService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">GhostService</string>
           <string name="Source"><![CDATA[--[[
@@ -4073,7 +5064,7 @@ return GhostService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">Guard</string>
           <string name="Source"><![CDATA[--[[
@@ -4132,7 +5123,7 @@ return Guard
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">Hooks</string>
           <string name="Source"><![CDATA[--[[
@@ -4164,7 +5155,7 @@ return Hooks
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="28">
         <Properties>
           <string name="Name">IndexService</string>
           <string name="Source"><![CDATA[--[[
@@ -4276,7 +5267,7 @@ return IndexService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="25">
+      <Item class="ModuleScript" referent="29">
         <Properties>
           <string name="Name">LeaderboardService</string>
           <string name="Source"><![CDATA[--[[
@@ -4405,13 +5396,14 @@ return LeaderboardService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="26">
+      <Item class="ModuleScript" referent="30">
         <Properties>
           <string name="Name">MapBuilder</string>
           <string name="Source"><![CDATA[--[[
 	MapBuilder : construit toute la map avec du code au démarrage du serveur.
 	  - le sol, le chemin hanté au centre, les 2 portails
-	  - 12 bases (6 de chaque côté du chemin) avec 12 socles chacune
+	  - au milieu : la Roue de la Fortune (côté nord) et la Boutique (côté sud)
+	  - 12 bases (6 de chaque côté du chemin) avec 10 socles par étage
 	  - la déco Halloween (citrouilles, arbres morts, tombes, lanternes)
 	  - l'ambiance (lumière, brume)
 
@@ -4433,7 +5425,7 @@ MapBuilder.BASE_Z = 37
 MapBuilder.WALL_HEIGHT = 12
 MapBuilder.FLOOR2_Y = 14 -- hauteur du sol de l'étage 2
 MapBuilder.FLOOR2_WALL = 10
-MapBuilder.BASE_XS = { -110, -66, -22, 22, 66, 110 }
+MapBuilder.BASE_XS = { -120, -76, -32, 32, 76, 120 } -- un espace au milieu pour la roue et la boutique
 MapBuilder.FLOOR_Y = 0.6
 MapBuilder.PEDESTAL_HEIGHT = 2
 MapBuilder.PER_FLOOR = 10
@@ -4925,6 +5917,171 @@ local function portal(parent: Instance, x: number, color: Color3)
 	e.Parent = swirl
 end
 
+-- Le support de la Roue de la Fortune. La roue elle-même est dessinée par chaque joueur
+-- (pour qu'elle tourne en douceur) autour de la pièce invisible "FortuneWheelAnchor".
+MapBuilder.WHEEL_POSITION = Vector3.new(0, 11.5, 28)
+local function wheelStand(parent: Instance)
+	local folder = Instance.new("Folder")
+	folder.Name = "FortuneWheelStand"
+	folder.Parent = parent
+	local pos = MapBuilder.WHEEL_POSITION
+	local dark = Color3.fromRGB(45, 35, 60)
+	local gold = Color3.fromRGB(255, 200, 40)
+	-- estrade ronde avec une marche
+	part({
+		Name = "WheelStage",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(1.2, 22, 22),
+		CFrame = CFrame.new(pos.X, 0.6, pos.Z) * ROT_UP,
+		Color = Color3.fromRGB(90, 50, 130),
+		Material = Enum.Material.SmoothPlastic,
+		Parent = folder,
+	})
+	part({
+		Name = "WheelStageRim",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(1.3, 22.6, 22.6),
+		CFrame = CFrame.new(pos.X, 0.55, pos.Z) * ROT_UP,
+		Color = gold,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		Transparency = 0.4,
+		Parent = folder,
+	})
+	-- deux pieds en A derrière la roue
+	for _, side in { -1, 1 } do
+		part({
+			Name = "WheelLeg",
+			Size = Vector3.new(1.4, pos.Y + 1, 1.4),
+			CFrame = CFrame.new(pos.X + side * 4, pos.Y / 2 + 0.6, pos.Z + 1.6) * CFrame.Angles(0, 0, math.rad(side * -18)),
+			Color = dark,
+			Material = Enum.Material.Metal,
+			Parent = folder,
+		})
+	end
+	part({
+		Name = "WheelAxle",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(1.4, 1.8, 1.8),
+		CFrame = CFrame.new(pos.X, pos.Y, pos.Z + 1.2) * CFrame.Angles(0, math.rad(90), 0),
+		Color = gold,
+		Material = Enum.Material.Metal,
+		Parent = folder,
+	})
+	-- la flèche rouge en haut qui montre la case gagnante
+	part({
+		ClassName = "WedgePart",
+		Name = "WheelPointer",
+		Size = Vector3.new(0.6, 2.2, 1.6),
+		CFrame = CFrame.new(pos.X, pos.Y + 9.4, pos.Z - 0.9) * CFrame.Angles(math.rad(180), math.rad(90), 0),
+		Color = gold,
+		Material = Enum.Material.SmoothPlastic,
+		CanCollide = false,
+		Parent = folder,
+	})
+	local anchor = part({
+		Name = "FortuneWheelAnchor",
+		Size = Vector3.one,
+		CFrame = CFrame.new(pos),
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
+		CastShadow = false,
+		Parent = folder,
+	})
+	anchor:SetAttribute("SpinId", 0)
+	-- l'endroit où on se met pour jouer (le bouton "Tourner" apparaît ici)
+	part({
+		Name = "WheelSpot",
+		Size = Vector3.new(6, 0.3, 4),
+		CFrame = CFrame.new(pos.X, 1.35, pos.Z - 7),
+		Color = gold,
+		Material = Enum.Material.Neon,
+		Transparency = 0.3,
+		CanCollide = false,
+		Parent = folder,
+	})
+end
+
+-- La Boutique : un stand avec un chaudron (on y achète armes, tours de roue, monstres...)
+MapBuilder.SHOP_POSITION = Vector3.new(0, 0, -28)
+local function shopStand(parent: Instance)
+	local folder = Instance.new("Folder")
+	folder.Name = "ShopStand"
+	folder.Parent = parent
+	local pos = MapBuilder.SHOP_POSITION
+	local wood = Color3.fromRGB(110, 70, 45)
+	-- comptoir
+	part({
+		Name = "ShopCounter",
+		Size = Vector3.new(14, 3.4, 3),
+		CFrame = CFrame.new(pos.X, 1.7, pos.Z + 2),
+		Color = wood,
+		Material = Enum.Material.WoodPlanks,
+		Parent = folder,
+	})
+	-- poteaux et toit rayé violet et orange
+	for _, x in { -6.5, 6.5 } do
+		part({
+			Name = "ShopPost",
+			Size = Vector3.new(0.9, 10, 0.9),
+			CFrame = CFrame.new(pos.X + x, 5, pos.Z + 3.2),
+			Color = wood,
+			Material = Enum.Material.Wood,
+			Parent = folder,
+		})
+	end
+	for i = 0, 6 do
+		part({
+			Name = "ShopAwning",
+			Size = Vector3.new(2, 0.4, 6),
+			CFrame = CFrame.new(pos.X - 6 + i * 2, 10.4, pos.Z + 1.6) * CFrame.Angles(math.rad(-15), 0, 0),
+			Color = if i % 2 == 0 then Color3.fromRGB(150, 70, 230) else Color3.fromRGB(255, 140, 40),
+			Material = Enum.Material.Fabric,
+			Parent = folder,
+		})
+	end
+	-- le chaudron des monstres qui bouillonne
+	part({
+		Name = "Cauldron",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * 4.6,
+		CFrame = CFrame.new(pos.X + 9.5, 2.1, pos.Z + 1),
+		Color = Color3.fromRGB(35, 30, 40),
+		Material = Enum.Material.Metal,
+		Parent = folder,
+	})
+	local brew = part({
+		Name = "CauldronBrew",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.3, 3.8, 3.8),
+		CFrame = CFrame.new(pos.X + 9.5, 3.6, pos.Z + 1) * ROT_UP,
+		Color = Color3.fromRGB(120, 255, 90),
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		Parent = folder,
+	})
+	local bubbles = Instance.new("ParticleEmitter")
+	bubbles.Color = ColorSequence.new(Color3.fromRGB(150, 255, 120))
+	bubbles.Size = NumberSequence.new(0.6, 0)
+	bubbles.Speed = NumberRange.new(2, 4)
+	bubbles.Rate = 6
+	bubbles.Lifetime = NumberRange.new(0.8, 1.2)
+	bubbles.LightEmission = 0.6
+	bubbles.Parent = brew
+	-- le point où apparaît le bouton "Boutique"
+	part({
+		Name = "ShopSpot",
+		Size = Vector3.new(14, 0.3, 4),
+		CFrame = CFrame.new(pos.X, 0.15, pos.Z + 6),
+		Color = Color3.fromRGB(255, 200, 40),
+		Material = Enum.Material.Neon,
+		Transparency = 0.5,
+		CanCollide = false,
+		Parent = folder,
+	})
+end
+
 function MapBuilder.setupLighting()
 	Lighting.ClockTime = 18.3
 	Lighting.Brightness = 2
@@ -5050,6 +6207,9 @@ function MapBuilder.build(): Model
 		Parent = map,
 	})
 
+	wheelStand(map)
+	shopStand(map)
+
 	portal(decor, Config.PathStartX - 5, Color3.fromRGB(150, 80, 255))
 	portal(decor, Config.PathEndX + 5, Color3.fromRGB(80, 255, 170))
 
@@ -5122,7 +6282,7 @@ return MapBuilder
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">MissionService</string>
           <string name="Source"><![CDATA[--[[
@@ -5290,64 +6450,139 @@ return MissionService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="28">
+      <Item class="ModuleScript" referent="32">
         <Properties>
           <string name="Name">MonetizationService</string>
           <string name="Source"><![CDATA[--[[
-	MonetizationService : Game Passes et Developer Product (optionnels).
-	  - Game Pass "x2 Pièces" : double les revenus
-	  - Game Pass "Verrou+" : verrou plus long (Config.LockDurationPass au lieu de Config.LockDuration)
-	  - Developer Product "Pack de pièces" : 10 min de revenus (minimum 5 000)
-	Rien de tout ça n'aide à voler : pas de pay-to-win sur le vol.
+	MonetizationService : tout ce qui s'achète avec des Robux (liste dans Shop.luau).
+	  - Game Passes : x2 Pièces, Verrou+, et les armes (Marteau Pouet, Balai, Aspira-Fantôme)
+	  - Developer Products : pack de pièces, tours de Roue de la Fortune, monstres à lâcher
 
-	Tant que les IDs valent 0 dans Config, tout est désactivé et le jeu marche normalement.
+	Le joueur clique sur "Acheter" : le serveur vérifie, puis ouvre la fenêtre Robux.
+	Dans Studio, un article dont l'ID vaut 0 est donné gratuitement (pour tester).
+	Les tours de roue sont des "objets aléatoires payants" : ils ne sont jamais proposés
+	aux joueurs des pays où c'est interdit (PolicyService).
+	Les armes servent seulement à défendre : rien n'aide à voler.
 ]]
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
+local PolicyService = game:GetService("PolicyService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local Shop = require(Shared:WaitForChild("Shop"))
 
 local AnnounceService = require(script.Parent.AnnounceService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
+local Guard = require(script.Parent.Guard)
+local MonsterService = require(script.Parent.MonsterService)
+local WeaponService = require(script.Parent.WeaponService)
+local WheelService = require(script.Parent.WheelService)
 
 local MonetizationService = {}
 
--- Attribut posé sur le joueur pour chaque Game Pass
-local PASS_ATTRIBUTES = {
-	DoubleCoins = "DoubleCoins",
-	LongLock = "LongLock",
-}
+local IS_STUDIO = RunService:IsStudio()
 
-local function passIdToAttribute(passId: number): string?
-	for key, id in Config.GamePasses do
-		if id ~= 0 and id == passId then
-			return PASS_ATTRIBUTES[key]
-		end
-	end
-	return nil
-end
-
--- Vérifie les Game Passes du joueur à son arrivée
-function MonetizationService.setup(player: Player)
-	for key, passId in Config.GamePasses do
-		if passId ~= 0 then
-			local ok, owns = pcall(function()
-				return MarketplaceService:UserOwnsGamePassAsync(player.UserId, passId)
-			end)
-			if ok and owns then
-				player:SetAttribute(PASS_ATTRIBUTES[key], true)
-			end
-		end
-	end
-end
+-- Pour les tests (le simulateur hors Roblox fait comme Studio si on le lui demande)
+MonetizationService.studioMode = IS_STUDIO
 
 function MonetizationService.coinPackAmount(player: Player): number
 	local perMinute = EconomyService.incomePerSecond(player) * 60
 	return math.max(Config.CoinPackMin, math.floor(perMinute * Config.CoinPackMinutes))
+end
+
+-- Les objets aléatoires payants sont-ils interdits pour ce joueur ?
+local function checkRandomItems(player: Player)
+	if MonetizationService.studioMode then
+		player:SetAttribute("RandomItemsRestricted", false)
+		return
+	end
+	local ok, info = pcall(function()
+		return PolicyService:GetPolicyInfoForPlayerAsync(player)
+	end)
+	-- en cas de doute (erreur), on bloque : c'est la règle la plus sûre
+	local restricted = not ok or type(info) ~= "table" or info.ArePaidRandomItemsRestricted ~= false
+	player:SetAttribute("RandomItemsRestricted", restricted)
+end
+
+---------------------------------------------------------------- Donner les articles
+
+local function grantPass(player: Player, item)
+	player:SetAttribute(item.Attribute, true)
+	if item.Weapon then
+		WeaponService.onPassOwned(player)
+	end
+	EconomyService.refresh(player)
+end
+
+-- Donne un Developer Product. Renvoie true si c'est fait.
+local function grantProduct(player: Player, item): boolean
+	if item.Key == "CoinPack" then
+		EconomyService.add(player, MonetizationService.coinPackAmount(player))
+		return true
+	elseif item.Spins then
+		WheelService.addSpins(player, item.Spins)
+		return true
+	elseif item.Monster then
+		return MonsterService.summon(player, item.Monster)
+	end
+	return false
+end
+
+local function thanks(player: Player)
+	AnnounceService.notify(player, "ShopThanks", nil, "good")
+	AnnounceService.effect("Gift", {}, player)
+end
+
+---------------------------------------------------------------- Achats
+
+local function onShopBuy(player: Player, key: any)
+	if not Guard.rate(player, "ShopBuy", 0.5) then
+		return
+	end
+	local item = Shop.get(key)
+	if not item then
+		return
+	end
+	if item.Random and player:GetAttribute("RandomItemsRestricted") then
+		AnnounceService.notify(player, "ShopRestricted", nil, "bad")
+		return
+	end
+	if item.Kind == "Pass" and player:GetAttribute(item.Attribute) then
+		AnnounceService.notify(player, "ShopOwned", nil, "info")
+		return
+	end
+	local id = Shop.idOf(item, Config)
+	if id == 0 then
+		if MonetizationService.studioMode then
+			-- mode test de Studio : gratuit
+			if item.Kind == "Pass" then
+				grantPass(player, item)
+			else
+				grantProduct(player, item)
+			end
+			AnnounceService.notify(player, "ShopStudioFree", nil, "info")
+			AnnounceService.effect("Gift", {}, player)
+		else
+			AnnounceService.notify(player, "ShopSoon", nil, "info")
+		end
+		return
+	end
+	local ok, err = pcall(function()
+		if item.Kind == "Pass" then
+			MarketplaceService:PromptGamePassPurchase(player, id)
+		else
+			MarketplaceService:PromptProductPurchase(player, id)
+		end
+	end)
+	if not ok then
+		warn("[Monetization] Fenêtre d'achat impossible : " .. tostring(err))
+	end
 end
 
 -- Achat d'un Developer Product : Roblox rappelle cette fonction jusqu'à ce qu'on
@@ -5361,18 +6596,19 @@ local function processReceipt(receipt)
 	if table.find(data.Receipts, receipt.PurchaseId) then
 		return Enum.ProductPurchaseDecision.PurchaseGranted
 	end
-	if receipt.ProductId == Config.Products.CoinPack and Config.Products.CoinPack ~= 0 then
-		EconomyService.add(player, MonetizationService.coinPackAmount(player))
-	else
+	local item = Shop.fromId("Product", receipt.ProductId, Config)
+	if not item then
 		warn("[Monetization] Produit inconnu : " .. tostring(receipt.ProductId))
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+	if not grantProduct(player, item) then
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 	table.insert(data.Receipts, receipt.PurchaseId)
 	while #data.Receipts > 50 do
 		table.remove(data.Receipts, 1)
 	end
-	AnnounceService.notify(player, "ShopThanks", nil, "good")
-	AnnounceService.effect("Gift", {}, player)
+	thanks(player)
 	-- on sauvegarde tout de suite ; si ça échoue, Roblox réessaiera plus tard
 	if DataService.save(player, false) then
 		return Enum.ProductPurchaseDecision.PurchaseGranted
@@ -5380,19 +6616,36 @@ local function processReceipt(receipt)
 	return Enum.ProductPurchaseDecision.NotProcessedYet
 end
 
+-- Vérifie les Game Passes et les règles du pays à l'arrivée du joueur
+function MonetizationService.setup(player: Player)
+	checkRandomItems(player)
+	for _, item in Shop.Items do
+		if item.Kind == "Pass" then
+			local passId = Shop.idOf(item, Config)
+			if passId ~= 0 then
+				local ok, owns = pcall(function()
+					return MarketplaceService:UserOwnsGamePassAsync(player.UserId, passId)
+				end)
+				if ok and owns then
+					player:SetAttribute(item.Attribute, true)
+				end
+			end
+		end
+	end
+end
+
 function MonetizationService.start()
 	MarketplaceService.ProcessReceipt = processReceipt
+	Remotes.get("ShopBuy").OnServerEvent:Connect(onShopBuy)
 
 	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, passId, purchased)
 		if not purchased then
 			return
 		end
-		local attribute = passIdToAttribute(passId)
-		if attribute then
-			player:SetAttribute(attribute, true)
-			EconomyService.refresh(player)
-			AnnounceService.notify(player, "ShopThanks", nil, "good")
-			AnnounceService.effect("Gift", {}, player)
+		local item = Shop.fromId("Pass", passId, Config)
+		if item then
+			grantPass(player, item)
+			thanks(player)
 		end
 	end)
 end
@@ -5401,7 +6654,294 @@ return MonetizationService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="29">
+      <Item class="ModuleScript" referent="33">
+        <Properties>
+          <string name="Name">MonsterService</string>
+          <string name="Source"><![CDATA[--[[
+	MonsterService : les monstres qui poursuivent les joueurs.
+	  - Gloutrouille pendant la Nuit Hantée (lancé par NightService)
+	  - les monstres lâchés avec des Robux : un seul à la fois, les suivants attendent
+	    leur tour ; celui qui l'a lâché n'est jamais poursuivi ; pas de pièces perdues
+
+	Les monstres n'entrent jamais dans les bases. Le serveur calcule leur position
+	(anti-triche) et la publie sur une pièce invisible "<Id>Anchor" dans le Workspace.
+	Chaque joueur dessine le vrai monstre et le fait glisser vers cette position.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Format = require(Shared:WaitForChild("Format"))
+local Monsters = require(Shared:WaitForChild("Monsters"))
+
+local AnnounceService = require(script.Parent.AnnounceService)
+local BaseService = require(script.Parent.BaseService)
+local EconomyService = require(script.Parent.EconomyService)
+local Guard = require(script.Parent.Guard)
+local StealService = require(script.Parent.StealService)
+
+local MonsterService = {}
+
+local TICK = 1 / 15
+local CATCH_IMMUNITY = 6 -- secondes de répit après avoir été attrapé
+
+export type Monster = {
+	Id: string,
+	Anchor: BasePart,
+	Speed: number,
+	CatchRange: number,
+	Hover: number,
+	Penalty: number,
+	Summoner: Player?,
+	EndsAt: number?,
+	PatrolDir: number,
+	OnEnd: (() -> ())?,
+}
+
+local active: { Monster } = {}
+local immuneUntil: { [Player]: number } = {}
+local queue: { { Id: string, Player: Player, Name: string } } = {}
+local paidMonster: Monster? = nil
+
+local function now(): number
+	return workspace:GetServerTimeNow()
+end
+
+local function flat(v: Vector3): Vector3
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+-- Un point est-il interdit aux monstres ? (dans une base, avec une marge)
+local function blocked(position: Vector3): boolean
+	for _, base in BaseService.allBases() do
+		local localPos = base.Origin:PointToObjectSpace(position)
+		if math.abs(localPos.X) < 20 and math.abs(localPos.Z) < 18 then
+			return true
+		end
+	end
+	return false
+end
+
+-- La proie : le joueur le plus proche hors de sa base (les voleurs attirent plus)
+local function pickTarget(monster: Monster, from: Vector3): (Player?, BasePart?)
+	local t = os.clock()
+	local best, bestRoot, bestScore = nil, nil, math.huge
+	for _, player in Players:GetPlayers() do
+		local root = Guard.root(player)
+		if root and player ~= monster.Summoner and (immuneUntil[player] or 0) < t and not BaseService.baseAt(root.Position) then
+			local score = (flat(root.Position) - flat(from)).Magnitude
+			if player:GetAttribute("CarryGhost") then
+				score *= 0.6
+			end
+			if score < bestScore then
+				best, bestRoot, bestScore = player, root, score
+			end
+		end
+	end
+	return best, bestRoot
+end
+
+local function catch(monster: Monster, player: Player, root: BasePart)
+	immuneUntil[player] = os.clock() + CATCH_IMMUNITY
+	AnnounceService.effect("MonsterCatch", { Position = root.Position, PlayerId = player.UserId, Monster = monster.Id })
+	if StealService.isCarrying(player) then
+		StealService.failCarry(player, "Monster")
+	end
+	if monster.Penalty > 0 then
+		local lost = EconomyService.takePercent(player, monster.Penalty)
+		AnnounceService.notify(player, "MonsterCaughtYou", { coins = Format.short(lost) }, "bad")
+	else
+		AnnounceService.notify(player, "MonsterCaughtYouFree", { monster = monster.Id }, "bad")
+	end
+	AnnounceService.announce("AnnCaught", { player = player.DisplayName, monster = monster.Id }, "night")
+	BaseService.teleportHome(player)
+end
+
+-- Un pas de déplacement d'un monstre
+local function step(monster: Monster, dt: number)
+	local part = monster.Anchor
+	local pos = part.Position
+	local target, root = pickTarget(monster, pos)
+	local goal: Vector3
+	if target and root then
+		goal = Vector3.new(root.Position.X, monster.Hover, root.Position.Z)
+		part:SetAttribute("TargetUserId", target.UserId)
+	else
+		-- personne dehors : il patrouille sur le chemin
+		part:SetAttribute("TargetUserId", 0)
+		if pos.X > Config.PathEndX - 20 then
+			monster.PatrolDir = -1
+		elseif pos.X < Config.PathStartX + 20 then
+			monster.PatrolDir = 1
+		end
+		goal = Vector3.new(pos.X + monster.PatrolDir * 30, monster.Hover, Config.PathZ)
+	end
+
+	local offset = flat(goal - pos)
+	local distance = offset.Magnitude
+	if distance > 0.1 then
+		local stepLength = math.min(distance, monster.Speed * dt)
+		local dir = offset.Unit
+		local candidate = pos + dir * stepLength
+		-- il ne rentre jamais dans les bases : il glisse le long des murs
+		if blocked(candidate) then
+			local sideX = if dir.X >= 0 then 1 else -1
+			local sideZ = if dir.Z >= 0 then 1 else -1
+			local alongX = pos + Vector3.new(sideX, 0, 0) * stepLength
+			local alongZ = pos + Vector3.new(0, 0, sideZ) * stepLength
+			if not blocked(alongX) then
+				candidate = alongX
+			elseif not blocked(alongZ) then
+				candidate = alongZ
+			else
+				candidate = pos
+			end
+		end
+		candidate = Vector3.new(math.clamp(candidate.X, -180, 180), monster.Hover, math.clamp(candidate.Z, -80, 80))
+		part.CFrame = CFrame.lookAt(candidate, candidate + dir)
+	end
+
+	if target and root then
+		local gap = (flat(root.Position) - flat(part.Position)).Magnitude
+		if gap <= monster.CatchRange + 3 then
+			catch(monster, target, root)
+		end
+	end
+end
+
+--[[
+	Fait apparaître un monstre. options :
+	  Speed, CatchRange, Scale, Penalty (part des pièces perdues, 0 = rien),
+	  Duration (nil = jusqu'à MonsterService.remove), Summoner (joueur jamais poursuivi)
+]]
+function MonsterService.spawn(id: string, options: { [string]: any }?): Monster
+	local def = Monsters.get(id) or Monsters.ById.Gloutrouille
+	local opts = options or {}
+	local part = Instance.new("Part")
+	part.Name = def.Id .. "Anchor"
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+	part.Transparency = 1
+	part.Size = Vector3.one
+	-- il sort du portail de départ
+	part.CFrame = CFrame.new(Config.PathStartX, def.Hover, Config.PathZ)
+	part:SetAttribute("MonsterKind", def.Id)
+	part:SetAttribute("Scale", opts.Scale or 1)
+	part:SetAttribute("TargetUserId", 0)
+	part:SetAttribute("SummonerName", if opts.Summoner then opts.Summoner.DisplayName else "")
+	part:SetAttribute("SummonerId", if opts.Summoner then opts.Summoner.UserId else 0)
+	local monster: Monster = {
+		Id = def.Id,
+		Anchor = part,
+		Speed = opts.Speed or def.Speed,
+		CatchRange = opts.CatchRange or def.CatchRange,
+		Hover = def.Hover,
+		Penalty = opts.Penalty or 0,
+		Summoner = opts.Summoner,
+		EndsAt = if opts.Duration then now() + opts.Duration else nil,
+		PatrolDir = 1,
+		OnEnd = opts.OnEnd,
+	}
+	if monster.EndsAt then
+		part:SetAttribute("EndsAt", monster.EndsAt)
+	end
+	part.Parent = workspace
+	table.insert(active, monster)
+	return monster
+end
+
+function MonsterService.remove(monster: Monster)
+	local index = table.find(active, monster)
+	if index then
+		table.remove(active, index)
+	end
+	if monster.Anchor.Parent then
+		monster.Anchor:Destroy()
+	end
+	if monster.OnEnd then
+		monster.OnEnd()
+	end
+end
+
+function MonsterService.activeCount(): number
+	return #active
+end
+
+---------------------------------------------------------------- Monstres achetés
+
+local function startNextPaid()
+	if paidMonster or #queue == 0 then
+		return
+	end
+	local entry = table.remove(queue, 1) :: { Id: string, Player: Player, Name: string }
+	local summoner = if entry.Player.Parent then entry.Player else nil
+	local def = Monsters.get(entry.Id) or Monsters.ById.Gloutrouille
+	AnnounceService.announce("AnnMonsterSummon", { player = entry.Name, monster = def.Id }, "night")
+	AnnounceService.effect("MonsterSummon", { Monster = def.Id })
+	paidMonster = MonsterService.spawn(def.Id, {
+		Duration = def.Duration,
+		Summoner = summoner,
+		Penalty = 0,
+		OnEnd = function()
+			paidMonster = nil
+			task.defer(startNextPaid)
+		end,
+	})
+end
+
+-- Un joueur a payé pour lâcher un monstre
+function MonsterService.summon(player: Player, id: string): boolean
+	local def = Monsters.get(id)
+	if not def then
+		return false
+	end
+	table.insert(queue, { Id = def.Id, Player = player, Name = player.DisplayName })
+	if paidMonster then
+		AnnounceService.notify(player, "MonsterQueued", { monster = def.Id, count = #queue }, "info")
+	end
+	startNextPaid()
+	return true
+end
+
+function MonsterService.queueLength(): number
+	return #queue
+end
+
+---------------------------------------------------------------- Boucle
+
+function MonsterService.start()
+	Players.PlayerRemoving:Connect(function(player)
+		immuneUntil[player] = nil
+	end)
+	task.spawn(function()
+		local last = os.clock()
+		while true do
+			task.wait(TICK)
+			local clock = os.clock()
+			local stepDt = math.min(clock - last, 0.2)
+			last = clock
+			local t = now()
+			for _, monster in table.clone(active) do
+				if monster.EndsAt and t >= monster.EndsAt then
+					MonsterService.remove(monster)
+				elseif monster.Anchor.Parent then
+					step(monster, stepDt)
+				end
+			end
+		end
+	end)
+end
+
+return MonsterService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="34">
         <Properties>
           <string name="Name">NightService</string>
           <string name="Source"><![CDATA[--[[
@@ -5414,9 +6954,7 @@ return MonetizationService
 	    pièces à ramasser sur le chemin), et le samedi soir la Super Nuit (monstre géant,
 	    Mythique garanti, plus de variantes Dorées et Arc-en-ciel)
 
-	Le serveur calcule la position du monstre (anti-triche) et la publie sur une pièce
-	invisible "GloutrouilleAnchor". Chaque joueur dessine le vrai monstre et le fait glisser
-	en douceur vers cette position.
+	Le monstre lui-même (poursuite, capture) est géré par MonsterService.
 ]]
 
 local Players = game:GetService("Players")
@@ -5433,20 +6971,13 @@ local EconomyService = require(script.Parent.EconomyService)
 local GhostService = require(script.Parent.GhostService)
 local Guard = require(script.Parent.Guard)
 local Hooks = require(script.Parent.Hooks)
-local StealService = require(script.Parent.StealService)
+local MonsterService = require(script.Parent.MonsterService)
 
 local NightService = {}
 
-local HOVER = 5 -- hauteur du monstre au-dessus du sol
 local TICK = 1 / 15
-local CATCH_IMMUNITY = 6 -- secondes de répit après avoir été attrapé
 
-local anchor: BasePart? = nil
-local immuneUntil: { [Player]: number } = {}
-local patrolDir = 1
 local theme = "Classic"
-local monsterSpeed = Config.MonsterSpeed
-local catchRange = Config.MonsterCatchRange
 local candyFolder: Folder? = nil
 local rng = Random.new()
 local outsideTime: { [Player]: number } = {}
@@ -5477,52 +7008,6 @@ end
 
 function NightService.isNight(): boolean
 	return ReplicatedStorage:GetAttribute("NightActive") == true
-end
-
-local function flat(v: Vector3): Vector3
-	return Vector3.new(v.X, 0, v.Z)
-end
-
--- Un point est-il interdit au monstre ? (dans une base, avec une marge)
-local function blocked(position: Vector3): boolean
-	for _, base in BaseService.allBases() do
-		local localPos = base.Origin:PointToObjectSpace(position)
-		if math.abs(localPos.X) < 20 and math.abs(localPos.Z) < 18 then
-			return true
-		end
-	end
-	return false
-end
-
--- Choisit la proie : le joueur le plus proche hors de sa base (les voleurs attirent plus)
-local function pickTarget(from: Vector3): (Player?, BasePart?)
-	local t = os.clock()
-	local best, bestRoot, bestScore = nil, nil, math.huge
-	for _, player in Players:GetPlayers() do
-		local root = Guard.root(player)
-		if root and (immuneUntil[player] or 0) < t and not BaseService.baseAt(root.Position) then
-			local score = (flat(root.Position) - flat(from)).Magnitude
-			if player:GetAttribute("CarryGhost") then
-				score *= 0.6
-			end
-			if score < bestScore then
-				best, bestRoot, bestScore = player, root, score
-			end
-		end
-	end
-	return best, bestRoot
-end
-
-local function catch(player: Player, root: BasePart)
-	immuneUntil[player] = os.clock() + CATCH_IMMUNITY
-	AnnounceService.effect("MonsterCatch", { Position = root.Position, PlayerId = player.UserId })
-	if StealService.isCarrying(player) then
-		StealService.failCarry(player, "Monster")
-	end
-	local lost = EconomyService.takePercent(player, Config.MonsterCoinPenalty)
-	AnnounceService.notify(player, "MonsterCaughtYou", { coins = Format.short(lost) }, "bad")
-	AnnounceService.announce("AnnCaught", { player = player.DisplayName }, "night")
-	BaseService.teleportHome(player)
 end
 
 -- Est-ce l'heure de la Super Nuit ? (samedi 17h-18h UTC par défaut)
@@ -5625,97 +7110,10 @@ local function stopCandy()
 	end
 end
 
----------------------------------------------------------------- Monstre
-
-local function spawnMonster()
-	if anchor then
-		anchor:Destroy()
-	end
-	local part = Instance.new("Part")
-	part.Name = "GloutrouilleAnchor"
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.CastShadow = false
-	part.Transparency = 1
-	part.Size = Vector3.one
-	-- il sort du portail de départ
-	part.CFrame = CFrame.new(Config.PathStartX, HOVER, Config.PathZ)
-	part:SetAttribute("Scale", if theme == "Super" then Config.SuperMonsterScale else 1)
-	part.Parent = workspace
-	anchor = part
-end
-
-local function removeMonster()
-	if anchor then
-		anchor:Destroy()
-		anchor = nil
-	end
-end
-
--- Un pas de déplacement du monstre
-local function stepMonster(dt: number)
-	local part = anchor
-	if not part then
-		return
-	end
-	local pos = part.Position
-	local target, root = pickTarget(pos)
-	local goal: Vector3
-	if target and root then
-		goal = Vector3.new(root.Position.X, HOVER, root.Position.Z)
-		part:SetAttribute("TargetUserId", target.UserId)
-	else
-		-- personne dehors : il patrouille sur le chemin
-		part:SetAttribute("TargetUserId", 0)
-		if pos.X > Config.PathEndX - 20 then
-			patrolDir = -1
-		elseif pos.X < Config.PathStartX + 20 then
-			patrolDir = 1
-		end
-		goal = Vector3.new(pos.X + patrolDir * 30, HOVER, Config.PathZ)
-	end
-
-	local offset = flat(goal - pos)
-	local distance = offset.Magnitude
-	if distance > 0.1 then
-		local stepLength = math.min(distance, monsterSpeed * dt)
-		local dir = offset.Unit
-		local candidate = pos + dir * stepLength
-		-- il ne rentre jamais dans les bases : il glisse le long des murs
-		if blocked(candidate) then
-			-- on longe le mur à pleine vitesse, du côté de la cible
-			local sideX = if dir.X >= 0 then 1 else -1
-			local sideZ = if dir.Z >= 0 then 1 else -1
-			local alongX = pos + Vector3.new(sideX, 0, 0) * stepLength
-			local alongZ = pos + Vector3.new(0, 0, sideZ) * stepLength
-			if not blocked(alongX) then
-				candidate = alongX
-			elseif not blocked(alongZ) then
-				candidate = alongZ
-			else
-				candidate = pos
-			end
-		end
-		candidate = Vector3.new(math.clamp(candidate.X, -180, 180), HOVER, math.clamp(candidate.Z, -80, 80))
-		part.CFrame = CFrame.lookAt(candidate, candidate + dir)
-	end
-
-	if target and root then
-		local gap = (flat(root.Position) - flat(part.Position)).Magnitude
-		if gap <= catchRange + 3 then
-			catch(target, root)
-		end
-	end
-end
-
 local START_KEYS = { Classic = "NightStart", Fog = "NightStartFog", Candy = "NightStartCandy", Super = "NightStartSuper" }
 
 local function runNight()
 	theme = pickTheme()
-	monsterSpeed = if theme == "Fog" then Config.FogMonsterSpeed else Config.MonsterSpeed
-	catchRange = if theme == "Super" then Config.MonsterCatchRange + 3 else Config.MonsterCatchRange
 	ReplicatedStorage:SetAttribute("NightTheme", theme)
 	local endsAt = now() + Config.NightDuration
 	setState(true, endsAt, endsAt + Config.DayDuration)
@@ -5738,20 +7136,22 @@ local function runNight()
 		startCandy()
 	end
 
-	spawnMonster()
+	local monster = MonsterService.spawn("Gloutrouille", {
+		Speed = if theme == "Fog" then Config.FogMonsterSpeed else Config.MonsterSpeed,
+		CatchRange = if theme == "Super" then Config.MonsterCatchRange + 3 else Config.MonsterCatchRange,
+		Scale = if theme == "Super" then Config.SuperMonsterScale else 1,
+		Penalty = Config.MonsterCoinPenalty,
+	})
 	local last = os.clock()
 	while now() < endsAt do
 		task.wait(TICK)
 		local t = os.clock()
-		local dt = math.min(t - last, 0.2)
-		stepMonster(dt)
-		countOutside(dt)
+		countOutside(math.min(t - last, 0.2))
 		last = t
 	end
-	removeMonster()
+	MonsterService.remove(monster)
 	stopCandy()
 	GhostService.mutationBoost = 1
-	immuneUntil = {}
 end
 
 function NightService.start()
@@ -5775,7 +7175,6 @@ function NightService.start()
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)
-		immuneUntil[player] = nil
 		outsideTime[player] = nil
 	end)
 end
@@ -5784,7 +7183,7 @@ return NightService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="30">
+      <Item class="ModuleScript" referent="35">
         <Properties>
           <string name="Name">RebirthService</string>
           <string name="Source"><![CDATA[--[[
@@ -5906,7 +7305,7 @@ return RebirthService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="31">
+      <Item class="ModuleScript" referent="36">
         <Properties>
           <string name="Name">StealService</string>
           <string name="Source"><![CDATA[--[[
@@ -5917,7 +7316,7 @@ return RebirthService
 	  2. Le serveur vérifie tout (base pas verrouillée, distance, place libre...)
 	  3. Le voleur porte le fantôme : ralenti, surligné en rouge pour tout le monde
 	  4. Réussite : il entre dans SA base -> le fantôme change de propriétaire + annonce
-	     Échec : le propriétaire le touche, Marteau Pouet, 45 s écoulées, mort,
+	     Échec : le propriétaire le touche, un coup d'arme, 45 s écoulées, mort,
 	             monstre de la Nuit Hantée -> le fantôme rentre chez lui
 	  Pendant le vol, le fantôme reste sauvegardé chez son propriétaire (aucune perte
 	  possible si un serveur plante).
@@ -5954,7 +7353,6 @@ type Carry = {
 
 local carries: { [Player]: Carry } = {}
 local holdStarts: { [Player]: { BaseIndex: number, Slot: number, Time: number } } = {}
-local bonkReadyAt: { [Player]: number } = {}
 local stunnedUntil: { [Player]: number } = {}
 
 local function setSpeed(player: Player, speed: number)
@@ -6158,50 +7556,33 @@ local function onSteal(player: Player, baseIndex: any, slot: any)
 	AnnounceService.effect("StealAlert", {}, owner)
 end
 
-local function onBonk(player: Player)
-	if not Guard.rate(player, "Bonk", 0.2) then
-		return
-	end
-	local t = os.clock()
-	if (bonkReadyAt[player] or 0) > t then
-		return
-	end
-	local root = Guard.root(player)
-	if not root then
-		return
-	end
-	-- le voleur le plus proche à portée
-	local target: Player? = nil
-	local best = Config.BonkRange
-	for thief in carries do
-		if thief ~= player then
-			local thiefRoot = Guard.root(thief)
-			if thiefRoot then
-				local dist = (thiefRoot.Position - root.Position).Magnitude
-				if dist <= best then
-					best = dist
-					target = thief
-				end
-			end
-		end
-	end
-	if not target then
-		return
-	end
-	local thief = target :: Player
-	bonkReadyAt[player] = t + Config.BonkCooldown
-	local thiefRoot = Guard.root(thief)
-	AnnounceService.effect("Bonk", { Position = if thiefRoot then thiefRoot.Position else root.Position })
-	StealService.failCarry(thief, "Bonk", player)
-	Hooks.fire("Bonk", player, 1)
-	-- petit étourdissement du voleur
-	stunnedUntil[thief] = os.clock() + Config.BonkStunTime
-	setSpeed(thief, 4)
-	task.delay(Config.BonkStunTime, function()
-		if thief.Parent then
-			setSpeed(thief, normalSpeedFor(thief))
+-- Étourdit un joueur (il marche très lentement pendant "seconds" secondes)
+function StealService.stun(player: Player, seconds: number)
+	stunnedUntil[player] = os.clock() + seconds
+	setSpeed(player, 4)
+	task.delay(seconds, function()
+		if player.Parent and (stunnedUntil[player] or 0) <= os.clock() then
+			setSpeed(player, normalSpeedFor(player))
 		end
 	end)
+end
+
+function StealService.isStunned(player: Player): boolean
+	return (stunnedUntil[player] or 0) > os.clock()
+end
+
+-- Annule un vol en préparation (le joueur maintenait "Voler" sur un socle)
+function StealService.cancelHold(player: Player)
+	holdStarts[player] = nil
+end
+
+-- Les voleurs en cours (pour les armes)
+function StealService.thieves(): { Player }
+	local list = {}
+	for thief in carries do
+		table.insert(list, thief)
+	end
+	return list
 end
 
 -- Vérifie tous les vols en cours (10 fois par seconde)
@@ -6255,7 +7636,6 @@ end
 -- Appelé quand un joueur quitte le jeu (AVANT la sauvegarde de ses données)
 function StealService.onPlayerRemoving(player: Player)
 	holdStarts[player] = nil
-	bonkReadyAt[player] = nil
 	stunnedUntil[player] = nil
 	-- Le voleur part : le fantôme rentre chez lui
 	if carries[player] then
@@ -6280,7 +7660,6 @@ end
 function StealService.start()
 	Remotes.get("StealBegin").OnServerEvent:Connect(onHoldBegin)
 	Remotes.get("Steal").OnServerEvent:Connect(onSteal)
-	Remotes.get("Bonk").OnServerEvent:Connect(onBonk)
 	Players.PlayerRemoving:Connect(function(player)
 		-- sécurité si l'ordre des événements change
 		if carries[player] then
@@ -6299,17 +7678,379 @@ return StealService
 ]]></string>
         </Properties>
       </Item>
+      <Item class="ModuleScript" referent="37">
+        <Properties>
+          <string name="Name">WeaponService</string>
+          <string name="Source"><![CDATA[--[[
+	WeaponService : les armes pour chasser les voleurs.
+	  - chaque joueur reçoit la Batte à chaque apparition, plus les armes qu'il a achetées
+	  - le joueur frappe (clic, touche Q ou bouton à l'écran) : le serveur vérifie tout
+	    (arme possédée, temps de recharge, distance) et applique l'effet
+	  - un voleur touché lâche le fantôme (il rentre chez lui), recule et est étourdi
+	  - un intrus touché dans TA base est renvoyé dehors
+	  - on ne peut pas frapper en portant un fantôme volé (les armes servent à défendre)
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
+
+local AnnounceService = require(script.Parent.AnnounceService)
+local BaseService = require(script.Parent.BaseService)
+local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
+local MapBuilder = require(script.Parent.MapBuilder)
+local StealService = require(script.Parent.StealService)
+
+local WeaponService = {}
+
+local readyAt: { [Player]: number } = {}
+
+-- Le joueur a-t-il cette arme ? (la Batte est offerte)
+function WeaponService.owns(player: Player, weapon): boolean
+	return weapon.Free == true or player:GetAttribute("Weapon_" .. weapon.Id) == true
+end
+
+local function flat(v: Vector3): Vector3
+	return Vector3.new(v.X, 0, v.Z)
+end
+
+-- Met les armes du joueur dans son sac (sans doublon)
+function WeaponService.giveTools(player: Player)
+	local backpack = player:FindFirstChildOfClass("Backpack") or player:WaitForChild("Backpack", 5)
+	if not backpack then
+		return
+	end
+	local character = player.Character
+	for _, weapon in Weapons.List do
+		if WeaponService.owns(player, weapon) then
+			local has = false
+			for _, container in { backpack, character } do
+				if container then
+					for _, child in container:GetChildren() do
+						if child:IsA("Tool") and child:GetAttribute("WeaponId") == weapon.Id then
+							has = true
+						end
+					end
+				end
+			end
+			if not has then
+				Weapons.buildTool(weapon.Id).Parent = backpack
+			end
+		end
+	end
+end
+
+-- Petit mouvement de frappe visible par tout le monde
+local function swingVisual(player: Player, weaponId: string)
+	local character = player.Character
+	if not character then
+		return
+	end
+	for _, child in character:GetChildren() do
+		if child:IsA("Tool") and child:GetAttribute("WeaponId") == weaponId then
+			local base = child:GetAttribute("BaseGrip")
+			if typeof(base) == "CFrame" then
+				child.Grip = base * CFrame.Angles(math.rad(-75), 0, 0)
+				task.delay(0.2, function()
+					if child.Parent then
+						child.Grip = base
+					end
+				end)
+			end
+		end
+	end
+end
+
+-- Pousse un joueur loin de "from" : le serveur l'étourdit, son écran le fait reculer
+local function knock(target: Player, from: Vector3, weapon)
+	local root = Guard.root(target)
+	if not root then
+		return
+	end
+	local away = flat(root.Position - from)
+	local direction = if away.Magnitude > 0.1 then away.Unit else Vector3.new(0, 0, 1)
+	AnnounceService.effect("Knockback", { Direction = direction, Power = weapon.Knock }, target)
+end
+
+-- Renvoie un intrus devant l'entrée de la base
+local function pushOut(base, target: Player)
+	local character = target.Character
+	if character then
+		character:PivotTo(base.Origin * CFrame.new(math.random(-4, 4), 3, -MapBuilder.BASE_DEPTH / 2 - 6))
+	end
+end
+
+local function onSwing(player: Player, weaponId: any)
+	if not Guard.rate(player, "Swing", 0.15) then
+		return
+	end
+	local weapon = Weapons.get(weaponId) or Weapons.ById.Batte
+	if not WeaponService.owns(player, weapon) then
+		return
+	end
+	local t = os.clock()
+	if (readyAt[player] or 0) > t or StealService.isCarrying(player) or StealService.isStunned(player) then
+		return
+	end
+	local root = Guard.root(player)
+	if not root then
+		return
+	end
+	readyAt[player] = t + weapon.Cooldown
+	swingVisual(player, weapon.Id)
+
+	-- les cibles possibles : voleurs à portée, intrus dans ma base
+	local myBase = BaseService.getBase(player)
+	local targets = {}
+	for _, other in Players:GetPlayers() do
+		if other ~= player then
+			local otherRoot = Guard.root(other)
+			if otherRoot then
+				local dist = (otherRoot.Position - root.Position).Magnitude
+				local isThief = StealService.isCarrying(other)
+				local isIntruder = myBase ~= nil and BaseService.isInside(myBase, otherRoot.Position)
+				if dist <= weapon.Range + 1 and (isThief or isIntruder) then
+					table.insert(targets, { Player = other, Dist = dist, Thief = isThief, Root = otherRoot })
+				end
+			end
+		end
+	end
+	if #targets == 0 then
+		AnnounceService.effect("Swing", { Position = root.Position, Weapon = weapon.Id })
+		return
+	end
+	table.sort(targets, function(a, b)
+		return a.Dist < b.Dist
+	end)
+	if not weapon.Sweep then
+		targets = { targets[1] }
+	end
+	for _, target in targets do
+		local other = target.Player
+		AnnounceService.effect("Bonk", { Position = target.Root.Position, Weapon = weapon.Id })
+		if target.Thief then
+			StealService.failCarry(other, "Bonk", player)
+			Hooks.fire("Bonk", player, 1)
+		else
+			StealService.cancelHold(other)
+			if myBase then
+				pushOut(myBase, other)
+			end
+			AnnounceService.notify(other, "PushedOut", { player = player.DisplayName }, "bad")
+		end
+		StealService.stun(other, weapon.Stun)
+		knock(other, root.Position, weapon)
+	end
+end
+
+-- Un Game Pass d'arme vient d'être acheté (ou est déjà possédé à l'arrivée)
+function WeaponService.onPassOwned(player: Player)
+	WeaponService.giveTools(player)
+end
+
+function WeaponService.setup(player: Player)
+	player.CharacterAdded:Connect(function()
+		-- le sac est recréé à chaque apparition
+		task.defer(WeaponService.giveTools, player)
+	end)
+	if player.Character then
+		WeaponService.giveTools(player)
+	end
+end
+
+function WeaponService.start()
+	Remotes.get("Bonk").OnServerEvent:Connect(onSwing)
+	Players.PlayerRemoving:Connect(function(player)
+		readyAt[player] = nil
+	end)
+end
+
+return WeaponService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="38">
+        <Properties>
+          <string name="Name">WheelService</string>
+          <string name="Source"><![CDATA[--[[
+	WheelService : la Roue de la Fortune au milieu de la map.
+	  - les tours s'achètent avec des Robux (voir MonetizationService) et sont sauvegardés
+	  - le joueur demande à tourner : le SERVEUR tire la case gagnante (anti-triche)
+	  - tout le serveur voit la roue tourner ; le gain est donné quand elle s'arrête
+	  - une seule personne à la fois : la roue est partagée
+	Les cases et leurs chances sont dans Wheel.luau.
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Format = require(Shared:WaitForChild("Format"))
+local GhostData = require(Shared:WaitForChild("GhostData"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local Wheel = require(Shared:WaitForChild("Wheel"))
+
+local AnnounceService = require(script.Parent.AnnounceService)
+local DataService = require(script.Parent.DataService)
+local EconomyService = require(script.Parent.EconomyService)
+local GhostService = require(script.Parent.GhostService)
+local Guard = require(script.Parent.Guard)
+
+local WheelService = {}
+
+local anchor: BasePart? = nil
+local busyUntil = 0
+local rng = Random.new()
+local pending: { [Player]: number } = {} -- case gagnée, pas encore donnée (la roue tourne)
+
+local function now(): number
+	return workspace:GetServerTimeNow()
+end
+
+local function syncSpins(player: Player)
+	local data = DataService.get(player)
+	if data then
+		player:SetAttribute("Spins", data.Spins or 0)
+	end
+end
+
+function WheelService.addSpins(player: Player, count: number)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	data.Spins = (data.Spins or 0) + count
+	syncSpins(player)
+	AnnounceService.notify(player, "SpinsAdded", { count = count }, "good")
+end
+
+-- Donne le gain d'une case
+local function grant(player: Player, index: number)
+	local segment = Wheel.Segments[index]
+	local data = DataService.get(player)
+	if not segment or not data then
+		return
+	end
+	if segment.Kind == "Coins" then
+		local coins = Wheel.coins(segment, EconomyService.incomePerSecond(player))
+		EconomyService.add(player, coins)
+		AnnounceService.notify(player, "WheelWinCoins", { coins = Format.short(coins) }, "good")
+	elseif segment.Kind == "Boost" then
+		local t = os.time()
+		data.BoostUntil = math.max(data.BoostUntil or 0, t) + segment.Seconds
+		EconomyService.refresh(player)
+		AnnounceService.notify(player, "WheelWinBoost", { mult = Config.WheelBoostMult, time = Format.time(segment.Seconds) }, "good")
+		-- remet le revenu normal à la fin du boost
+		task.delay(data.BoostUntil - t + 1, function()
+			if player.Parent then
+				EconomyService.refresh(player)
+			end
+		end)
+	elseif segment.Kind == "Ghost" then
+		local ghost = GhostData.pick(segment.Rarity, rng:NextNumber())
+		local key = GhostData.key(ghost.Id, segment.Mutation)
+		if GhostService.giveGhost(player, key) then
+			AnnounceService.notify(player, "WheelWinGhost", { ghost = key }, "good")
+		else
+			-- base pleine : on paie le prix du fantôme en pièces
+			local coins = GhostData.priceOf(key)
+			EconomyService.add(player, coins)
+			AnnounceService.notify(player, "WheelBaseFull", { ghost = key, coins = Format.short(coins) }, "good")
+		end
+		if segment.Rarity == "Legendary" or segment.Rarity == "Mythic" then
+			AnnounceService.announce("AnnWheel", { player = player.DisplayName, ghost = key }, "rebirth")
+		end
+	end
+	AnnounceService.effect("Gift", {}, player)
+end
+
+local function onSpin(player: Player)
+	if not Guard.rate(player, "SpinWheel", 0.5) then
+		return
+	end
+	local data = DataService.get(player)
+	if not data or not anchor then
+		return
+	end
+	if (data.Spins or 0) <= 0 then
+		AnnounceService.notify(player, "WheelNoSpins", nil, "bad")
+		return
+	end
+	if pending[player] then
+		return
+	end
+	local t = os.clock()
+	if t < busyUntil then
+		AnnounceService.notify(player, "WheelBusy", { time = Format.time(busyUntil - t) }, "info")
+		return
+	end
+	data.Spins -= 1
+	syncSpins(player)
+	local index = Wheel.pick(rng:NextNumber())
+	pending[player] = index
+	busyUntil = t + Wheel.SpinDuration + 0.5
+
+	local wheel = anchor :: BasePart
+	wheel:SetAttribute("SpinSegment", index)
+	wheel:SetAttribute("SpinStart", now())
+	wheel:SetAttribute("SpinOffset", rng:NextNumber(-0.3, 0.3))
+	wheel:SetAttribute("SpinnerName", player.DisplayName)
+	wheel:SetAttribute("SpinnerId", player.UserId)
+	wheel:SetAttribute("SpinId", (wheel:GetAttribute("SpinId") or 0) + 1)
+
+	task.delay(Wheel.SpinDuration, function()
+		if pending[player] == index then
+			pending[player] = nil
+			if player.Parent then
+				grant(player, index)
+			end
+		end
+	end)
+end
+
+-- Le joueur part pendant que la roue tourne : on lui donne son gain avant la sauvegarde
+function WheelService.onPlayerRemoving(player: Player)
+	local index = pending[player]
+	pending[player] = nil
+	if index then
+		grant(player, index)
+	end
+end
+
+function WheelService.setup(player: Player)
+	syncSpins(player)
+end
+
+function WheelService.init(map: Instance)
+	anchor = map:FindFirstChild("FortuneWheelAnchor", true) :: BasePart?
+	if not anchor then
+		warn("[WheelService] Roue introuvable dans la map")
+	end
+end
+
+function WheelService.start()
+	Remotes.get("SpinWheel").OnServerEvent:Connect(onSpin)
+end
+
+return WheelService
+]]></string>
+        </Properties>
+      </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="32">
+  <Item class="StarterPlayer" referent="39">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="33">
+    <Item class="StarterPlayerScripts" referent="40">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="34">
+      <Item class="LocalScript" referent="41">
         <Properties>
           <string name="Name">Client</string>
           <string name="Source"><![CDATA[--[[
@@ -6336,8 +8077,11 @@ local ORDER = {
 	"BaseView",
 	"CarryView",
 	"NightView",
+	"MonsterView",
+	"WeaponView",
 	"LeaderboardView",
 	"Panels",
+	"CenterView",
 	"Tutorial",
 }
 
@@ -6354,11 +8098,11 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="35">
+      <Item class="Folder" referent="42">
         <Properties>
           <string name="Name">Controllers</string>
         </Properties>
-        <Item class="ModuleScript" referent="36">
+        <Item class="ModuleScript" referent="43">
           <Properties>
             <string name="Name">Announce</string>
             <string name="Source"><![CDATA[--[[
@@ -6490,7 +8234,7 @@ return Announce
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="37">
+        <Item class="ModuleScript" referent="44">
           <Properties>
             <string name="Name">BaseView</string>
             <string name="Source"><![CDATA[--[[
@@ -6919,7 +8663,7 @@ return BaseView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="38">
+        <Item class="ModuleScript" referent="45">
           <Properties>
             <string name="Name">CarryView</string>
             <string name="Source"><![CDATA[--[[
@@ -7110,7 +8854,212 @@ return CarryView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="39">
+        <Item class="ModuleScript" referent="46">
+          <Properties>
+            <string name="Name">CenterView</string>
+            <string name="Source"><![CDATA[--[[
+	CenterView : le milieu de la map côté joueur.
+	  - la Roue de la Fortune : on la dessine, et on la fait tourner pour tout le monde
+	    quand quelqu'un joue (le serveur a déjà choisi la case, on l'anime seulement)
+	  - les boutons "Roue de la Fortune", "Boutique" et "Chaudron des monstres"
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Wheel = require(Shared:WaitForChild("Wheel"))
+
+local Effects = require(script.Parent.Effects)
+local Lang = require(script.Parent.Lang)
+local Panels = require(script.Parent.Panels)
+local UI = require(script.Parent.UI)
+
+local CenterView = {}
+
+local player = Players.LocalPlayer
+local TWO_PI = 2 * math.pi
+
+local wheelModel: Model? = nil
+local anchor: BasePart? = nil
+local angle = 0 -- angle actuel de la roue
+local spin: { From: number, To: number, Start: number, Mine: boolean, Done: boolean }? = nil
+local statusLabel: TextLabel? = nil
+
+-- Petit texte sur chaque case
+local function labelMaker(segment, holder: BasePart)
+	local gui = UI.new("BillboardGui", {
+		Name = "SegmentLabel",
+		Size = UDim2.new(4.4, 0, 2.2, 0),
+		LightInfluence = 0,
+		MaxDistance = 120,
+		AutoLocalize = Lang.autoLocalize,
+		Adornee = holder,
+		Parent = holder,
+	})
+	UI.label({
+		Size = UDim2.fromScale(1, 1),
+		Text = segment.Icon .. "\n" .. Lang.t("WheelShort_" .. segment.Id),
+		MaxTextSize = 30,
+		Parent = gui,
+	})
+end
+
+local function place()
+	if wheelModel and anchor then
+		wheelModel:PivotTo(anchor.CFrame * CFrame.Angles(0, 0, angle))
+	end
+end
+
+-- Angle final pour que la case "index" s'arrête sous la flèche (en haut)
+local function finalAngle(index: number, offset: number): number
+	return -Wheel.segmentAngle(index) + offset
+end
+
+local function onSpin()
+	local wheelAnchor = anchor
+	if not wheelAnchor then
+		return
+	end
+	local index = wheelAnchor:GetAttribute("SpinSegment")
+	local start = wheelAnchor:GetAttribute("SpinStart") or 0
+	if type(index) ~= "number" then
+		return
+	end
+	local target = finalAngle(index, wheelAnchor:GetAttribute("SpinOffset") or 0)
+	local elapsed = workspace:GetServerTimeNow() - start
+	if elapsed >= Wheel.SpinDuration then
+		-- tour déjà fini (on vient d'arriver) : on se met directement sur la case
+		angle = target
+		place()
+		return
+	end
+	-- 5 tours complets puis on ralentit jusqu'à la case
+	local delta = (target - angle) % TWO_PI
+	spin = {
+		From = angle,
+		To = angle + delta + 5 * TWO_PI,
+		Start = start,
+		Mine = wheelAnchor:GetAttribute("SpinnerId") == player.UserId,
+		Done = false,
+	}
+	if statusLabel then
+		statusLabel.Text = "🎡 " .. Lang.t("WheelSpinning", { player = wheelAnchor:GetAttribute("SpinnerName") or "?" })
+	end
+end
+
+local function addPrompt(part: BasePart?, action: string, object: string, onTrigger: () -> ())
+	if not part then
+		return
+	end
+	local attachment = Instance.new("Attachment")
+	attachment.Position = Vector3.new(0, 3, 0)
+	attachment.Parent = part
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = action
+	prompt.ObjectText = object
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = 12
+	prompt.RequiresLineOfSight = false
+	prompt.AutoLocalize = Lang.autoLocalize
+	prompt.Parent = attachment
+	prompt.Triggered:Connect(function()
+		Effects.sound("Click")
+		onTrigger()
+	end)
+end
+
+local function bigSign(part: BasePart?, text: string, color: Color3, height: number)
+	if not part then
+		return nil
+	end
+	local gui = UI.new("BillboardGui", {
+		Size = UDim2.fromOffset(340, 60),
+		StudsOffsetWorldSpace = Vector3.new(0, height, 0),
+		LightInfluence = 0,
+		MaxDistance = 220,
+		AutoLocalize = Lang.autoLocalize,
+		Adornee = part,
+		Parent = part,
+	})
+	return UI.label({
+		Size = UDim2.fromScale(1, 1),
+		Text = text,
+		TextColor3 = color,
+		MaxTextSize = 40,
+		Parent = gui,
+	})
+end
+
+function CenterView.start()
+	local map = workspace:WaitForChild("Map")
+	anchor = map:FindFirstChild("FortuneWheelAnchor", true) :: BasePart?
+	if anchor then
+		local model = Wheel.build(labelMaker)
+		model.Parent = workspace
+		wheelModel = model
+		statusLabel = bigSign(anchor, "🎡 " .. Lang.t("WheelTitle"), UI.Colors.Gold, Wheel.Radius + 3)
+		anchor:GetAttributeChangedSignal("SpinId"):Connect(onSpin)
+		onSpin()
+		place()
+	end
+
+	local stand = map:FindFirstChild("FortuneWheelStand")
+	addPrompt(stand and stand:FindFirstChild("WheelSpot") :: BasePart?, Lang.t("WheelTitle"), "🎡", function()
+		Panels.openShop("Wheel")
+	end)
+	local shop = map:FindFirstChild("ShopStand")
+	local shopSpot = shop and shop:FindFirstChild("ShopSpot") :: BasePart?
+	addPrompt(shopSpot, Lang.t("Shop"), "🛒", function()
+		Panels.openShop("Weapons")
+	end)
+	bigSign(shop and shop:FindFirstChild("ShopCounter") :: BasePart?, "🛒 " .. string.upper(Lang.t("Shop")), UI.Colors.Orange, 11)
+	local cauldron = shop and shop:FindFirstChild("Cauldron") :: BasePart?
+	addPrompt(cauldron, Lang.t("MonstersTitle"), "👹", function()
+		Panels.openShop("Monsters")
+	end)
+
+	local lastTick = 0
+	RunService.RenderStepped:Connect(function()
+		local current = spin
+		if not current or current.Done then
+			return
+		end
+		local p = math.clamp((workspace:GetServerTimeNow() - current.Start) / Wheel.SpinDuration, 0, 1)
+		local eased = 1 - (1 - p) ^ 3
+		local previous = angle
+		angle = current.From + (current.To - current.From) * eased
+		place()
+		-- petit "tic" à chaque case qui passe
+		local segmentSize = TWO_PI / #Wheel.Segments
+		if math.floor(angle / segmentSize) ~= math.floor(previous / segmentSize) and os.clock() - lastTick > 0.05 then
+			lastTick = os.clock()
+			if current.Mine then
+				Effects.sound("WheelTick")
+			end
+		end
+		if p >= 1 then
+			current.Done = true
+			angle = current.To % TWO_PI
+			if current.Mine then
+				Effects.sound("WheelWin")
+				if anchor then
+					Effects.confetti(anchor.Position, 60)
+				end
+			end
+			if statusLabel then
+				statusLabel.Text = "🎡 " .. Lang.t("WheelTitle")
+			end
+		end
+	end)
+end
+
+return CenterView
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="47">
           <Properties>
             <string name="Name">Effects</string>
             <string name="Source"><![CDATA[--[[
@@ -7126,8 +9075,10 @@ local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Format = require(Shared:WaitForChild("Format"))
+local Monsters = require(Shared:WaitForChild("Monsters"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 local Sounds = require(Shared:WaitForChild("Sounds"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
 
 local Effects = {}
 
@@ -7368,16 +9319,43 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 		if data.Position then
 			Effects.stars(data.Position + Vector3.new(0, 3, 0))
 			if isNear(data.Position, 90) then
-				Effects.sound("Bonk")
+				local weapon = Weapons.get(data.Weapon)
+				Effects.sound(if weapon then weapon.Sound else "Bonk")
 			end
 		end
+	end,
+	Swing = function(data)
+		if data.Position and isNear(data.Position, 50) then
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			-- mon propre coup a déjà fait son bruit
+			if not root or (root.Position - data.Position).Magnitude > 3 then
+				Effects.sound("Swing")
+			end
+		end
+	end,
+	-- J'ai pris un coup : je recule (c'est mon écran qui bouge mon personnage)
+	Knockback = function(data)
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if root and typeof(data.Direction) == "Vector3" then
+			local power = math.clamp(tonumber(data.Power) or 40, 0, 120)
+			root.AssemblyLinearVelocity = data.Direction * power + Vector3.new(0, 28, 0)
+			Effects.shake(0.8, 0.3)
+		end
+	end,
+	MonsterSummon = function()
+		Effects.sound("MonsterSummon")
+		Effects.shake(0.6, 0.5)
 	end,
 	Gift = function()
 		Effects.sound("Gift")
 	end,
 	MonsterCatch = function(data)
 		if data.Position then
-			Effects.poof(data.Position, Color3.fromRGB(255, 140, 30))
+			local monster = Monsters.get(data.Monster)
+			local color = if monster then Color3.fromRGB(monster.Color[1], monster.Color[2], monster.Color[3]) else Color3.fromRGB(255, 140, 30)
+			Effects.poof(data.Position, color)
 		end
 		if data.PlayerId == player.UserId then
 			Effects.sound("MonsterCatch")
@@ -7434,7 +9412,7 @@ return Effects
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="40">
+        <Item class="ModuleScript" referent="48">
           <Properties>
             <string name="Name">HUD</string>
             <string name="Source"><![CDATA[--[[
@@ -7449,10 +9427,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
-local Config = require(Shared:WaitForChild("Config"))
 local Format = require(Shared:WaitForChild("Format"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -7545,10 +9521,7 @@ local friendLabel: TextLabel
 local lockButton: TextButton
 local lockIcon: TextLabel
 local lockText: TextLabel
-local bonkButton: TextButton
-local bonkText: TextLabel
 local carryBanner: TextLabel
-local bonkCooldownUntil = 0
 local shownCoins = 0
 
 -- Petite pastille d'info (ex. minuteur de nuit) dans la ligne sous les pièces
@@ -7699,21 +9672,6 @@ local function buildColumns()
 		Effects.sound("Click")
 		Remotes.get("RequestLock"):FireServer()
 	end)
-
-	local bonkCaption = Lang.t("Bonk") .. (if UI.isMobile() then "" else " (Q)")
-	local createdBonk, _, createdBonkText = UI.bigButton({
-		Name = "Bonk",
-		Icon = "🔨",
-		Text = bonkCaption,
-		Color = UI.Colors.Bad,
-		Size = 112,
-		LayoutOrder = 2,
-		Parent = HUD.rightColumn,
-	})
-	bonkButton = createdBonk
-	bonkText = createdBonkText
-	bonkButton.Visible = false
-	bonkText:SetAttribute("Default", bonkCaption)
 end
 
 ---------------------------------------------------------------- Mise à jour
@@ -7757,49 +9715,6 @@ local function updateLock(now: number)
 	end
 end
 
--- Y a-t-il un voleur (autre que moi) à portée de Marteau Pouet ?
-local function thiefInRange(): boolean
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root then
-		return false
-	end
-	for _, other in Players:GetPlayers() do
-		if other ~= player and other:GetAttribute("CarryGhost") then
-			local otherRoot = other.Character and other.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
-			if otherRoot and (otherRoot.Position - root.Position).Magnitude <= Config.BonkRange + 2 then
-				return true
-			end
-		end
-	end
-	return false
-end
-
-local function tryBonk()
-	if os.clock() < bonkCooldownUntil or not thiefInRange() then
-		return
-	end
-	bonkCooldownUntil = os.clock() + Config.BonkCooldown
-	Remotes.get("Bonk"):FireServer()
-end
-
-local function updateBonk()
-	local inRange = thiefInRange()
-	local wasVisible = bonkButton.Visible
-	bonkButton.Visible = inRange
-	if inRange and not wasVisible then
-		UI.pop(bonkButton)
-	end
-	local cooldown = bonkCooldownUntil - os.clock()
-	if cooldown > 0 then
-		bonkButton.BackgroundColor3 = UI.Colors.Gray
-		bonkText.Text = string.format("%.1f", cooldown)
-	else
-		bonkButton.BackgroundColor3 = UI.Colors.Bad
-		bonkText.Text = bonkText:GetAttribute("Default")
-	end
-end
-
 local function updateCarry(now: number)
 	local ghostId = player:GetAttribute("CarryGhost")
 	if ghostId then
@@ -7828,6 +9743,18 @@ function HUD.start()
 	player:GetAttributeChangedSignal("Stored"):Connect(updateStored)
 	updateStored()
 
+	-- Pastille "Revenus x2" gagnée à la Roue de la Fortune
+	local boostPill = HUD.pill(UI.Colors.Info, 2)
+	boostPill.Name = "BoostPill"
+	local boostText = boostPill:FindFirstChild("Text") :: TextLabel
+	RunService.Heartbeat:Connect(function()
+		local remaining = (player:GetAttribute("BoostUntil") or 0) - os.time()
+		boostPill.Visible = remaining > 0
+		if remaining > 0 then
+			boostText.Text = "⚡ " .. Lang.t("BoostPill", { time = Format.time(remaining) })
+		end
+	end)
+
 	-- Pastille "Week-end x2"
 	local weekendPill = HUD.pill(UI.Colors.Gold, 3)
 	local weekendText = weekendPill:FindFirstChild("Text") :: TextLabel
@@ -7843,12 +9770,6 @@ function HUD.start()
 	player:GetAttributeChangedSignal("FriendBonus"):Connect(updateCoins)
 	updateCoins()
 
-	bonkButton.Activated:Connect(tryBonk)
-	UserInputService.InputBegan:Connect(function(input, processed)
-		if not processed and input.KeyCode == Enum.KeyCode.Q then
-			tryBonk()
-		end
-	end)
 
 	Remotes.get("Notify").OnClientEvent:Connect(function(key: string, params, kind: string)
 		HUD.toast(Lang.t(key, params), kind)
@@ -7863,7 +9784,6 @@ function HUD.start()
 		accumulator = 0
 		local now = workspace:GetServerTimeNow()
 		updateLock(now)
-		updateBonk()
 		updateCarry(now)
 	end)
 end
@@ -7872,7 +9792,7 @@ return HUD
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="41">
+        <Item class="ModuleScript" referent="49">
           <Properties>
             <string name="Name">Labels</string>
             <string name="Source"><![CDATA[--[[
@@ -7972,7 +9892,7 @@ return Labels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="42">
+        <Item class="ModuleScript" referent="50">
           <Properties>
             <string name="Name">Lang</string>
             <string name="Source"><![CDATA[--[[
@@ -7986,7 +9906,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local GhostData = require(Shared:WaitForChild("GhostData"))
+local Monsters = require(Shared:WaitForChild("Monsters"))
 local Strings = require(Shared:WaitForChild("Strings"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
 
 local Lang = {}
 
@@ -8032,6 +9954,24 @@ function Lang.ghostGag(ghostId: string): string
 	return ghost.Gag[Lang.code] or ghost.Gag.en
 end
 
+-- Choisit le texte dans la bonne langue : { fr = "...", en = "..." }
+function Lang.pick(texts: { [string]: string }?): string
+	if not texts then
+		return ""
+	end
+	return texts[Lang.code] or texts.en or ""
+end
+
+function Lang.monsterName(id: string): string
+	local monster = Monsters.get(id)
+	return if monster then Lang.pick(monster.Name) else tostring(id)
+end
+
+function Lang.weaponName(id: string): string
+	local weapon = Weapons.get(id)
+	return if weapon then Lang.pick(weapon.Name) else tostring(id)
+end
+
 function Lang.rarityName(rarity: string): string
 	return Strings.format(Lang.code, "Rarity_" .. rarity)
 end
@@ -8046,6 +9986,10 @@ function Lang.t(key: string, params: { [string]: any }?): string
 				resolved[name] = Lang.ghostName(value)
 			elseif name == "rarity" then
 				resolved[name] = Lang.rarityName(value)
+			elseif name == "monster" then
+				resolved[name] = Lang.monsterName(value)
+			elseif name == "weapon" then
+				resolved[name] = Lang.weaponName(value)
 			else
 				resolved[name] = value
 			end
@@ -8058,7 +10002,7 @@ return Lang
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="43">
+        <Item class="ModuleScript" referent="51">
           <Properties>
             <string name="Name">LeaderboardView</string>
             <string name="Source"><![CDATA[--[[
@@ -8178,20 +10122,192 @@ return LeaderboardView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="44">
+        <Item class="ModuleScript" referent="52">
+          <Properties>
+            <string name="Name">MonsterView</string>
+            <string name="Source"><![CDATA[--[[
+	MonsterView : les monstres côté joueur (Gloutrouille la nuit, et ceux lâchés avec
+	des Robux). Le serveur publie leur position sur une pièce invisible "<Id>Anchor" ;
+	ici on dessine le vrai monstre, on le fait glisser en douceur et on l'anime.
+	Quand un monstre te poursuit : bords de l'écran rouges + battements de cœur.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Monsters = require(Shared:WaitForChild("Monsters"))
+
+local Effects = require(script.Parent.Effects)
+local Lang = require(script.Parent.Lang)
+local UI = require(script.Parent.UI)
+
+local MonsterView = {}
+
+local player = Players.LocalPlayer
+
+type Shown = { Anchor: BasePart, Model: Model, Def: any, Wings: { BasePart }, Base: { [BasePart]: CFrame } }
+local shown: { [BasePart]: Shown } = {}
+local vignette: Frame
+
+local function colorOf(def): Color3
+	return Color3.fromRGB(def.Color[1], def.Color[2], def.Color[3])
+end
+
+local function addLabel(model: Model, anchor: BasePart, def)
+	local root = model.PrimaryPart :: BasePart
+	local summoner = anchor:GetAttribute("SummonerName") or ""
+	local text = def.Icon .. " " .. string.upper(Lang.pick(def.Name))
+	if summoner ~= "" then
+		text ..= "\n" .. Lang.t("MonsterBy", { player = summoner })
+	end
+	local tag = UI.new("BillboardGui", {
+		Name = "MonsterTag",
+		Size = UDim2.fromOffset(260, if summoner ~= "" then 70 else 46),
+		StudsOffsetWorldSpace = Vector3.new(0, 8, 0),
+		AlwaysOnTop = true,
+		LightInfluence = 0,
+		MaxDistance = 400,
+		AutoLocalize = false,
+		Adornee = root,
+		Parent = root,
+	})
+	UI.label({
+		Size = UDim2.fromScale(1, 1),
+		Text = text,
+		TextColor3 = colorOf(def),
+		MaxTextSize = 32,
+		Parent = tag,
+	})
+end
+
+local function onAnchorAdded(anchor: Instance)
+	if not anchor:IsA("BasePart") then
+		return
+	end
+	local kind = anchor:GetAttribute("MonsterKind")
+	local def = Monsters.get(kind)
+	if not def or shown[anchor] then
+		return
+	end
+	local model = Monsters.build(def.Id)
+	local scale = anchor:GetAttribute("Scale") or 1
+	if scale ~= 1 then
+		model:ScaleTo(scale) -- Super Nuit : Gloutrouille géant
+	end
+	addLabel(model, anchor, def)
+	-- les parties qui bougent (ailes, pattes, bras), avec leur position de départ
+	local moving, base = {}, {}
+	local root = model.PrimaryPart :: BasePart
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") and (d.Name == "Wing" or d.Name == "Leg" or d.Name == "Arm") then
+			table.insert(moving, d)
+			base[d] = root.CFrame:ToObjectSpace(d.CFrame)
+		end
+	end
+	model:PivotTo(anchor.CFrame)
+	model.Parent = workspace
+	shown[anchor] = { Anchor = anchor, Model = model, Def = def, Wings = moving, Base = base }
+	Effects.poof(anchor.Position, colorOf(def))
+end
+
+local function onAnchorRemoved(anchor: Instance)
+	local entry = shown[anchor :: BasePart]
+	if entry then
+		Effects.poof(entry.Model:GetPivot().Position, Color3.fromRGB(170, 80, 255))
+		entry.Model:Destroy()
+		shown[anchor :: BasePart] = nil
+	end
+end
+
+function MonsterView.start()
+	-- Bords rouges quand un monstre te poursuit
+	local vignetteGui = UI.new("ScreenGui", {
+		Name = "SAG_Vignette",
+		IgnoreGuiInset = true,
+		ResetOnSpawn = false,
+		DisplayOrder = -1,
+		Parent = player:WaitForChild("PlayerGui"),
+	})
+	vignette = UI.new("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.fromRGB(255, 0, 40),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Parent = vignetteGui,
+	}, {
+		UI.new("UIGradient", {
+			Transparency = NumberSequence.new({
+				NumberSequenceKeypoint.new(0, 0),
+				NumberSequenceKeypoint.new(0.2, 0.9),
+				NumberSequenceKeypoint.new(0.8, 0.9),
+				NumberSequenceKeypoint.new(1, 0),
+			}),
+		}),
+	})
+
+	workspace.ChildAdded:Connect(onAnchorAdded)
+	workspace.ChildRemoved:Connect(onAnchorRemoved)
+	for _, child in workspace:GetChildren() do
+		onAnchorAdded(child)
+	end
+
+	local nextHeartbeat = 0
+	RunService.RenderStepped:Connect(function(dt)
+		local t = os.clock()
+		local chased = false
+		local character = player.Character
+		local myRoot = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+		for anchor, entry in shown do
+			if not anchor.Parent then
+				onAnchorRemoved(anchor)
+				continue
+			end
+			-- il glisse vers la position du serveur et rebondit
+			local alpha = 1 - math.exp(-dt * 10)
+			local goal = anchor.CFrame * CFrame.new(0, math.abs(math.sin(t * 5)) * 1.2, 0)
+			entry.Model:PivotTo(entry.Model:GetPivot():Lerp(goal, alpha))
+			-- ailes qui battent, pattes et bras qui s'agitent
+			local root = entry.Model.PrimaryPart :: BasePart
+			for _, moving in entry.Wings do
+				local side = moving:GetAttribute("Side") or (if root.CFrame:PointToObjectSpace(moving.Position).X > 0 then 1 else -1)
+				local speed = if moving.Name == "Wing" then 18 else 9
+				local angle = math.sin(t * speed + side) * (if moving.Name == "Wing" then 0.5 else 0.2)
+				moving.CFrame = root.CFrame * CFrame.Angles(0, 0, angle * side) * entry.Base[moving]
+			end
+			if myRoot and anchor:GetAttribute("TargetUserId") == player.UserId then
+				chased = chased or (myRoot.Position - anchor.Position).Magnitude < 50
+			end
+		end
+		if chased then
+			vignette.BackgroundTransparency = 0.35 + math.abs(math.sin(t * 4)) * 0.4
+			if t >= nextHeartbeat then
+				nextHeartbeat = t + 0.6
+				Effects.sound("Heartbeat")
+			end
+		else
+			vignette.BackgroundTransparency = 1
+		end
+	end)
+end
+
+return MonsterView
+]]></string>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="53">
           <Properties>
             <string name="Name">NightView</string>
             <string name="Source"><![CDATA[--[[
 	NightView : l'ambiance de la Nuit Hantée côté joueur.
 	  - le ciel devient violet et sombre (transition douce)
 	  - le minuteur "Nuit dans 5:12" / "Nuit : 1:23" sous les pièces
-	  - Gloutrouille, le monstre : on le dessine et on le fait glisser vers la position
-	    calculée par le serveur
-	  - quand il te poursuit : bords de l'écran rouges + battements de cœur
+	  - les pièces de la Nuit des Bonbons qui tournent
+	(Gloutrouille est dessiné par MonsterView.)
 ]]
 
 local Lighting = game:GetService("Lighting")
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -8205,8 +10321,6 @@ local Lang = require(script.Parent.Lang)
 local UI = require(script.Parent.UI)
 
 local NightView = {}
-
-local player = Players.LocalPlayer
 
 local NIGHT_LIGHTING = {
 	ClockTime = 22.5,
@@ -8236,9 +10350,6 @@ local THEME_ICONS = { Classic = "🌙", Fog = "🌫️", Candy = "🍬", Super =
 
 local dayLighting, dayAtmosphere, dayCC = {}, {}, {}
 local music: Sound? = nil
-local monster: Model? = nil
-local monsterAnchor: BasePart? = nil
-local vignette: Frame
 local timerLabel: TextLabel
 
 local function snapshot(target: Instance?, keys: { [string]: any }, into: { [string]: any })
@@ -8279,158 +10390,12 @@ local function applyNight(active: boolean, duration: number)
 	end
 end
 
----------------------------------------------------------------- Le monstre
-
-local function part(model: Model, shape: Enum.PartType?, size: Vector3, cf: CFrame, color: Color3, extra: { [string]: any }?)
-	local p = Instance.new("Part")
-	if shape then
-		p.Shape = shape
-	end
-	p.Anchored = true
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.CastShadow = false
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Size = size
-	p.CFrame = cf
-	p.Color = color
-	p.Material = Enum.Material.SmoothPlastic
-	if extra then
-		local writable: any = p
-		for key, value in extra do
-			writable[key] = value
-		end
-	end
-	p.Parent = model
-	return p
-end
-
--- Gloutrouille : une citrouille en gelée avec des dents en bonbons (l'avant est en -Z)
-local function buildMonster(): Model
-	local model = Instance.new("Model")
-	model.Name = "Gloutrouille"
-	local root = part(model, nil, Vector3.one, CFrame.identity, Color3.new(1, 1, 1), { Transparency = 1, Name = "Root" })
-	model.PrimaryPart = root
-
-	local orange = Color3.fromRGB(255, 125, 25)
-	part(model, Enum.PartType.Ball, Vector3.one * 9, CFrame.identity, orange)
-	part(model, Enum.PartType.Ball, Vector3.one * 10.2, CFrame.identity, Color3.fromRGB(170, 80, 255), {
-		Transparency = 0.65,
-		Material = Enum.Material.Glass,
-	})
-	-- côtes de citrouille
-	for _, x in { -2.6, 2.6 } do
-		part(model, Enum.PartType.Ball, Vector3.one * 7.4, CFrame.new(x, 0, 0.6), orange:Lerp(Color3.new(0, 0, 0), 0.12))
-	end
-	-- yeux qui brillent
-	local glow = Color3.fromRGB(190, 255, 80)
-	for _, x in { -1.7, 1.7 } do
-		part(model, nil, Vector3.new(1.6, 1.6, 0.6), CFrame.new(x, 1.3, -4.2) * CFrame.Angles(0, 0, math.rad(45)), glow, {
-			Material = Enum.Material.Neon,
-		})
-	end
-	-- grande bouche + dents en bonbons
-	part(model, nil, Vector3.new(5.4, 1.6, 0.6), CFrame.new(0, -1.3, -4.1), Color3.fromRGB(40, 10, 45))
-	local candy = { Color3.fromRGB(255, 255, 240), Color3.fromRGB(255, 210, 60), Color3.fromRGB(255, 130, 30) }
-	for i = 0, 4 do
-		part(model, nil, Vector3.new(0.7, 0.8, 0.5), CFrame.new(-2 + i, -0.75, -4.35), candy[i % 3 + 1])
-	end
-	-- tige et petits bras
-	part(model, Enum.PartType.Cylinder, Vector3.new(2, 1, 1), CFrame.new(0, 5.2, 0) * CFrame.Angles(0, 0, math.rad(80)), Color3.fromRGB(70, 140, 40))
-	for _, x in { -5, 5 } do
-		part(model, Enum.PartType.Ball, Vector3.one * 2.4, CFrame.new(x, -1.5, -1), orange, { Name = "Arm" })
-	end
-
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(255, 150, 60)
-	light.Range = 22
-	light.Brightness = 2
-	light.Shadows = false
-	light.Parent = root
-
-	local tag = UI.new("BillboardGui", {
-		Size = UDim2.fromOffset(240, 46),
-		StudsOffsetWorldSpace = Vector3.new(0, 8, 0),
-		AlwaysOnTop = true,
-		LightInfluence = 0,
-		MaxDistance = 400,
-		AutoLocalize = false,
-		Adornee = root,
-		Parent = root,
-	})
-	UI.label({
-		Size = UDim2.fromScale(1, 1),
-		Text = "👹 GLOUTROUILLE",
-		TextColor3 = Color3.fromRGB(255, 120, 60),
-		MaxTextSize = 34,
-		Parent = tag,
-	})
-	return model
-end
-
-local function onAnchorAdded(anchor: Instance)
-	if anchor.Name ~= "GloutrouilleAnchor" or not anchor:IsA("BasePart") then
-		return
-	end
-	if monster then
-		monster:Destroy()
-	end
-	monsterAnchor = anchor
-	local model = buildMonster()
-	local scale = anchor:GetAttribute("Scale") or 1
-	if scale ~= 1 then
-		model:ScaleTo(scale) -- Super Nuit : Gloutrouille géant
-	end
-	model:PivotTo(anchor.CFrame)
-	model.Parent = workspace
-	monster = model
-	Effects.poof(anchor.Position, Color3.fromRGB(255, 140, 30))
-end
-
-local function onAnchorRemoved(anchor: Instance)
-	if anchor == monsterAnchor then
-		if monster then
-			Effects.poof(monster:GetPivot().Position, Color3.fromRGB(170, 80, 255))
-			monster:Destroy()
-		end
-		monster = nil
-		monsterAnchor = nil
-	end
-end
-
 ---------------------------------------------------------------- Démarrage
 
 function NightView.start()
 	snapshot(Lighting, NIGHT_LIGHTING, dayLighting)
 	snapshot(Lighting:FindFirstChildOfClass("Atmosphere"), NIGHT_ATMOSPHERE, dayAtmosphere)
 	snapshot(Lighting:FindFirstChild("SAG_ColorCorrection"), NIGHT_CC, dayCC)
-
-	-- Bords rouges quand le monstre te poursuit
-	local vignetteGui = UI.new("ScreenGui", {
-		Name = "SAG_Vignette",
-		IgnoreGuiInset = true,
-		ResetOnSpawn = false,
-		DisplayOrder = -1,
-		Parent = player:WaitForChild("PlayerGui"),
-	})
-	vignette = UI.new("Frame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundColor3 = Color3.fromRGB(255, 0, 40),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Parent = vignetteGui,
-	}, {
-		UI.new("UIGradient", {
-			Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0),
-				NumberSequenceKeypoint.new(0.2, 0.9),
-				NumberSequenceKeypoint.new(0.8, 0.9),
-				NumberSequenceKeypoint.new(1, 0),
-			}),
-		}),
-	})
 
 	local pill = HUD.pill(UI.Colors.Purple, 1)
 	pill.Visible = true
@@ -8451,15 +10416,7 @@ function NightView.start()
 		applyNight(true, 0.1)
 	end
 
-	workspace.ChildAdded:Connect(onAnchorAdded)
-	workspace.ChildRemoved:Connect(onAnchorRemoved)
-	local existing = workspace:FindFirstChild("GloutrouilleAnchor")
-	if existing then
-		onAnchorAdded(existing)
-	end
-
-	local nextHeartbeat = 0
-	RunService.RenderStepped:Connect(function(dt)
+	RunService.RenderStepped:Connect(function()
 		local now = workspace:GetServerTimeNow()
 		local t = os.clock()
 
@@ -8481,28 +10438,6 @@ function NightView.start()
 				end
 			end
 		end
-
-		-- monstre : il glisse vers la position du serveur, rebondit et agite les bras
-		local chased = false
-		if monster and monsterAnchor then
-			local alpha = 1 - math.exp(-dt * 10)
-			local goal = monsterAnchor.CFrame * CFrame.new(0, math.abs(math.sin(t * 5)) * 1.2, 0)
-			monster:PivotTo(monster:GetPivot():Lerp(goal, alpha))
-			if monsterAnchor:GetAttribute("TargetUserId") == player.UserId then
-				local character = player.Character
-				local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
-				chased = root ~= nil and (root.Position - monsterAnchor.Position).Magnitude < 50
-			end
-		end
-		if chased then
-			vignette.BackgroundTransparency = 0.35 + math.abs(math.sin(t * 4)) * 0.4
-			if t >= nextHeartbeat then
-				nextHeartbeat = t + 0.6
-				Effects.sound("Heartbeat")
-			end
-		else
-			vignette.BackgroundTransparency = 1
-		end
 	end)
 end
 
@@ -8510,7 +10445,7 @@ return NightView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="45">
+        <Item class="ModuleScript" referent="54">
           <Properties>
             <string name="Name">Panels</string>
             <string name="Source"><![CDATA[--[[
@@ -8530,8 +10465,13 @@ local Format = require(Shared:WaitForChild("Format"))
 local GhostData = require(Shared:WaitForChild("GhostData"))
 local GhostFactory = require(Shared:WaitForChild("GhostFactory"))
 local Missions = require(Shared:WaitForChild("Missions"))
+local Monsters = require(Shared:WaitForChild("Monsters"))
 local Rarities = require(Shared:WaitForChild("Rarities"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
+local Shop = require(Shared:WaitForChild("Shop"))
+local Strings = require(Shared:WaitForChild("Strings"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
+local Wheel = require(Shared:WaitForChild("Wheel"))
 
 local Effects = require(script.Parent.Effects)
 local HUD = require(script.Parent.HUD)
@@ -8775,106 +10715,322 @@ end
 
 ---------------------------------------------------------------- Boutique
 
+local IS_STUDIO = RunService:IsStudio()
+
+-- La roue est-elle assez près pour tourner ? (on joue devant elle, tout le monde regarde)
+local function nearWheel(): boolean
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local map = workspace:FindFirstChild("Map")
+	local anchor = map and map:FindFirstChild("FortuneWheelAnchor", true) :: BasePart?
+	return root ~= nil and anchor ~= nil and (root.Position - anchor.Position).Magnitude < 45
+end
+
+local shopSelect: ((string) -> ())? = nil
+
+-- L'icône d'un article : une image importée (Config.ShopIcons), sinon l'emoji
+local function iconFor(id: string, emoji: string): string
+	local image = Config.ShopIcons and Config.ShopIcons[id]
+	return if type(image) == "string" and image ~= "" then image else emoji
+end
+
 local function buildShop(): Frame
 	local panel, body = makePanel("Shop", "🛒 " .. Lang.t("ShopTitle"), UI.Colors.Orange)
-	local list = UI.new("Frame", {
-		Size = UDim2.fromScale(1, 1),
+	panel.Size = UDim2.fromOffset(660, 480)
+
+	-- les onglets
+	local tabs = UI.new("Frame", {
+		Name = "Tabs",
+		Size = UDim2.new(1, 0, 0, 54),
 		BackgroundTransparency = 1,
 		Parent = body,
 	}, {
 		UI.new("UIListLayout", {
-			Padding = UDim.new(0, 10),
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 6),
 			SortOrder = Enum.SortOrder.LayoutOrder,
 		}),
 	})
+	local content = UI.new("ScrollingFrame", {
+		Name = "Content",
+		Position = UDim2.fromOffset(0, 62),
+		Size = UDim2.new(1, 0, 1, -62),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 8,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		Parent = body,
+	})
 
-	local items = {
-		{ Key = "DoubleCoins", Icon = "💰", Title = "ShopDouble", Desc = "ShopDoubleDesc", Id = Config.GamePasses.DoubleCoins, Pass = true, Attribute = "DoubleCoins" },
-		{ Key = "LongLock", Icon = "🔒", Title = "ShopLock", Desc = "ShopLockDesc", Id = Config.GamePasses.LongLock, Pass = true, Attribute = "LongLock" },
-		{ Key = "CoinPack", Icon = "🪙", Title = "ShopCoins", Desc = "ShopCoinsDesc", Id = Config.Products.CoinPack, Pass = false },
-	}
-
+	local categories = table.clone(Shop.Categories)
+	table.insert(categories, { Id = "Codes", Icon = "🎟️", Name = { fr = "Codes", en = "Codes" } })
+	local pages: { [string]: Frame } = {}
+	local tabButtons: { [string]: TextButton } = {}
 	local updaters = {}
-	for order, item in items do
-		local card = UI.new("Frame", {
-			Size = UDim2.new(1, 0, 0, 72),
+
+	local function selectTab(id: string)
+		for key, page in pages do
+			page.Visible = key == id
+		end
+		for key, button in tabButtons do
+			button.BackgroundColor3 = if key == id then UI.Colors.Orange else UI.Colors.PanelLight
+		end
+		content.CanvasPosition = Vector2.zero
+	end
+	shopSelect = selectTab
+
+	for order, category in categories do
+		local tab = UI.new("TextButton", {
+			Name = "Tab_" .. category.Id,
+			Size = UDim2.new(1 / #categories, -6, 1, 0),
+			BackgroundColor3 = UI.Colors.PanelLight,
+			Text = "",
+			LayoutOrder = order,
+			Parent = tabs,
+		}, { UI.corner(14), UI.stroke(nil, 3) })
+		UI.label({
+			Size = UDim2.new(1, -6, 1, -6),
+			Position = UDim2.fromOffset(3, 3),
+			Text = category.Icon .. " " .. Lang.pick(category.Name),
+			MaxTextSize = 20,
+			Parent = tab,
+		})
+		tab.Activated:Connect(function()
+			Effects.sound("Click")
+			selectTab(category.Id)
+		end)
+		tabButtons[category.Id] = tab
+		pages[category.Id] = UI.new("Frame", {
+			Name = "Page_" .. category.Id,
+			Size = UDim2.new(1, -12, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1,
+			Visible = false,
+			Parent = content,
+		}, {
+			UI.new("UIListLayout", {
+				Padding = UDim.new(0, 8),
+				SortOrder = Enum.SortOrder.LayoutOrder,
+			}),
+		})
+	end
+
+	-- Une carte : icône, titre, description, et un bouton à droite (optionnel)
+	local function card(page: Frame, order: number, icon: string, title: string, withButton: boolean, height: number?)
+		local frame = UI.new("Frame", {
+			Size = UDim2.new(1, 0, 0, height or 76),
 			BackgroundColor3 = UI.Colors.PanelLight,
 			LayoutOrder = order,
-			Parent = list,
+			Parent = page,
 		}, { UI.corner(16), UI.stroke(nil, 3) })
-		UI.label({ Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(8, 8), Text = item.Icon, MaxTextSize = 44, Parent = card })
-		UI.label({ Size = UDim2.new(1, -250, 0, 30), Position = UDim2.fromOffset(72, 6), Text = Lang.t(item.Title), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 28, Parent = card })
-		local desc = UI.label({ Size = UDim2.new(1, -250, 0, 26), Position = UDim2.fromOffset(72, 38), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = card })
-		local buy = UI.new("TextButton", {
-			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -10, 0.5, 0),
-			Size = UDim2.fromOffset(160, 56),
-			BackgroundColor3 = UI.Colors.Good,
-			Text = "",
-			Parent = card,
-		}, { UI.corner(16), UI.stroke(nil, 3) })
-		local price = UI.label({ Size = UDim2.new(1, -12, 1, -10), Position = UDim2.fromOffset(6, 5), Text = "R$ ...", MaxTextSize = 30, Parent = buy })
+		local right = if withButton then 190 else 20
+		if string.sub(icon, 1, 13) == "rbxassetid://" then
+			UI.new("ImageLabel", {
+				Name = "IconImage",
+				Size = UDim2.fromOffset(58, 58),
+				Position = UDim2.fromOffset(8, 9),
+				BackgroundTransparency = 1,
+				Image = icon,
+				ScaleType = Enum.ScaleType.Fit,
+				Parent = frame,
+			})
+		else
+			UI.label({ Size = UDim2.fromOffset(58, 58), Position = UDim2.fromOffset(8, 9), Text = icon, MaxTextSize = 44, Parent = frame })
+		end
+		UI.label({
+			Name = "Title",
+			Size = UDim2.new(1, -(74 + right), 0, 30),
+			Position = UDim2.fromOffset(72, 6),
+			Text = title,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			MaxTextSize = 26,
+			Parent = frame,
+		})
+		local desc = UI.label({
+			Name = "Desc",
+			Size = UDim2.new(1, -(74 + right), 1, -42),
+			Position = UDim2.fromOffset(72, 38),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextColor3 = UI.Colors.Info,
+			MaxTextSize = 18,
+			Parent = frame,
+		})
+		local button, label = nil, nil
+		if withButton then
+			button = UI.new("TextButton", {
+				Name = "Buy",
+				AnchorPoint = Vector2.new(1, 0.5),
+				Position = UDim2.new(1, -10, 0.5, 0),
+				Size = UDim2.fromOffset(170, 56),
+				BackgroundColor3 = UI.Colors.Good,
+				Text = "",
+				Parent = frame,
+			}, { UI.corner(16), UI.stroke(nil, 3) })
+			label = UI.label({ Size = UDim2.new(1, -12, 1, -10), Position = UDim2.fromOffset(6, 5), MaxTextSize = 26, Parent = button })
+		end
+		return frame, desc, button, label
+	end
 
+	-- Le bouton d'achat d'un article Robux (prix, "Acheté", "Bientôt", test gratuit dans Studio)
+	local function itemCard(page: Frame, order: number, item, icon: string, title: string, describe: () -> string)
+		local _, desc, button, label = card(page, order, icon, title, true)
+		local id = Shop.idOf(item, Config)
 		local robux: number? = nil
-		if item.Id ~= 0 then
+		if id ~= 0 then
 			task.spawn(function()
 				local ok, info = pcall(function()
-					return MarketplaceService:GetProductInfo(item.Id, if item.Pass then Enum.InfoType.GamePass else Enum.InfoType.Product)
+					return MarketplaceService:GetProductInfo(id, if item.Kind == "Pass" then Enum.InfoType.GamePass else Enum.InfoType.Product)
 				end)
 				if ok and info then
 					robux = info.PriceInRobux
 				end
 			end)
 		end
-
-		buy.Activated:Connect(function()
-			if item.Id == 0 or (item.Attribute and player:GetAttribute(item.Attribute)) then
-				return
-			end
-			Effects.sound("Click")
-			if item.Pass then
-				MarketplaceService:PromptGamePassPurchase(player, item.Id)
-			else
-				MarketplaceService:PromptProductPurchase(player, item.Id)
+		local enabled = false
+		button.Activated:Connect(function()
+			if enabled then
+				Effects.sound("Click")
+				Remotes.get("ShopBuy"):FireServer(item.Key)
 			end
 		end)
-
 		table.insert(updaters, function()
-			if item.Key == "CoinPack" then
-				local income = player:GetAttribute("Income") or 0
-				local amount = math.max(Config.CoinPackMin, math.floor(income * 60 * Config.CoinPackMinutes))
-				desc.Text = Lang.t("ShopCoinsDesc", { coins = Format.short(amount) })
+			desc.Text = describe()
+			local color = UI.Colors.Good
+			enabled = false
+			if item.Kind == "Pass" and player:GetAttribute(item.Attribute) then
+				label.Text = "✅ " .. Lang.t("ShopOwned")
+				color = UI.Colors.Gray
+			elseif item.Random and player:GetAttribute("RandomItemsRestricted") ~= false then
+				label.Text = Lang.t("ShopRestrictedShort")
+				color = UI.Colors.Gray
+			elseif id == 0 then
+				if IS_STUDIO then
+					label.Text = "🧪 " .. Lang.t("ShopTestFree")
+					enabled = true
+				else
+					label.Text = Lang.t("ShopSoon")
+					color = UI.Colors.Gray
+				end
 			else
-				desc.Text = Lang.t(item.Desc, { long = Config.LockDurationPass, normal = Config.LockDuration })
+				label.Text = "R$ " .. tostring(robux or item.Robux)
+				enabled = true
 			end
-			if item.Id == 0 then
-				buy.BackgroundColor3 = UI.Colors.Gray
-				price.Text = Lang.t("ShopSoon")
-			elseif item.Attribute and player:GetAttribute(item.Attribute) then
-				buy.BackgroundColor3 = UI.Colors.Gray
-				price.Text = "✅ " .. Lang.t("ShopOwned")
-			else
-				buy.BackgroundColor3 = UI.Colors.Good
-				price.Text = if robux then "R$ " .. robux else "R$"
-			end
+			button.BackgroundColor3 = color
 		end)
 	end
 
-	-- Codes secrets : le joueur tape le code, le serveur vérifie tout
-	local codeCard = UI.new("Frame", {
-		Size = UDim2.new(1, 0, 0, 72),
-		BackgroundColor3 = UI.Colors.PanelLight,
-		LayoutOrder = #items + 1,
-		Parent = list,
-	}, { UI.corner(16), UI.stroke(UI.Colors.Purple, 3) })
-	UI.label({ Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(8, 8), Text = "🎟️", MaxTextSize = 44, Parent = codeCard })
-	UI.label({ Size = UDim2.new(1, -330, 0, 30), Position = UDim2.fromOffset(72, 6), Text = Lang.t("Codes"), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 26, Parent = codeCard })
-	UI.label({ Size = UDim2.new(1, -330, 0, 26), Position = UDim2.fromOffset(72, 38), Text = Lang.t("CodesDesc"), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = codeCard })
+	---- Passes
+	local order = 0
+	for _, item in Shop.Items do
+		order += 1
+		if item.Category == "Passes" then
+			itemCard(pages.Passes, order, item, item.Icon, Lang.pick(item.Name), function()
+				return Strings.fill(Lang.pick(item.Desc), { long = Config.LockDurationPass, normal = Config.LockDuration })
+			end)
+		elseif item.Category == "Coins" then
+			itemCard(pages.Coins, order, item, item.Icon, Lang.pick(item.Name), function()
+				local income = player:GetAttribute("Income") or 0
+				local amount = math.max(Config.CoinPackMin, math.floor(income * 60 * Config.CoinPackMinutes))
+				return Strings.fill(Lang.pick(item.Desc), { coins = Format.short(amount) })
+			end)
+		end
+	end
+
+	---- Armes : la Batte offerte, puis les armes Game Pass
+	for _, weapon in Weapons.List do
+		local stats = Lang.t("WeaponStats", { range = weapon.Range, cooldown = weapon.Cooldown })
+		local function describe(): string
+			return Lang.pick(weapon.Desc) .. "\n" .. stats .. (if weapon.Sweep then " · " .. Lang.t("WeaponSweep") else "")
+		end
+		if weapon.Free then
+			local _, desc = card(pages.Weapons, weapon.Order, iconFor(weapon.Id, weapon.Icon), Lang.pick(weapon.Name) .. "  ✅ " .. Lang.t("ShopFree"), false, 84)
+			desc.Text = describe()
+		else
+			for _, item in Shop.Items do
+				if item.Weapon == weapon.Id then
+					itemCard(pages.Weapons, weapon.Order, item, iconFor(weapon.Id, weapon.Icon), Lang.pick(weapon.Name), describe)
+				end
+			end
+		end
+	end
+
+	---- Monstres
+	for _, item in Shop.Items do
+		local monster = item.Monster and Monsters.get(item.Monster)
+		if monster then
+			itemCard(pages.Monsters, monster.Order + 1, item, iconFor(monster.Id, monster.Icon), Lang.pick(monster.Name), function()
+				return Lang.pick(monster.Desc) .. "\n" .. Lang.t("MonsterStats", { time = Format.time(monster.Duration) })
+			end)
+		end
+	end
+	local _, monsterInfo = card(pages.Monsters, 0, "👹", Lang.t("MonstersTitle"), false, 70)
+	monsterInfo.Text = Lang.t("MonstersInfo")
+
+	---- Roue de la Fortune : tours possédés, chances, achat
+	local spinCard, spinDesc, spinButton, spinLabel = card(pages.Wheel, 1, iconFor("Wheel", "🎡"), Lang.t("WheelTitle"), true)
+	spinButton.Name = "SpinButton"
+	spinCard.Name = "SpinCard"
+	spinButton.Activated:Connect(function()
+		if (player:GetAttribute("Spins") or 0) <= 0 then
+			return
+		end
+		Effects.sound("Click")
+		if not nearWheel() then
+			HUD.toast(Lang.t("WheelGoThere"), "info")
+			return
+		end
+		Remotes.get("SpinWheel"):FireServer()
+		close()
+	end)
+	table.insert(updaters, function()
+		local spins = player:GetAttribute("Spins") or 0
+		spinDesc.Text = Lang.t("WheelSpins", { count = spins })
+		spinLabel.Text = Lang.t("WheelSpin")
+		spinButton.BackgroundColor3 = if spins > 0 then UI.Colors.Gold else UI.Colors.Gray
+	end)
+
+	local oddsHeight = 44 + #Wheel.Segments * 26
+	local oddsCard = card(pages.Wheel, 2, "🎲", Lang.t("WheelOdds"), false, oddsHeight)
+	oddsCard.Name = "OddsCard"
+	local total = Wheel.totalChance()
+	for index, segment in Wheel.Segments do
+		local percent = math.floor(segment.Chance / total * 1000 + 0.5) / 10
+		UI.label({
+			Name = "Odds_" .. segment.Id,
+			Size = UDim2.new(1, -90, 0, 24),
+			Position = UDim2.fromOffset(72, 38 + (index - 1) * 26),
+			Text = segment.Icon .. "  " .. Lang.t("Wheel_" .. segment.Id) .. "  :  " .. Format.percent(percent),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			MaxTextSize = 20,
+			Parent = oddsCard,
+		})
+	end
+	for _, item in Shop.Items do
+		if item.Category == "Wheel" then
+			itemCard(pages.Wheel, 2 + item.Order, item, item.Icon, Lang.pick(item.Name), function()
+				if player:GetAttribute("RandomItemsRestricted") ~= false then
+					return Lang.t("ShopRestricted")
+				end
+				return Lang.pick(item.Desc)
+			end)
+		end
+	end
+
+	---- Codes secrets : le joueur tape le code, le serveur vérifie tout
+	local codeCard = card(pages.Codes, 1, "🎟️", Lang.t("Codes"), false)
+	local codeDesc = codeCard:FindFirstChild("Desc") :: TextLabel
+	codeDesc.Text = Lang.t("CodesDesc")
+	codeDesc.Size = UDim2.new(1, -340, 1, -42)
+	local title = codeCard:FindFirstChild("Title") :: TextLabel
+	title.Size = UDim2.new(1, -340, 0, 30)
 	local codeBox = UI.new("TextBox", {
 		Name = "CodeBox",
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -96, 0.5, 0),
-		Size = UDim2.fromOffset(160, 50),
+		Size = UDim2.fromOffset(170, 50),
 		BackgroundColor3 = UI.Colors.Panel,
 		PlaceholderText = Lang.t("CodePlaceholder"),
 		PlaceholderColor3 = UI.Colors.Gray,
@@ -8904,6 +11060,7 @@ local function buildShop(): Frame
 		end
 	end)
 
+	selectTab("Passes")
 	table.insert(refreshers, function()
 		for _, update in updaters do
 			update()
@@ -9144,6 +11301,20 @@ end
 
 ---------------------------------------------------------------- Démarrage
 
+-- Ouvre la boutique sur un onglet ("Passes", "Weapons", "Wheel", "Monsters", "Coins", "Codes")
+function Panels.openShop(category: string?)
+	local panel = gui and gui:FindFirstChild("Shop") :: Frame?
+	if not panel then
+		return
+	end
+	if openPanel ~= panel then
+		open(panel)
+	end
+	if shopSelect then
+		shopSelect(category or "Passes")
+	end
+end
+
 function Panels.openDaily()
 	local panel = gui and gui:FindFirstChild("Daily") :: Frame?
 	if panel and openPanel ~= panel then
@@ -9249,6 +11420,15 @@ function Panels.start()
 		end
 	end)
 	player:GetAttributeChangedSignal("TutorialDone"):Connect(maybeAutoOpen)
+	for _, attribute in { "Spins", "RandomItemsRestricted" } do
+		player:GetAttributeChangedSignal(attribute):Connect(function()
+			if openPanel then
+				for _, refresh in refreshers do
+					refresh()
+				end
+			end
+		end)
+	end
 
 	-- Rafraîchit la fenêtre ouverte (prix, compte à rebours)
 	local accumulator = 0
@@ -9267,7 +11447,7 @@ return Panels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="46">
+        <Item class="ModuleScript" referent="55">
           <Properties>
             <string name="Name">PathView</string>
             <string name="Source"><![CDATA[--[[
@@ -9436,7 +11616,7 @@ return PathView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="47">
+        <Item class="ModuleScript" referent="56">
           <Properties>
             <string name="Name">Tutorial</string>
             <string name="Source"><![CDATA[--[[
@@ -9677,7 +11857,7 @@ return Tutorial
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="48">
+        <Item class="ModuleScript" referent="57">
           <Properties>
             <string name="Name">UI</string>
             <string name="Source"><![CDATA[--[[
@@ -9866,16 +12046,257 @@ return UI
 ]]></string>
           </Properties>
         </Item>
+        <Item class="ModuleScript" referent="58">
+          <Properties>
+            <string name="Name">WeaponView</string>
+            <string name="Source"><![CDATA[--[[
+	WeaponView : les armes côté joueur.
+	  - clic (ou toucher l'écran) avec une arme en main : on frappe
+	  - un gros bouton rouge apparaît quand un voleur (ou un intrus dans ta base) est
+	    à portée : il prend ta meilleure arme et frappe. Touche Q sur ordinateur.
+	Le serveur vérifie tout (distance, recharge) et décide de l'effet.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Remotes = require(Shared:WaitForChild("Remotes"))
+local Weapons = require(Shared:WaitForChild("Weapons"))
+
+local Effects = require(script.Parent.Effects)
+local HUD = require(script.Parent.HUD)
+local Lang = require(script.Parent.Lang)
+local UI = require(script.Parent.UI)
+
+local WeaponView = {}
+
+local player = Players.LocalPlayer
+local readyAt = 0
+local hitButton: TextButton
+local hitIcon: TextLabel
+local hitText: TextLabel
+local connected: { [Tool]: boolean } = {}
+
+local function myRoot(): BasePart?
+	local character = player.Character
+	return character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+-- Toutes mes armes (dans le sac ou en main)
+local function myTools(): { Tool }
+	local list = {}
+	for _, container in { player:FindFirstChildOfClass("Backpack"), player.Character } do
+		if container then
+			for _, child in container:GetChildren() do
+				if child:IsA("Tool") and Weapons.get(child:GetAttribute("WeaponId")) then
+					table.insert(list, child)
+				end
+			end
+		end
+	end
+	return list
+end
+
+local function equipped(): Tool?
+	local character = player.Character
+	if not character then
+		return nil
+	end
+	for _, child in character:GetChildren() do
+		if child:IsA("Tool") and Weapons.get(child:GetAttribute("WeaponId")) then
+			return child
+		end
+	end
+	return nil
+end
+
+-- La meilleure arme : celle en main, sinon celle qui porte le plus loin
+local function bestTool(): Tool?
+	local current = equipped()
+	if current then
+		return current
+	end
+	local best, bestRange = nil, -1
+	for _, tool in myTools() do
+		local weapon = Weapons.get(tool:GetAttribute("WeaponId"))
+		if weapon and weapon.Range > bestRange then
+			best, bestRange = tool, weapon.Range
+		end
+	end
+	return best
+end
+
+local function myBase(): Model?
+	local map = workspace:FindFirstChild("Map")
+	local folder = map and map:FindFirstChild("Bases")
+	local index = player:GetAttribute("BaseIndex")
+	return folder and index and folder:FindFirstChild("Base_" .. index) :: Model?
+end
+
+local function insideBase(base: Model, position: Vector3): boolean
+	local origin = base:GetAttribute("Origin")
+	if typeof(origin) ~= "CFrame" then
+		return false
+	end
+	local localPos = origin:PointToObjectSpace(position)
+	return math.abs(localPos.X) < 18 and math.abs(localPos.Z) < 20
+end
+
+-- Y a-t-il quelqu'un à frapper à portée ? (voleur, ou intrus dans ma base)
+local function targetInRange(range: number): boolean
+	local root = myRoot()
+	if not root then
+		return false
+	end
+	local base = myBase()
+	for _, other in Players:GetPlayers() do
+		if other ~= player then
+			local otherRoot = other.Character and other.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if otherRoot and (otherRoot.Position - root.Position).Magnitude <= range + 1 then
+				if other:GetAttribute("CarryGhost") or (base and insideBase(base, otherRoot.Position)) then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
+-- Petit coup de l'arme, tout de suite à l'écran (le serveur le montre aux autres)
+local function swingLocally(tool: Tool)
+	local base = tool:GetAttribute("BaseGrip")
+	if typeof(base) == "CFrame" then
+		tool.Grip = base * CFrame.Angles(math.rad(-75), 0, 0)
+		task.delay(0.18, function()
+			if tool.Parent then
+				tool.Grip = base
+			end
+		end)
+	end
+end
+
+function WeaponView.swing(tool: Tool?)
+	local chosen = tool or bestTool()
+	local weapon = Weapons.get(if chosen then chosen:GetAttribute("WeaponId") else "Batte") or Weapons.ById.Batte
+	local t = os.clock()
+	if t < readyAt or player:GetAttribute("CarryGhost") then
+		return
+	end
+	readyAt = t + weapon.Cooldown
+	if chosen then
+		-- on prend l'arme en main si besoin
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid and chosen.Parent ~= character then
+			humanoid:EquipTool(chosen)
+		end
+		swingLocally(chosen)
+	end
+	Effects.sound("Swing")
+	Remotes.get("Bonk"):FireServer(weapon.Id)
+end
+
+local function hookTool(tool: Instance)
+	if not tool:IsA("Tool") or connected[tool] or not Weapons.get(tool:GetAttribute("WeaponId")) then
+		return
+	end
+	connected[tool] = true
+	tool.Activated:Connect(function()
+		WeaponView.swing(tool)
+	end)
+	tool.AncestryChanged:Connect(function()
+		if not tool.Parent then
+			connected[tool] = nil
+		end
+	end)
+end
+
+local function watch(container: Instance?)
+	if not container then
+		return
+	end
+	for _, child in container:GetChildren() do
+		hookTool(child)
+	end
+	container.ChildAdded:Connect(hookTool)
+end
+
+function WeaponView.start()
+	local caption = Lang.t("Bonk") .. (if UI.isMobile() then "" else " (Q)")
+	hitButton, hitIcon, hitText = UI.bigButton({
+		Name = "Bonk",
+		Icon = "🏏",
+		Text = caption,
+		Color = UI.Colors.Bad,
+		Size = 112,
+		LayoutOrder = 2,
+		Parent = HUD.rightColumn,
+	})
+	hitButton.Visible = false
+	hitButton.Activated:Connect(function()
+		WeaponView.swing(nil)
+	end)
+	UserInputService.InputBegan:Connect(function(input, processed)
+		if not processed and input.KeyCode == Enum.KeyCode.Q then
+			WeaponView.swing(nil)
+		end
+	end)
+
+	watch(player:FindFirstChildOfClass("Backpack") or player:WaitForChild("Backpack", 5))
+	player.CharacterAdded:Connect(function(character)
+		watch(character)
+		task.defer(function()
+			watch(player:FindFirstChildOfClass("Backpack"))
+		end)
+	end)
+	if player.Character then
+		watch(player.Character)
+	end
+
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(dt)
+		accumulator += dt
+		if accumulator < 0.1 then
+			return
+		end
+		accumulator = 0
+		local tool = bestTool()
+		local weapon = Weapons.get(if tool then tool:GetAttribute("WeaponId") else "Batte") or Weapons.ById.Batte
+		local inRange = not player:GetAttribute("CarryGhost") and targetInRange(weapon.Range)
+		local wasVisible = hitButton.Visible
+		hitButton.Visible = inRange
+		if inRange and not wasVisible then
+			UI.pop(hitButton)
+		end
+		hitIcon.Text = weapon.Icon
+		local cooldown = readyAt - os.clock()
+		if cooldown > 0 then
+			hitButton.BackgroundColor3 = UI.Colors.Gray
+			hitText.Text = string.format("%.1f", cooldown)
+		else
+			hitButton.BackgroundColor3 = UI.Colors.Bad
+			hitText.Text = caption
+		end
+	end)
+end
+
+return WeaponView
+]]></string>
+          </Properties>
+        </Item>
       </Item>
     </Item>
   </Item>
-  <Item class="TextChatService" referent="49">
+  <Item class="TextChatService" referent="59">
     <Properties>
       <string name="Name">TextChatService</string>
       <token name="ChatVersion">1</token>
     </Properties>
   </Item>
-  <Item class="Workspace" referent="50">
+  <Item class="Workspace" referent="60">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>

@@ -64,6 +64,8 @@ local function template()
 		IndexComplete = false, -- bonus permanent du Fantômédex complet
 		RedeemedCodes = {}, -- codes promo déjà utilisés : ["BOUH2026"] = true
 		Missions = {}, -- missions du jour : { Day, List, BonusDone }
+		Spins = 0, -- tours de Roue de la Fortune achetés et pas encore utilisés
+		BoostUntil = 0, -- fin du bonus "x2 revenus" de la roue (temps Unix)
 	}
 end
 

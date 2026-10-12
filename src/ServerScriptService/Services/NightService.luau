@@ -8,9 +8,7 @@
 	    pièces à ramasser sur le chemin), et le samedi soir la Super Nuit (monstre géant,
 	    Mythique garanti, plus de variantes Dorées et Arc-en-ciel)
 
-	Le serveur calcule la position du monstre (anti-triche) et la publie sur une pièce
-	invisible "GloutrouilleAnchor". Chaque joueur dessine le vrai monstre et le fait glisser
-	en douceur vers cette position.
+	Le monstre lui-même (poursuite, capture) est géré par MonsterService.
 ]]
 
 local Players = game:GetService("Players")
@@ -27,20 +25,13 @@ local EconomyService = require(script.Parent.EconomyService)
 local GhostService = require(script.Parent.GhostService)
 local Guard = require(script.Parent.Guard)
 local Hooks = require(script.Parent.Hooks)
-local StealService = require(script.Parent.StealService)
+local MonsterService = require(script.Parent.MonsterService)
 
 local NightService = {}
 
-local HOVER = 5 -- hauteur du monstre au-dessus du sol
 local TICK = 1 / 15
-local CATCH_IMMUNITY = 6 -- secondes de répit après avoir été attrapé
 
-local anchor: BasePart? = nil
-local immuneUntil: { [Player]: number } = {}
-local patrolDir = 1
 local theme = "Classic"
-local monsterSpeed = Config.MonsterSpeed
-local catchRange = Config.MonsterCatchRange
 local candyFolder: Folder? = nil
 local rng = Random.new()
 local outsideTime: { [Player]: number } = {}
@@ -71,52 +62,6 @@ end
 
 function NightService.isNight(): boolean
 	return ReplicatedStorage:GetAttribute("NightActive") == true
-end
-
-local function flat(v: Vector3): Vector3
-	return Vector3.new(v.X, 0, v.Z)
-end
-
--- Un point est-il interdit au monstre ? (dans une base, avec une marge)
-local function blocked(position: Vector3): boolean
-	for _, base in BaseService.allBases() do
-		local localPos = base.Origin:PointToObjectSpace(position)
-		if math.abs(localPos.X) < 20 and math.abs(localPos.Z) < 18 then
-			return true
-		end
-	end
-	return false
-end
-
--- Choisit la proie : le joueur le plus proche hors de sa base (les voleurs attirent plus)
-local function pickTarget(from: Vector3): (Player?, BasePart?)
-	local t = os.clock()
-	local best, bestRoot, bestScore = nil, nil, math.huge
-	for _, player in Players:GetPlayers() do
-		local root = Guard.root(player)
-		if root and (immuneUntil[player] or 0) < t and not BaseService.baseAt(root.Position) then
-			local score = (flat(root.Position) - flat(from)).Magnitude
-			if player:GetAttribute("CarryGhost") then
-				score *= 0.6
-			end
-			if score < bestScore then
-				best, bestRoot, bestScore = player, root, score
-			end
-		end
-	end
-	return best, bestRoot
-end
-
-local function catch(player: Player, root: BasePart)
-	immuneUntil[player] = os.clock() + CATCH_IMMUNITY
-	AnnounceService.effect("MonsterCatch", { Position = root.Position, PlayerId = player.UserId })
-	if StealService.isCarrying(player) then
-		StealService.failCarry(player, "Monster")
-	end
-	local lost = EconomyService.takePercent(player, Config.MonsterCoinPenalty)
-	AnnounceService.notify(player, "MonsterCaughtYou", { coins = Format.short(lost) }, "bad")
-	AnnounceService.announce("AnnCaught", { player = player.DisplayName }, "night")
-	BaseService.teleportHome(player)
 end
 
 -- Est-ce l'heure de la Super Nuit ? (samedi 17h-18h UTC par défaut)
@@ -219,97 +164,10 @@ local function stopCandy()
 	end
 end
 
----------------------------------------------------------------- Monstre
-
-local function spawnMonster()
-	if anchor then
-		anchor:Destroy()
-	end
-	local part = Instance.new("Part")
-	part.Name = "GloutrouilleAnchor"
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.CastShadow = false
-	part.Transparency = 1
-	part.Size = Vector3.one
-	-- il sort du portail de départ
-	part.CFrame = CFrame.new(Config.PathStartX, HOVER, Config.PathZ)
-	part:SetAttribute("Scale", if theme == "Super" then Config.SuperMonsterScale else 1)
-	part.Parent = workspace
-	anchor = part
-end
-
-local function removeMonster()
-	if anchor then
-		anchor:Destroy()
-		anchor = nil
-	end
-end
-
--- Un pas de déplacement du monstre
-local function stepMonster(dt: number)
-	local part = anchor
-	if not part then
-		return
-	end
-	local pos = part.Position
-	local target, root = pickTarget(pos)
-	local goal: Vector3
-	if target and root then
-		goal = Vector3.new(root.Position.X, HOVER, root.Position.Z)
-		part:SetAttribute("TargetUserId", target.UserId)
-	else
-		-- personne dehors : il patrouille sur le chemin
-		part:SetAttribute("TargetUserId", 0)
-		if pos.X > Config.PathEndX - 20 then
-			patrolDir = -1
-		elseif pos.X < Config.PathStartX + 20 then
-			patrolDir = 1
-		end
-		goal = Vector3.new(pos.X + patrolDir * 30, HOVER, Config.PathZ)
-	end
-
-	local offset = flat(goal - pos)
-	local distance = offset.Magnitude
-	if distance > 0.1 then
-		local stepLength = math.min(distance, monsterSpeed * dt)
-		local dir = offset.Unit
-		local candidate = pos + dir * stepLength
-		-- il ne rentre jamais dans les bases : il glisse le long des murs
-		if blocked(candidate) then
-			-- on longe le mur à pleine vitesse, du côté de la cible
-			local sideX = if dir.X >= 0 then 1 else -1
-			local sideZ = if dir.Z >= 0 then 1 else -1
-			local alongX = pos + Vector3.new(sideX, 0, 0) * stepLength
-			local alongZ = pos + Vector3.new(0, 0, sideZ) * stepLength
-			if not blocked(alongX) then
-				candidate = alongX
-			elseif not blocked(alongZ) then
-				candidate = alongZ
-			else
-				candidate = pos
-			end
-		end
-		candidate = Vector3.new(math.clamp(candidate.X, -180, 180), HOVER, math.clamp(candidate.Z, -80, 80))
-		part.CFrame = CFrame.lookAt(candidate, candidate + dir)
-	end
-
-	if target and root then
-		local gap = (flat(root.Position) - flat(part.Position)).Magnitude
-		if gap <= catchRange + 3 then
-			catch(target, root)
-		end
-	end
-end
-
 local START_KEYS = { Classic = "NightStart", Fog = "NightStartFog", Candy = "NightStartCandy", Super = "NightStartSuper" }
 
 local function runNight()
 	theme = pickTheme()
-	monsterSpeed = if theme == "Fog" then Config.FogMonsterSpeed else Config.MonsterSpeed
-	catchRange = if theme == "Super" then Config.MonsterCatchRange + 3 else Config.MonsterCatchRange
 	ReplicatedStorage:SetAttribute("NightTheme", theme)
 	local endsAt = now() + Config.NightDuration
 	setState(true, endsAt, endsAt + Config.DayDuration)
@@ -332,20 +190,22 @@ local function runNight()
 		startCandy()
 	end
 
-	spawnMonster()
+	local monster = MonsterService.spawn("Gloutrouille", {
+		Speed = if theme == "Fog" then Config.FogMonsterSpeed else Config.MonsterSpeed,
+		CatchRange = if theme == "Super" then Config.MonsterCatchRange + 3 else Config.MonsterCatchRange,
+		Scale = if theme == "Super" then Config.SuperMonsterScale else 1,
+		Penalty = Config.MonsterCoinPenalty,
+	})
 	local last = os.clock()
 	while now() < endsAt do
 		task.wait(TICK)
 		local t = os.clock()
-		local dt = math.min(t - last, 0.2)
-		stepMonster(dt)
-		countOutside(dt)
+		countOutside(math.min(t - last, 0.2))
 		last = t
 	end
-	removeMonster()
+	MonsterService.remove(monster)
 	stopCandy()
 	GhostService.mutationBoost = 1
-	immuneUntil = {}
 end
 
 function NightService.start()
@@ -369,7 +229,6 @@ function NightService.start()
 		end
 	end)
 	Players.PlayerRemoving:Connect(function(player)
-		immuneUntil[player] = nil
 		outsideTime[player] = nil
 	end)
 end

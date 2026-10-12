@@ -14,13 +14,15 @@ Remotes.Names = {
 	"SellGhost", -- (slot) revendre un fantôme de sa base
 	"StealBegin", -- (baseIndex, slot) début du maintien sur "Voler"
 	"Steal", -- (baseIndex, slot) fin du maintien sur "Voler"
-	"Bonk", -- () coup de Marteau Pouet
+	"Bonk", -- (weaponId) coup d'arme (Batte par défaut)
 	"RequestLock", -- () verrouiller sa base
 	"ClaimDaily", -- () récupérer le cadeau du jour
 	"Rebirth", -- () faire un rebirth
 	"TutorialDone", -- () le tutoriel est terminé
 	"RedeemCode", -- (code) utiliser un code promo
 	"BuyFloor", -- () acheter l'étage 2 de sa base
+	"SpinWheel", -- () utiliser un tour de Roue de la Fortune
+	"ShopBuy", -- (key) acheter un article de la boutique (le serveur ouvre la fenêtre Robux)
 	-- Serveur -> Client
 	"Notify", -- (key, params, kind) petit message pour un joueur
 	"Announce", -- (key, params, kind) grande annonce pour tout le serveur

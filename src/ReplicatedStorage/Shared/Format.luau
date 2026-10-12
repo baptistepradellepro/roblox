@@ -50,4 +50,11 @@ function Format.time(seconds: number): string
 	return string.format("%d:%02d:%02d", s // 3600, (s % 3600) // 60, s % 60)
 end
 
+-- 30 -> "30 %", 2.5 -> "2.5 %"
+function Format.percent(n: number): string
+	local rounded = math.floor(n * 10 + 0.5) / 10
+	local text = if rounded == math.floor(rounded) then tostring(math.floor(rounded)) else tostring(rounded)
+	return text .. " %"
+end
+
 return Format

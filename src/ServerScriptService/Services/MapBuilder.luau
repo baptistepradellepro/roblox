@@ -1,7 +1,8 @@
 --[[
 	MapBuilder : construit toute la map avec du code au démarrage du serveur.
 	  - le sol, le chemin hanté au centre, les 2 portails
-	  - 12 bases (6 de chaque côté du chemin) avec 12 socles chacune
+	  - au milieu : la Roue de la Fortune (côté nord) et la Boutique (côté sud)
+	  - 12 bases (6 de chaque côté du chemin) avec 10 socles par étage
 	  - la déco Halloween (citrouilles, arbres morts, tombes, lanternes)
 	  - l'ambiance (lumière, brume)
 
@@ -23,7 +24,7 @@ MapBuilder.BASE_Z = 37
 MapBuilder.WALL_HEIGHT = 12
 MapBuilder.FLOOR2_Y = 14 -- hauteur du sol de l'étage 2
 MapBuilder.FLOOR2_WALL = 10
-MapBuilder.BASE_XS = { -110, -66, -22, 22, 66, 110 }
+MapBuilder.BASE_XS = { -120, -76, -32, 32, 76, 120 } -- un espace au milieu pour la roue et la boutique
 MapBuilder.FLOOR_Y = 0.6
 MapBuilder.PEDESTAL_HEIGHT = 2
 MapBuilder.PER_FLOOR = 10
@@ -515,6 +516,171 @@ local function portal(parent: Instance, x: number, color: Color3)
 	e.Parent = swirl
 end
 
+-- Le support de la Roue de la Fortune. La roue elle-même est dessinée par chaque joueur
+-- (pour qu'elle tourne en douceur) autour de la pièce invisible "FortuneWheelAnchor".
+MapBuilder.WHEEL_POSITION = Vector3.new(0, 11.5, 28)
+local function wheelStand(parent: Instance)
+	local folder = Instance.new("Folder")
+	folder.Name = "FortuneWheelStand"
+	folder.Parent = parent
+	local pos = MapBuilder.WHEEL_POSITION
+	local dark = Color3.fromRGB(45, 35, 60)
+	local gold = Color3.fromRGB(255, 200, 40)
+	-- estrade ronde avec une marche
+	part({
+		Name = "WheelStage",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(1.2, 22, 22),
+		CFrame = CFrame.new(pos.X, 0.6, pos.Z) * ROT_UP,
+		Color = Color3.fromRGB(90, 50, 130),
+		Material = Enum.Material.SmoothPlastic,
+		Parent = folder,
+	})
+	part({
+		Name = "WheelStageRim",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(1.3, 22.6, 22.6),
+		CFrame = CFrame.new(pos.X, 0.55, pos.Z) * ROT_UP,
+		Color = gold,
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		Transparency = 0.4,
+		Parent = folder,
+	})
+	-- deux pieds en A derrière la roue
+	for _, side in { -1, 1 } do
+		part({
+			Name = "WheelLeg",
+			Size = Vector3.new(1.4, pos.Y + 1, 1.4),
+			CFrame = CFrame.new(pos.X + side * 4, pos.Y / 2 + 0.6, pos.Z + 1.6) * CFrame.Angles(0, 0, math.rad(side * -18)),
+			Color = dark,
+			Material = Enum.Material.Metal,
+			Parent = folder,
+		})
+	end
+	part({
+		Name = "WheelAxle",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(1.4, 1.8, 1.8),
+		CFrame = CFrame.new(pos.X, pos.Y, pos.Z + 1.2) * CFrame.Angles(0, math.rad(90), 0),
+		Color = gold,
+		Material = Enum.Material.Metal,
+		Parent = folder,
+	})
+	-- la flèche rouge en haut qui montre la case gagnante
+	part({
+		ClassName = "WedgePart",
+		Name = "WheelPointer",
+		Size = Vector3.new(0.6, 2.2, 1.6),
+		CFrame = CFrame.new(pos.X, pos.Y + 9.4, pos.Z - 0.9) * CFrame.Angles(math.rad(180), math.rad(90), 0),
+		Color = gold,
+		Material = Enum.Material.SmoothPlastic,
+		CanCollide = false,
+		Parent = folder,
+	})
+	local anchor = part({
+		Name = "FortuneWheelAnchor",
+		Size = Vector3.one,
+		CFrame = CFrame.new(pos),
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
+		CastShadow = false,
+		Parent = folder,
+	})
+	anchor:SetAttribute("SpinId", 0)
+	-- l'endroit où on se met pour jouer (le bouton "Tourner" apparaît ici)
+	part({
+		Name = "WheelSpot",
+		Size = Vector3.new(6, 0.3, 4),
+		CFrame = CFrame.new(pos.X, 1.35, pos.Z - 7),
+		Color = gold,
+		Material = Enum.Material.Neon,
+		Transparency = 0.3,
+		CanCollide = false,
+		Parent = folder,
+	})
+end
+
+-- La Boutique : un stand avec un chaudron (on y achète armes, tours de roue, monstres...)
+MapBuilder.SHOP_POSITION = Vector3.new(0, 0, -28)
+local function shopStand(parent: Instance)
+	local folder = Instance.new("Folder")
+	folder.Name = "ShopStand"
+	folder.Parent = parent
+	local pos = MapBuilder.SHOP_POSITION
+	local wood = Color3.fromRGB(110, 70, 45)
+	-- comptoir
+	part({
+		Name = "ShopCounter",
+		Size = Vector3.new(14, 3.4, 3),
+		CFrame = CFrame.new(pos.X, 1.7, pos.Z + 2),
+		Color = wood,
+		Material = Enum.Material.WoodPlanks,
+		Parent = folder,
+	})
+	-- poteaux et toit rayé violet et orange
+	for _, x in { -6.5, 6.5 } do
+		part({
+			Name = "ShopPost",
+			Size = Vector3.new(0.9, 10, 0.9),
+			CFrame = CFrame.new(pos.X + x, 5, pos.Z + 3.2),
+			Color = wood,
+			Material = Enum.Material.Wood,
+			Parent = folder,
+		})
+	end
+	for i = 0, 6 do
+		part({
+			Name = "ShopAwning",
+			Size = Vector3.new(2, 0.4, 6),
+			CFrame = CFrame.new(pos.X - 6 + i * 2, 10.4, pos.Z + 1.6) * CFrame.Angles(math.rad(-15), 0, 0),
+			Color = if i % 2 == 0 then Color3.fromRGB(150, 70, 230) else Color3.fromRGB(255, 140, 40),
+			Material = Enum.Material.Fabric,
+			Parent = folder,
+		})
+	end
+	-- le chaudron des monstres qui bouillonne
+	part({
+		Name = "Cauldron",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.one * 4.6,
+		CFrame = CFrame.new(pos.X + 9.5, 2.1, pos.Z + 1),
+		Color = Color3.fromRGB(35, 30, 40),
+		Material = Enum.Material.Metal,
+		Parent = folder,
+	})
+	local brew = part({
+		Name = "CauldronBrew",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.3, 3.8, 3.8),
+		CFrame = CFrame.new(pos.X + 9.5, 3.6, pos.Z + 1) * ROT_UP,
+		Color = Color3.fromRGB(120, 255, 90),
+		Material = Enum.Material.Neon,
+		CanCollide = false,
+		Parent = folder,
+	})
+	local bubbles = Instance.new("ParticleEmitter")
+	bubbles.Color = ColorSequence.new(Color3.fromRGB(150, 255, 120))
+	bubbles.Size = NumberSequence.new(0.6, 0)
+	bubbles.Speed = NumberRange.new(2, 4)
+	bubbles.Rate = 6
+	bubbles.Lifetime = NumberRange.new(0.8, 1.2)
+	bubbles.LightEmission = 0.6
+	bubbles.Parent = brew
+	-- le point où apparaît le bouton "Boutique"
+	part({
+		Name = "ShopSpot",
+		Size = Vector3.new(14, 0.3, 4),
+		CFrame = CFrame.new(pos.X, 0.15, pos.Z + 6),
+		Color = Color3.fromRGB(255, 200, 40),
+		Material = Enum.Material.Neon,
+		Transparency = 0.5,
+		CanCollide = false,
+		Parent = folder,
+	})
+end
+
 function MapBuilder.setupLighting()
 	Lighting.ClockTime = 18.3
 	Lighting.Brightness = 2
@@ -639,6 +805,9 @@ function MapBuilder.build(): Model
 		CastShadow = false,
 		Parent = map,
 	})
+
+	wheelStand(map)
+	shopStand(map)
 
 	portal(decor, Config.PathStartX - 5, Color3.fromRGB(150, 80, 255))
 	portal(decor, Config.PathEndX + 5, Color3.fromRGB(80, 255, 170))
