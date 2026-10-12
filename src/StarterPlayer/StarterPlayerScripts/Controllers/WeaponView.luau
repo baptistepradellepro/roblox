@@ -130,8 +130,11 @@ function WeaponView.swing(tool: Tool?)
 		if humanoid and chosen.Parent ~= character then
 			humanoid:EquipTool(chosen)
 		end
+		-- l'animation officielle de Roblox ("Slash" ou "Lunge"), jouée par mon personnage
+		-- et montrée par Roblox à tous les autres joueurs
+		AnimView.playToolAnim(chosen, weapon.Anim or "Slash")
 	end
-	-- le geste tout de suite sur mon écran ; le serveur le montre aux autres
+	-- traînée tout de suite sur mon écran ; le serveur prévient les autres
 	AnimView.swing(player.Character, weapon.Id, nil, true, false)
 	Effects.sound("Swing")
 	Remotes.get("Bonk"):FireServer(weapon.Id)

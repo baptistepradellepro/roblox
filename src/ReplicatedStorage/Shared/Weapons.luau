@@ -12,6 +12,10 @@
 
 	Range = portée en studs, Cooldown = temps entre deux coups, Stun = étourdissement,
 	Knock = force du recul, Sweep = touche tous les voleurs à portée (sinon le plus proche)
+	Anim = l'animation officielle de Roblox jouée au coup : "Slash" (coup classique)
+	ou "Lunge" (coup vers l'avant)
+	Hold = comment on tient l'arme : "Up" (dressée, comme l'épée classique de Roblox)
+	ou "Forward" (pointée devant soi, comme un aspirateur)
 ]]
 
 local Weapons = {}
@@ -19,6 +23,8 @@ local Weapons = {}
 Weapons.List = {
 	{
 		Id = "Batte",
+		Hold = "Up",
+		Anim = "Slash",
 		Length = 3.2, -- longueur de l'arme (pour la traînée)
 		Icon = "🏏",
 		Name = { fr = "Batte", en = "Bat" },
@@ -33,6 +39,8 @@ Weapons.List = {
 	},
 	{
 		Id = "MarteauPouet",
+		Hold = "Up",
+		Anim = "Slash",
 		Length = 3.3, -- longueur de l'arme (pour la traînée)
 		Icon = "🔨",
 		Name = { fr = "Marteau Pouet Géant", en = "Giant Squeaky Hammer" },
@@ -47,6 +55,8 @@ Weapons.List = {
 	},
 	{
 		Id = "BalaiSorciere",
+		Hold = "Up",
+		Anim = "Slash",
 		Length = 4.9, -- longueur de l'arme (pour la traînée)
 		Icon = "🧹",
 		Name = { fr = "Balai de Sorcière", en = "Witch Broom" },
@@ -62,6 +72,8 @@ Weapons.List = {
 	},
 	{
 		Id = "AspiraFantome",
+		Hold = "Forward",
+		Anim = "Lunge",
 		Length = 3.5, -- longueur de l'arme (pour la traînée)
 		Icon = "🌀",
 		Name = { fr = "Aspira-Fantôme", en = "Ghost Vacuum" },
@@ -214,9 +226,14 @@ function Weapons.buildTool(id: string): Tool
 	trail.LightEmission = 0.6
 	trail.Enabled = false
 	trail.Parent = handle
-	-- la main tient le manche, l'arme pointe vers l'avant de la main
-	tool.Grip = CFrame.new(0, 0, -1.2)
-	tool:SetAttribute("BaseGrip", tool.Grip)
+	-- La main tient le manche (vers -Z de la poignée). Dans la main d'un personnage
+	-- Roblox, l'axe Z de la prise remonte vers l'épaule : on tourne l'arme pour
+	-- qu'elle soit dressée (Up) ou pointée devant soi (Forward).
+	if weapon.Hold == "Forward" then
+		tool.Grip = CFrame.new(0, 0, -0.9) * CFrame.Angles(0, math.pi, 0)
+	else
+		tool.Grip = CFrame.new(0, 0, -1.2) * CFrame.Angles(math.rad(90), 0, 0)
+	end
 	return tool
 end
 

@@ -261,7 +261,6 @@ local handlers: { [string]: (data: { [string]: any }) -> () } = {
 				Effects.sound(if weapon then weapon.Sound else "Bonk")
 			end
 		end
-		AnimView.hitByUserId(data.TargetId)
 	end,
 	Swing = function(data)
 		local mine = data.PlayerId == player.UserId

@@ -111,16 +111,12 @@ Tant que tu n'as pas créé les articles sur le Creator Hub (IDs à 0 dans `Conf
 
 ## Les animations
 
-Pas besoin de fichier d'animation : le jeu fait bouger les bras et le buste des personnages par le code. Tout le monde voit les gestes des autres.
-
-- **Batte** : on arme à droite, puis grand coup vers la gauche en tournant le buste, avec une traînée de couleur derrière l'arme.
-- **Marteau Pouet Géant** : le marteau monte au-dessus de la tête et s'écrase devant.
-- **Balai de Sorcière** : un tour complet sur soi-même, balai tendu.
-- **Aspira-Fantôme** : l'aspirateur secoue et tire en arrière, et un rayon vert part vers le voleur.
-- **Coup reçu** : le personnage part en arrière, bras en l'air, puis se redresse.
+- **Coups d'arme** : ce sont les animations officielles de Roblox, celles de l'épée classique (coup « Slash » pour la batte, le marteau et le balai, coup vers l'avant « Lunge » pour l'Aspira-Fantôme). Elles sont déjà dans chaque personnage et Roblox les montre à tous les joueurs.
+- La batte, le marteau et le balai se tiennent dressés dans la main, comme l'épée classique. L'Aspira-Fantôme pointe devant soi.
+- Une traînée de couleur suit l'arme pendant le coup, et l'Aspira-Fantôme lance un rayon vert vers le voleur.
 - **Voleur** : il porte le fantôme au-dessus de sa tête, les deux bras levés. Ses armes sont rangées pendant le vol.
 
-À tester à 2 joueurs (Serveur local) pour voir les gestes de l'autre. Ça marche avec les avatars R15 (par défaut) et R6.
+À tester à 2 joueurs (Serveur local) pour voir les gestes de l'autre. Si une animation te paraît encore bizarre, dis-moi laquelle et ce que tu vois (bras qui partent dans tous les sens, arme mal placée, geste trop lent...).
 
 ## Tester la Roue de la Fortune
 

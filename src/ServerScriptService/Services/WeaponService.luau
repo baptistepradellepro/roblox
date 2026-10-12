@@ -61,27 +61,6 @@ function WeaponService.giveTools(player: Player)
 	end
 end
 
--- Petit mouvement de frappe visible par tout le monde
-local function swingVisual(player: Player, weaponId: string)
-	local character = player.Character
-	if not character then
-		return
-	end
-	for _, child in character:GetChildren() do
-		if child:IsA("Tool") and child:GetAttribute("WeaponId") == weaponId then
-			local base = child:GetAttribute("BaseGrip")
-			if typeof(base) == "CFrame" then
-				child.Grip = base * CFrame.Angles(math.rad(-75), 0, 0)
-				task.delay(0.2, function()
-					if child.Parent then
-						child.Grip = base
-					end
-				end)
-			end
-		end
-	end
-end
-
 -- Pousse un joueur loin de "from" : le serveur l'étourdit, son écran le fait reculer
 local function knock(target: Player, from: Vector3, weapon)
 	local root = Guard.root(target)
@@ -118,8 +97,6 @@ local function onSwing(player: Player, weaponId: any)
 		return
 	end
 	readyAt[player] = t + weapon.Cooldown
-	swingVisual(player, weapon.Id)
-
 	-- les cibles possibles : voleurs à portée, intrus dans ma base
 	local myBase = BaseService.getBase(player)
 	local targets = {}

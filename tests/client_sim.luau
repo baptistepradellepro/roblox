@@ -368,58 +368,50 @@ check(bat ~= nil and bat:GetAttribute("WeaponId") == "Batte", "Alice a sa batte 
 check(bat and bat:FindFirstChild("Handle") ~= nil, "la batte a une poignée")
 
 section("Animations avec les objets")
-local AnnounceService = Fake.require("ServerScriptService.Services.AnnounceService")
 local function shoulder(p)
 	return p.Character.RightUpperArm.RightShoulder
-end
-local function hips(p)
-	return p.Character.LowerTorso.Root
 end
 local function sameCf(a, b): boolean
 	return (a.Position - b.Position).Magnitude < 1e-3 and a.LookVector:Dot(b.LookVector) > 0.9999 and a.UpVector:Dot(b.UpVector) > 0.9999
 end
 local restRight = roblox.CFrame.new(1, 0.56, 0)
-local restHips = roblox.CFrame.new(0, -0.6, 0)
 check(sameCf(shoulder(alice).C0, restRight) and sameCf(shoulder(bob).C0, restRight), "bras au repos")
 Sched.advance(2)
 local batTool = alice.Backpack:FindFirstChild("Batte") or alice.Character:FindFirstChild("Batte")
 batTool.Activated:Fire()
-Sched.advance(0.2)
+Sched.advance(0.1)
 check(batTool.Parent == alice.Character, "Alice prend la batte en main")
-check(not sameCf(shoulder(alice).C0, restRight), "Alice fait le geste du coup de batte")
-check(not sameCf(hips(alice).C0, restHips), "elle tourne le buste avec")
+local toolAnim = batTool:FindFirstChild("toolanim")
+check(toolAnim and toolAnim.ClassName == "StringValue" and toolAnim.Value == "Slash", "animation officielle de Roblox demandée (\"Slash\")")
+check(sameCf(shoulder(alice).C0, restRight), "on ne tord plus les articulations à la main")
 check(batTool.Handle.SwingTrail.Enabled, "traînée colorée pendant le coup")
 Sched.advance(1)
-check(sameCf(shoulder(alice).C0, restRight) and sameCf(hips(alice).C0, restHips), "le corps revient au repos")
 check(not batTool.Handle.SwingTrail.Enabled, "la traînée s'éteint")
--- Bob frappe : Alice voit son geste grâce au message du serveur
-Fake.fire(bob, "Bonk")
-Sched.advance(0.2)
-check(not sameCf(shoulder(bob).C0, restRight), "Alice voit le coup de batte de Bob")
-Sched.advance(1)
-check(sameCf(shoulder(bob).C0, restRight), "le bras de Bob revient au repos")
--- marteau : geste par-dessus la tête (autre axe que la batte)
-bob:SetAttribute("Weapon_MarteauPouet", true)
+-- Aspira-Fantôme de Bob : Alice voit le rayon vert
+bob:SetAttribute("Weapon_AspiraFantome", true)
 Sched.advance(2)
-Fake.fire(bob, "Bonk", "MarteauPouet")
-Sched.advance(0.25)
-local hammerPose = shoulder(bob).C0
-check(hammerPose.LookVector.Y > 0.3, "le marteau se lève au-dessus de la tête")
+Fake.fire(bob, "Bonk", "AspiraFantome")
+Sched.advance(0.05)
+check(workspace:FindFirstChild("VacuumBeam") ~= nil, "Alice voit le rayon de l'aspirateur de Bob")
 Sched.advance(1)
--- porter un fantôme : bras levés
+check(workspace:FindFirstChild("VacuumBeam") == nil, "le rayon disparaît")
+-- porter un fantôme : bras levés, puis retour exact au repos
 bob:SetAttribute("CarryGhost", "DrapMou")
 Sched.advance(0.2)
-check(shoulder(bob).C0.LookVector.Y > 0.5 or shoulder(bob).C0.UpVector.Y < 0, "Bob porte le fantôme bras levés")
-check(sameCf(hips(bob).C0, restHips), "seuls les bras bougent")
+check(shoulder(bob).C0.UpVector.Y < 0, "Bob porte le fantôme bras levés")
+Sched.advance(1)
+check(shoulder(bob).C0.UpVector.Y < 0, "et les garde levés")
 bob:SetAttribute("CarryGhost", nil)
 Sched.advance(0.2)
-check(sameCf(shoulder(bob).C0, restRight), "bras baissés quand il ne porte plus rien")
--- coup reçu : on part en arrière
-AnnounceService.effect("Bonk", { Position = Fake.position(bob), Weapon = "Batte", TargetId = bob.UserId })
-Sched.advance(0.15)
-check(not sameCf(hips(bob).C0, restHips), "Bob part en arrière quand il prend un coup")
-Sched.advance(0.6)
-check(sameCf(hips(bob).C0, restHips), "puis se redresse")
+check(sameCf(shoulder(bob).C0, restRight), "bras exactement au repos quand il ne porte plus rien")
+check(shoulder(bob):GetAttribute("RestC0") == nil, "plus rien en mémoire")
+for _ = 1, 3 do
+	bob:SetAttribute("CarryGhost", "DrapMou")
+	Sched.advance(0.3)
+	bob:SetAttribute("CarryGhost", nil)
+	Sched.advance(0.3)
+end
+check(sameCf(shoulder(bob).C0, restRight), "pas de décalage qui s'accumule après plusieurs vols")
 
 section("Monstre lâché par un joueur")
 local MonsterService = Fake.require("ServerScriptService.Services.MonsterService")

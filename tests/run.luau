@@ -285,6 +285,12 @@ for _, weapon in Weapons.List do
 	local tool = Weapons.buildTool(weapon.Id)
 	check(tool:IsA("Tool") and tool:FindFirstChild("Handle") ~= nil, "outil avec poignée : " .. weapon.Id)
 	check(tool:GetAttribute("WeaponId") == weapon.Id, "outil marqué : " .. weapon.Id)
+	-- l'arme doit être dressée (Up) ou pointée devant (Forward), jamais vers l'épaule :
+	-- dans la main, l'axe Z de la prise remonte vers l'épaule, l'axe Y est dressé
+	local along = tool.Grip.Rotation:Inverse() * roblox.Vector3.new(0, 0, 1)
+	local expected = if weapon.Hold == "Forward" then roblox.Vector3.new(0, 0, -1) else roblox.Vector3.new(0, 1, 0)
+	check(along:Dot(expected) > 0.99, "arme tenue dans le bon sens : " .. weapon.Id)
+	check(weapon.Anim == "Slash" or weapon.Anim == "Lunge", "animation officielle connue : " .. weapon.Id)
 	local parts, welded = 0, 0
 	for _, d in tool:GetDescendants() do
 		if d:IsA("BasePart") and d.Name ~= "Handle" then
