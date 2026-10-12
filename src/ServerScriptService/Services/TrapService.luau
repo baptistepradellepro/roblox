@@ -233,7 +233,7 @@ function TrapService.start()
 	task.spawn(function()
 		while true do
 			task.wait(TICK)
-			check()
+			Guard.safely("Traps", check)
 		end
 	end)
 end

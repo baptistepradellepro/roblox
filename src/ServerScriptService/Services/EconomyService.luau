@@ -420,12 +420,14 @@ function EconomyService.start()
 				ReplicatedStorage:SetAttribute("WeekendBoost", boost)
 			end
 			for _, player in Players:GetPlayers() do
-				local data = DataService.get(player)
-				if data and BaseService.getBase(player) then
-					local multiplier = EconomyService.multiplier(player)
-					EconomyService.add(player, Config.BaseIncome * multiplier, true)
-					produce(player, data, 1, multiplier)
-				end
+				Guard.safely("Income", function()
+					local data = DataService.get(player)
+					if data and BaseService.getBase(player) then
+						local multiplier = EconomyService.multiplier(player)
+						EconomyService.add(player, Config.BaseIncome * multiplier, true)
+						produce(player, data, 1, multiplier)
+					end
+				end)
 			end
 		end
 	end)

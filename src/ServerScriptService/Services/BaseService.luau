@@ -638,9 +638,9 @@ function BaseService.start()
 			for _, base in bases do
 				if base.LockedUntil > 0 then
 					if t >= base.LockedUntil then
-						unlock(base)
+						Guard.safely("Unlock", unlock, base)
 					elseif base.Owner then
-						pushIntruders(base)
+						Guard.safely("PushIntruders", pushIntruders, base)
 					end
 				end
 			end

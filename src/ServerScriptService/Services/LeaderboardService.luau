@@ -13,6 +13,8 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Guard = require(script.Parent.Guard)
+
 local LeaderboardService = {}
 
 local REFRESH = 60
@@ -114,7 +116,7 @@ function LeaderboardService.start()
 	task.spawn(function()
 		task.wait(5)
 		while true do
-			LeaderboardService.refresh()
+			Guard.safely("Leaderboard", LeaderboardService.refresh)
 			task.wait(REFRESH)
 		end
 	end)

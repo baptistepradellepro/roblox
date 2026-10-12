@@ -379,7 +379,7 @@ function StealService.start()
 	task.spawn(function()
 		while true do
 			task.wait(0.1)
-			monitor()
+			Guard.safely("StealMonitor", monitor)
 		end
 	end)
 end

@@ -3,6 +3,7 @@
 	- rate()  : empêche un joueur d'envoyer une demande trop souvent
 	- isInt() : vérifie qu'une valeur envoyée par le client est un entier valide
 	- root()  : renvoie le HumanoidRootPart d'un joueur vivant (ou nil)
+	- safely(): lance une fonction sans que son erreur arrête la boucle qui l'appelle
 ]]
 
 local Guard = {}
@@ -43,6 +44,21 @@ function Guard.root(player: Player): BasePart?
 		return nil
 	end
 	return character:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+-- Lance fn(...) sans laisser une erreur arrêter la boucle qui l'appelle.
+-- L'erreur est affichée dans la Sortie (une fois toutes les 30 s au plus par boucle).
+local lastWarn: { [string]: number } = {}
+function Guard.safely(label: string, fn: (...any) -> ...any, ...: any): boolean
+	local ok, err = pcall(fn, ...)
+	if not ok then
+		local t = os.clock()
+		if not lastWarn[label] or t - lastWarn[label] > 30 then
+			lastWarn[label] = t
+			warn("[" .. label .. "] erreur, le jeu continue : " .. tostring(err))
+		end
+	end
+	return ok
 end
 
 function Guard.humanoid(player: Player): Humanoid?

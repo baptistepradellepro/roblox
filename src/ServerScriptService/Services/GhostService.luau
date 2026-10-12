@@ -248,7 +248,7 @@ function GhostService.start()
 	task.spawn(function()
 		while true do
 			task.wait(30)
-			publishEvents()
+			Guard.safely("Events", publishEvents)
 		end
 	end)
 
@@ -269,15 +269,17 @@ function GhostService.start()
 				interval /= 1.5 -- plus de fantômes la nuit
 			end
 			task.wait(interval)
-			local t = now()
-			for uid, entry in entries do
-				if t - entry.SpawnTime > TRAVEL_TIME then
-					removeEntry(uid)
+			Guard.safely("PathSpawn", function()
+				local t = now()
+				for uid, entry in entries do
+					if t - entry.SpawnTime > TRAVEL_TIME then
+						removeEntry(uid)
+					end
 				end
-			end
-			if count() < Config.MaxGhostsOnPath then
-				GhostService.spawn()
-			end
+				if count() < Config.MaxGhostsOnPath then
+					GhostService.spawn()
+				end
+			end)
 		end
 	end)
 end

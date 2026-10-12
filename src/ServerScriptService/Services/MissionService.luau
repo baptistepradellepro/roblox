@@ -22,6 +22,7 @@ local AnnounceService = require(script.Parent.AnnounceService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local GhostService = require(script.Parent.GhostService)
+local Guard = require(script.Parent.Guard)
 local Hooks = require(script.Parent.Hooks)
 
 local MissionService = {}
@@ -246,23 +247,28 @@ function MissionService.start()
 		while true do
 			task.wait(2)
 			sinceDayCheck += 2
-			if sinceDayCheck >= 60 then
+			local checkDay = sinceDayCheck >= 60
+			if checkDay then
 				sinceDayCheck = 0
-				for _, player in Players:GetPlayers() do
-					local newDay = MissionService.ensure(player)
-					local newWeek = MissionService.ensureWeekly(player)
-					if newDay or newWeek then
-						dirty[player] = true
+			end
+			Guard.safely("Missions", function()
+				if checkDay then
+					for _, player in Players:GetPlayers() do
+						local newDay = MissionService.ensure(player)
+						local newWeek = MissionService.ensureWeekly(player)
+						if newDay or newWeek then
+							dirty[player] = true
+						end
 					end
 				end
-			end
-			for player in dirty do
-				if player.Parent then
-					MissionService.sync(player)
-				else
-					dirty[player] = nil
+				for player in dirty do
+					if player.Parent then
+						MissionService.sync(player)
+					else
+						dirty[player] = nil
+					end
 				end
-			end
+			end)
 		end
 	end)
 end

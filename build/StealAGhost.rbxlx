@@ -4518,9 +4518,9 @@ function BaseService.start()
 			for _, base in bases do
 				if base.LockedUntil > 0 then
 					if t >= base.LockedUntil then
-						unlock(base)
+						Guard.safely("Unlock", unlock, base)
 					elseif base.Owner then
-						pushIntruders(base)
+						Guard.safely("PushIntruders", pushIntruders, base)
 					end
 				end
 			end
@@ -4657,6 +4657,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Guard = require(script.Parent.Guard)
 
 local DataService = {}
 
@@ -4888,7 +4889,7 @@ function DataService.start()
 				end
 			end
 			for _, player in list do
-				task.spawn(DataService.save, player, false)
+				task.spawn(Guard.safely, "Autosave", DataService.save, player, false)
 				task.wait(1) -- on étale les sauvegardes
 			end
 		end
@@ -5345,12 +5346,14 @@ function EconomyService.start()
 				ReplicatedStorage:SetAttribute("WeekendBoost", boost)
 			end
 			for _, player in Players:GetPlayers() do
-				local data = DataService.get(player)
-				if data and BaseService.getBase(player) then
-					local multiplier = EconomyService.multiplier(player)
-					EconomyService.add(player, Config.BaseIncome * multiplier, true)
-					produce(player, data, 1, multiplier)
-				end
+				Guard.safely("Income", function()
+					local data = DataService.get(player)
+					if data and BaseService.getBase(player) then
+						local multiplier = EconomyService.multiplier(player)
+						EconomyService.add(player, Config.BaseIncome * multiplier, true)
+						produce(player, data, 1, multiplier)
+					end
+				end)
 			end
 		end
 	end)
@@ -5613,7 +5616,7 @@ function GhostService.start()
 	task.spawn(function()
 		while true do
 			task.wait(30)
-			publishEvents()
+			Guard.safely("Events", publishEvents)
 		end
 	end)
 
@@ -5634,15 +5637,17 @@ function GhostService.start()
 				interval /= 1.5 -- plus de fantômes la nuit
 			end
 			task.wait(interval)
-			local t = now()
-			for uid, entry in entries do
-				if t - entry.SpawnTime > TRAVEL_TIME then
-					removeEntry(uid)
+			Guard.safely("PathSpawn", function()
+				local t = now()
+				for uid, entry in entries do
+					if t - entry.SpawnTime > TRAVEL_TIME then
+						removeEntry(uid)
+					end
 				end
-			end
-			if count() < Config.MaxGhostsOnPath then
-				GhostService.spawn()
-			end
+				if count() < Config.MaxGhostsOnPath then
+					GhostService.spawn()
+				end
+			end)
 		end
 	end)
 end
@@ -5659,6 +5664,7 @@ return GhostService
 	- rate()  : empêche un joueur d'envoyer une demande trop souvent
 	- isInt() : vérifie qu'une valeur envoyée par le client est un entier valide
 	- root()  : renvoie le HumanoidRootPart d'un joueur vivant (ou nil)
+	- safely(): lance une fonction sans que son erreur arrête la boucle qui l'appelle
 ]]
 
 local Guard = {}
@@ -5699,6 +5705,21 @@ function Guard.root(player: Player): BasePart?
 		return nil
 	end
 	return character:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+-- Lance fn(...) sans laisser une erreur arrêter la boucle qui l'appelle.
+-- L'erreur est affichée dans la Sortie (une fois toutes les 30 s au plus par boucle).
+local lastWarn: { [string]: number } = {}
+function Guard.safely(label: string, fn: (...any) -> ...any, ...: any): boolean
+	local ok, err = pcall(fn, ...)
+	if not ok then
+		local t = os.clock()
+		if not lastWarn[label] or t - lastWarn[label] > 30 then
+			lastWarn[label] = t
+			warn("[" .. label .. "] erreur, le jeu continue : " .. tostring(err))
+		end
+	end
+	return ok
 end
 
 function Guard.humanoid(player: Player): Humanoid?
@@ -5879,6 +5900,8 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Guard = require(script.Parent.Guard)
+
 local LeaderboardService = {}
 
 local REFRESH = 60
@@ -5980,7 +6003,7 @@ function LeaderboardService.start()
 	task.spawn(function()
 		task.wait(5)
 		while true do
-			LeaderboardService.refresh()
+			Guard.safely("Leaderboard", LeaderboardService.refresh)
 			task.wait(REFRESH)
 		end
 	end)
@@ -6920,6 +6943,7 @@ local AnnounceService = require(script.Parent.AnnounceService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local GhostService = require(script.Parent.GhostService)
+local Guard = require(script.Parent.Guard)
 local Hooks = require(script.Parent.Hooks)
 
 local MissionService = {}
@@ -7144,23 +7168,28 @@ function MissionService.start()
 		while true do
 			task.wait(2)
 			sinceDayCheck += 2
-			if sinceDayCheck >= 60 then
+			local checkDay = sinceDayCheck >= 60
+			if checkDay then
 				sinceDayCheck = 0
-				for _, player in Players:GetPlayers() do
-					local newDay = MissionService.ensure(player)
-					local newWeek = MissionService.ensureWeekly(player)
-					if newDay or newWeek then
-						dirty[player] = true
+			end
+			Guard.safely("Missions", function()
+				if checkDay then
+					for _, player in Players:GetPlayers() do
+						local newDay = MissionService.ensure(player)
+						local newWeek = MissionService.ensureWeekly(player)
+						if newDay or newWeek then
+							dirty[player] = true
+						end
 					end
 				end
-			end
-			for player in dirty do
-				if player.Parent then
-					MissionService.sync(player)
-				else
-					dirty[player] = nil
+				for player in dirty do
+					if player.Parent then
+						MissionService.sync(player)
+					else
+						dirty[player] = nil
+					end
 				end
-			end
+			end)
 		end
 	end)
 end
@@ -7647,9 +7676,9 @@ function MonsterService.start()
 			local t = now()
 			for _, monster in table.clone(active) do
 				if monster.EndsAt and t >= monster.EndsAt then
-					MonsterService.remove(monster)
+					Guard.safely("MonsterEnd", MonsterService.remove, monster)
 				elseif monster.Anchor.Parent then
-					step(monster, stepDt)
+					Guard.safely("MonsterStep", step, monster, stepDt)
 				end
 			end
 		end
@@ -7890,7 +7919,7 @@ function NightService.start()
 			if now() < nextAt then
 				task.wait(nextAt - now())
 			end
-			runNight()
+			Guard.safely("Night", runNight)
 			setState(false, 0, now() + Config.DayDuration)
 			AnnounceService.announce("NightEnd", nil, "info")
 			AnnounceService.effect("NightEnd", {})
@@ -8413,7 +8442,7 @@ function StealService.start()
 	task.spawn(function()
 		while true do
 			task.wait(0.1)
-			monitor()
+			Guard.safely("StealMonitor", monitor)
 		end
 	end)
 end
@@ -8660,7 +8689,7 @@ function TrapService.start()
 	task.spawn(function()
 		while true do
 			task.wait(TICK)
-			check()
+			Guard.safely("Traps", check)
 		end
 	end)
 end

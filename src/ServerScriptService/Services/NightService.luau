@@ -225,7 +225,7 @@ function NightService.start()
 			if now() < nextAt then
 				task.wait(nextAt - now())
 			end
-			runNight()
+			Guard.safely("Night", runNight)
 			setState(false, 0, now() + Config.DayDuration)
 			AnnounceService.announce("NightEnd", nil, "info")
 			AnnounceService.effect("NightEnd", {})

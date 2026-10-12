@@ -16,6 +16,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Guard = require(script.Parent.Guard)
 
 local DataService = {}
 
@@ -247,7 +248,7 @@ function DataService.start()
 				end
 			end
 			for _, player in list do
-				task.spawn(DataService.save, player, false)
+				task.spawn(Guard.safely, "Autosave", DataService.save, player, false)
 				task.wait(1) -- on étale les sauvegardes
 			end
 		end

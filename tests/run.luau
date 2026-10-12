@@ -526,6 +526,31 @@ if okMap then
 	end
 end
 
+-- Prêt à publier : les réglages de test sont bien coupés
+do
+	check(Config.ForceLanguage == nil, "publication : pas de langue forcée")
+	check(Config.ForceHalloween == false, "publication : Halloween pas forcé")
+	check(Config.ForceWinter == false, "publication : hiver pas forcé")
+	check(Config.NewPlayerShield == 45, "publication : protection d'arrivée de 45 s")
+	check(Config.LockDuration == 45, "publication : verrou de 45 s")
+	check(Config.DayDuration == 480, "publication : journée de 8 min")
+	check(Config.RebirthBaseCost == 10000000, "publication : renaissance à 10M")
+	check(Config.FloorPrice == 50000, "publication : étage à 50K")
+	check(Config.StartCoins == 100, "publication : 100 pièces au départ")
+end
+
+-- Chaque boucle sans fin du serveur est protégée : une erreur ne doit pas l'arrêter
+do
+	local dir = "src/ServerScriptService/Services/"
+	for _, name in fs.readDir(dir) do
+		local source = fs.readFile(dir .. name)
+		if string.find(source, "while true do", 1, true) then
+			check(string.find(source, "Guard.safely", 1, true) ~= nil, name .. " : boucle protégée par Guard.safely")
+			check(string.find(source, "require(script.Parent.Guard)", 1, true) ~= nil, name .. " : Guard est chargé")
+		end
+	end
+end
+
 for _, w in warnings do
 	print("AVERTISSEMENT : " .. w)
 end

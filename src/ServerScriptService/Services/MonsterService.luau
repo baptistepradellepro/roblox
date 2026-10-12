@@ -269,9 +269,9 @@ function MonsterService.start()
 			local t = now()
 			for _, monster in table.clone(active) do
 				if monster.EndsAt and t >= monster.EndsAt then
-					MonsterService.remove(monster)
+					Guard.safely("MonsterEnd", MonsterService.remove, monster)
 				elseif monster.Anchor.Parent then
-					step(monster, stepDt)
+					Guard.safely("MonsterStep", step, monster, stepDt)
 				end
 			end
 		end
