@@ -178,7 +178,8 @@ local bonk = find(gui.SAG_HUD, function(d)
 	return d.Name == "Bonk"
 end)
 check(bonk and bonk.Visible == false, "pas de bouton Pouet loin du voleur")
-Fake.moveTo(bob, Vector3.new(0, 3, 12))
+-- le serveur le déplace (comme l'ascenseur) : pas pris pour de la triche
+Fake.require("ServerScriptService.Services.Guard").teleport(bob, bob.Character, roblox.CFrame.new(0, 3, 12))
 Fake.moveTo(alice, Vector3.new(7, 3, 12))
 Sched.advance(0.3)
 check(bonk and bonk.Visible == true, "le bouton Pouet apparaît près du voleur")
