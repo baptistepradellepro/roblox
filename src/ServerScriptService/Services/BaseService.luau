@@ -20,6 +20,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local AnnounceService = require(script.Parent.AnnounceService)
 local DataService = require(script.Parent.DataService)
 local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
 local MapBuilder = require(script.Parent.MapBuilder)
 
 local BaseService = {}
@@ -439,6 +440,7 @@ function BaseService.start()
 		end
 		local ok, key, params = BaseService.lock(player)
 		if ok then
+			Hooks.fire("Lock", player, 1)
 			AnnounceService.notify(player, "LockOn", nil, "good")
 			AnnounceService.effect("Lock", { Position = BaseService.getBase(player).Origin.Position }, nil)
 		elseif key then

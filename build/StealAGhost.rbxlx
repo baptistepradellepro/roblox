@@ -1521,6 +1521,83 @@ return GhostFactory
       </Item>
       <Item class="ModuleScript" referent="8">
         <Properties>
+          <string name="Name">Missions</string>
+          <string name="Source"><![CDATA[--[[
+	Missions : les missions du jour (partagé entre le serveur et les joueurs).
+	Chaque jour, chaque joueur reçoit 3 missions : une facile, une moyenne, une difficile.
+	Les missions changent à minuit UTC. Récompense en pièces (calculée selon le revenu
+	du joueur au moment où il réussit), et un bonus quand les 3 sont faites.
+]]
+
+local Missions = {}
+
+Missions.Tiers = { "easy", "medium", "hard" }
+
+-- Les missions possibles pour chaque difficulté
+Missions.Pool = {
+	easy = { "Buy", "Earn", "Lock" },
+	medium = { "Sell", "BuyRare", "NightOutside" },
+	hard = { "Steal", "Bonk", "BuyEpic" },
+}
+
+-- Target = objectif (Earn est calculé selon le revenu), Icon = emoji affiché
+Missions.Defs = {
+	Buy = { Target = 3, Icon = "🛒" },
+	Earn = { Icon = "🪙" },
+	Lock = { Target = 1, Icon = "🔒" },
+	Sell = { Target = 2, Icon = "💰" },
+	BuyRare = { Target = 1, Icon = "💎", MinRarity = "Rare" },
+	NightOutside = { Target = 30, Icon = "🌙" },
+	Steal = { Target = 1, Icon = "🦹" },
+	Bonk = { Target = 1, Icon = "🔨" },
+	BuyEpic = { Target = 1, Icon = "✨", MinRarity = "Epic" },
+}
+
+-- Récompense = X minutes de revenus, avec un minimum
+Missions.Rewards = {
+	easy = { Minutes = 3, Min = 300 },
+	medium = { Minutes = 5, Min = 600 },
+	hard = { Minutes = 8, Min = 1200 },
+	bonus = { Minutes = 10, Min = 2000 },
+}
+
+function Missions.reward(tier: string, incomePerSecond: number): number
+	local r = Missions.Rewards[tier] or Missions.Rewards.easy
+	return math.max(r.Min, math.floor(incomePerSecond * 60 * r.Minutes))
+end
+
+-- Objectif de la mission "Gagne X pièces" : environ 10 minutes de revenus
+function Missions.earnTarget(incomePerSecond: number): number
+	return math.max(500, math.floor(incomePerSecond * 600))
+end
+
+function Missions.today(t: number): number
+	return t // 86400
+end
+
+-- Tire les 3 missions d'un joueur pour un jour donné (toujours les mêmes pour ce jour)
+function Missions.generate(day: number, userId: number, incomePerSecond: number)
+	local seed = (day * 7919 + math.abs(userId)) % 2147483647
+	local function nextRandom(): number
+		seed = (seed * 1103515245 + 12345) % 2147483648
+		return seed / 2147483648
+	end
+	local list = {}
+	for _, tier in Missions.Tiers do
+		local pool = Missions.Pool[tier]
+		local id = pool[math.floor(nextRandom() * #pool) + 1]
+		local target = Missions.Defs[id].Target or Missions.earnTarget(incomePerSecond)
+		table.insert(list, { Id = id, Tier = tier, Target = target, Progress = 0, Done = false })
+	end
+	return list
+end
+
+return Missions
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="9">
+        <Properties>
           <string name="Name">Rarities</string>
           <string name="Source"><![CDATA[--[[
 	Rarities : les 6 raretés, leurs couleurs et leurs chances d'apparition.
@@ -1579,7 +1656,7 @@ return Rarities
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="9">
+      <Item class="ModuleScript" referent="10">
         <Properties>
           <string name="Name">Remotes</string>
           <string name="Source"><![CDATA[--[[
@@ -1610,6 +1687,7 @@ Remotes.Names = {
 	"Effect", -- (kind, data) effet visuel / sonore
 	"DailyInfo", -- (info) état du cadeau du jour
 	"IndexInfo", -- (info) fantômes découverts dans le Fantômédex
+	"MissionsInfo", -- (info) missions du jour et progrès
 }
 
 local FOLDER_NAME = "Remotes"
@@ -1642,7 +1720,7 @@ return Remotes
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="10">
+      <Item class="ModuleScript" referent="11">
         <Properties>
           <string name="Name">Sounds</string>
           <string name="Source"><![CDATA[--[[
@@ -1692,7 +1770,7 @@ return Sounds
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="11">
+      <Item class="ModuleScript" referent="12">
         <Properties>
           <string name="Name">Strings</string>
           <string name="Source"><![CDATA[--[[
@@ -1853,6 +1931,28 @@ Strings.fr = {
 	CodeInvalid = "Code invalide",
 	CodeExpired = "Ce code a expiré",
 
+	-- Missions du jour
+	Missions = "Missions",
+	MissionsTitle = "MISSIONS DU JOUR",
+	Mission_Buy = "Achète {n} fantômes",
+	Mission_Earn = "Gagne {n} pièces",
+	Mission_Lock = "Verrouille ta base",
+	Mission_Sell = "Vends {n} fantômes",
+	Mission_BuyRare = "Achète un fantôme Rare ou mieux",
+	Mission_NightOutside = "Reste {n} s hors de ta base pendant une Nuit Hantée",
+	Mission_Steal = "Vole un fantôme à un autre joueur",
+	Mission_Bonk = "Arrête un voleur au Marteau Pouet",
+	Mission_BuyEpic = "Achète un fantôme Épique ou mieux",
+	MissionTier_easy = "Facile",
+	MissionTier_medium = "Moyen",
+	MissionTier_hard = "Difficile",
+	MissionReward = "+{coins}",
+	MissionDone = "Mission réussie : +{coins} pièces !",
+	MissionsAllDone = "Les 3 missions sont faites ! Bonus : +{coins} pièces",
+	MissionsBonus = "🎁 Les 3 missions : bonus de {coins} pièces",
+	MissionsBonusDone = "✅ Bonus du jour récupéré, reviens demain !",
+	MissionsNext = "Nouvelles missions dans {time}",
+
 	-- Classement des voleurs
 	LeaderTitle = "PLUS GRANDS VOLEURS DE LA SEMAINE",
 	LeaderEmpty = "Personne n'a encore volé cette semaine... à toi de jouer !",
@@ -1999,6 +2099,27 @@ Strings.en = {
 	CodeInvalid = "Invalid code",
 	CodeExpired = "This code has expired",
 
+	Missions = "Missions",
+	MissionsTitle = "DAILY MISSIONS",
+	Mission_Buy = "Buy {n} ghosts",
+	Mission_Earn = "Earn {n} coins",
+	Mission_Lock = "Lock your base",
+	Mission_Sell = "Sell {n} ghosts",
+	Mission_BuyRare = "Buy a Rare ghost or better",
+	Mission_NightOutside = "Stay {n} s outside your base during a Haunted Night",
+	Mission_Steal = "Steal a ghost from another player",
+	Mission_Bonk = "Stop a thief with a BONK",
+	Mission_BuyEpic = "Buy an Epic ghost or better",
+	MissionTier_easy = "Easy",
+	MissionTier_medium = "Medium",
+	MissionTier_hard = "Hard",
+	MissionReward = "+{coins}",
+	MissionDone = "Mission complete: +{coins} coins!",
+	MissionsAllDone = "All 3 missions done! Bonus: +{coins} coins",
+	MissionsBonus = "🎁 All 3 missions: {coins} coins bonus",
+	MissionsBonusDone = "✅ Daily bonus collected, come back tomorrow!",
+	MissionsNext = "New missions in {time}",
+
 	LeaderTitle = "TOP THIEVES OF THE WEEK",
 	LeaderEmpty = "Nobody has stolen anything this week... your turn!",
 	LeaderSteals = "🦹 {count}",
@@ -2029,11 +2150,11 @@ return Strings
       </Item>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="12">
+  <Item class="ServerScriptService" referent="13">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="13">
+    <Item class="Script" referent="14">
       <Properties>
         <string name="Name">Main</string>
         <token name="RunContext">0</token>
@@ -2065,6 +2186,7 @@ local Guard = require(Services:WaitForChild("Guard"))
 local IndexService = require(Services:WaitForChild("IndexService"))
 local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 local MapBuilder = require(Services:WaitForChild("MapBuilder"))
+local MissionService = require(Services:WaitForChild("MissionService"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local NightService = require(Services:WaitForChild("NightService"))
 local RebirthService = require(Services:WaitForChild("RebirthService"))
@@ -2085,6 +2207,7 @@ RebirthService.start()
 MonetizationService.start()
 CodeService.start()
 LeaderboardService.start()
+MissionService.start()
 EconomyService.giveGhostCallback = GhostService.giveGhost
 BaseService.onGhostPlaced = IndexService.discover -- chaque nouveau fantôme entre dans le Fantômédex
 
@@ -2112,6 +2235,7 @@ local function onPlayerAdded(player: Player)
 	RebirthService.setup(player) -- aura des rebirths
 	EconomyService.setup(player)
 	IndexService.setup(player) -- collection (avant le cadeau, pour ne pas afficher 2 messages)
+	MissionService.setup(player) -- missions du jour
 
 	-- Premier lancement : un fantôme offert tout de suite
 	if not data.StarterGiven then
@@ -2157,11 +2281,11 @@ end
 ]]></string>
       </Properties>
     </Item>
-    <Item class="Folder" referent="14">
+    <Item class="Folder" referent="15">
       <Properties>
         <string name="Name">Services</string>
       </Properties>
-      <Item class="ModuleScript" referent="15">
+      <Item class="ModuleScript" referent="16">
         <Properties>
           <string name="Name">AnnounceService</string>
           <string name="Source"><![CDATA[--[[
@@ -2207,7 +2331,7 @@ return AnnounceService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="16">
+      <Item class="ModuleScript" referent="17">
         <Properties>
           <string name="Name">BaseService</string>
           <string name="Source"><![CDATA[--[[
@@ -2232,6 +2356,7 @@ local Remotes = require(Shared:WaitForChild("Remotes"))
 local AnnounceService = require(script.Parent.AnnounceService)
 local DataService = require(script.Parent.DataService)
 local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
 local MapBuilder = require(script.Parent.MapBuilder)
 
 local BaseService = {}
@@ -2651,6 +2776,7 @@ function BaseService.start()
 		end
 		local ok, key, params = BaseService.lock(player)
 		if ok then
+			Hooks.fire("Lock", player, 1)
 			AnnounceService.notify(player, "LockOn", nil, "good")
 			AnnounceService.effect("Lock", { Position = BaseService.getBase(player).Origin.Position }, nil)
 		elseif key then
@@ -2679,7 +2805,7 @@ return BaseService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="17">
+      <Item class="ModuleScript" referent="18">
         <Properties>
           <string name="Name">CodeService</string>
           <string name="Source"><![CDATA[--[[
@@ -2783,7 +2909,7 @@ return CodeService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="18">
+      <Item class="ModuleScript" referent="19">
         <Properties>
           <string name="Name">DataService</string>
           <string name="Source"><![CDATA[--[[
@@ -2849,6 +2975,7 @@ local function template()
 		IndexRewards = {}, -- séries déjà récompensées : ["Common"] = true
 		IndexComplete = false, -- bonus permanent du Fantômédex complet
 		RedeemedCodes = {}, -- codes promo déjà utilisés : ["BOUH2026"] = true
+		Missions = {}, -- missions du jour : { Day, List, BonusDone }
 	}
 end
 
@@ -3059,7 +3186,7 @@ return DataService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">EconomyService</string>
           <string name="Source"><![CDATA[--[[
@@ -3083,6 +3210,7 @@ local AnnounceService = require(script.Parent.AnnounceService)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
 
 local EconomyService = {}
 
@@ -3184,6 +3312,7 @@ function EconomyService.add(player: Player, amount: number, countAsEarned: boole
 	data.Coins += amount
 	if countAsEarned then
 		data.TotalEarned += amount
+		Hooks.fire("Earn", player, amount)
 	end
 	EconomyService.refresh(player)
 end
@@ -3384,7 +3513,7 @@ return EconomyService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">GhostService</string>
           <string name="Source"><![CDATA[--[[
@@ -3410,6 +3539,7 @@ local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
 
 local GhostService = {}
 
@@ -3559,6 +3689,7 @@ local function onBuy(player: Player, uid: any)
 	AnnounceService.notify(player, "Bought", { ghost = ghostKey }, "good")
 	AnnounceService.effect("Bought", { GhostId = ghostKey }, player)
 	player:SetAttribute("HasBought", true)
+	Hooks.fire("Buy", player, ghostKey)
 	local _, mutation = GhostData.split(ghostKey)
 	if mutation == "Rainbow" then
 		AnnounceService.announce("AnnBigBuy", { player = player.DisplayName, ghost = ghostKey }, "rainbow")
@@ -3588,6 +3719,7 @@ local function onSell(player: Player, slot: any)
 	local value = math.floor(GhostData.priceOf(ghostId) * Config.SellRatio)
 	EconomyService.add(player, value)
 	AnnounceService.notify(player, "Sold", { coins = Format.short(value) }, "good")
+	Hooks.fire("Sell", player, 1)
 	AnnounceService.effect("Sold", { Position = BaseService.pedestalPosition(base, slot) })
 end
 
@@ -3633,7 +3765,7 @@ return GhostService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="22">
         <Properties>
           <string name="Name">Guard</string>
           <string name="Source"><![CDATA[--[[
@@ -3692,7 +3824,39 @@ return Guard
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="23">
+        <Properties>
+          <string name="Name">Hooks</string>
+          <string name="Source"><![CDATA[--[[
+	Hooks : un petit "panneau d'affichage" d'événements entre services.
+	Un service annonce qu'il s'est passé quelque chose (Hooks.fire("Steal", joueur)),
+	et ceux que ça intéresse l'écoutent (Hooks.on("Steal", ...)), sans dépendre les uns
+	des autres. Utilisé par les missions du jour.
+
+	Événements : Buy (joueur, fantôme), Sell, Steal, Bonk, Lock, Earn (joueur, pièces),
+	NightOutside (joueur, secondes passées dehors pendant la nuit)
+]]
+
+local Hooks = {}
+
+local listeners: { [string]: { (...any) -> () } } = {}
+
+function Hooks.on(name: string, callback: (...any) -> ())
+	listeners[name] = listeners[name] or {}
+	table.insert(listeners[name], callback)
+end
+
+function Hooks.fire(name: string, ...: any)
+	for _, callback in listeners[name] or {} do
+		task.spawn(callback, ...)
+	end
+end
+
+return Hooks
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">IndexService</string>
           <string name="Source"><![CDATA[--[[
@@ -3804,7 +3968,7 @@ return IndexService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">LeaderboardService</string>
           <string name="Source"><![CDATA[--[[
@@ -3933,7 +4097,7 @@ return LeaderboardService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">MapBuilder</string>
           <string name="Source"><![CDATA[--[[
@@ -4506,7 +4670,175 @@ return MapBuilder
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="25">
+      <Item class="ModuleScript" referent="27">
+        <Properties>
+          <string name="Name">MissionService</string>
+          <string name="Source"><![CDATA[--[[
+	MissionService : les missions du jour.
+	  - 3 missions par joueur et par jour (facile, moyenne, difficile), qui changent à minuit UTC
+	  - le serveur compte les progrès grâce aux événements de Hooks (achat, vol, vente...)
+	  - mission réussie : pièces tout de suite ; les 3 réussies : un bonus en plus
+	Les progrès sont sauvegardés avec le reste des données du joueur.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Format = require(Shared:WaitForChild("Format"))
+local GhostData = require(Shared:WaitForChild("GhostData"))
+local Missions = require(Shared:WaitForChild("Missions"))
+local Rarities = require(Shared:WaitForChild("Rarities"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+
+local AnnounceService = require(script.Parent.AnnounceService)
+local DataService = require(script.Parent.DataService)
+local EconomyService = require(script.Parent.EconomyService)
+local Hooks = require(script.Parent.Hooks)
+
+local MissionService = {}
+
+local dirty: { [Player]: boolean } = {}
+
+local function today(): number
+	return Missions.today(os.time())
+end
+
+function MissionService.sync(player: Player)
+	local data = DataService.get(player)
+	if not data or not data.Missions then
+		return
+	end
+	dirty[player] = nil
+	Remotes.get("MissionsInfo"):FireClient(player, {
+		Day = data.Missions.Day,
+		List = data.Missions.List,
+		BonusDone = data.Missions.BonusDone,
+		ResetAt = (data.Missions.Day + 1) * 86400,
+	})
+end
+
+-- Donne de nouvelles missions si on a changé de jour. Renvoie true si c'est le cas.
+function MissionService.ensure(player: Player): boolean
+	local data = DataService.get(player)
+	if not data then
+		return false
+	end
+	local day = today()
+	if type(data.Missions) == "table" and data.Missions.Day == day then
+		return false
+	end
+	data.Missions = {
+		Day = day,
+		List = Missions.generate(day, player.UserId, EconomyService.incomePerSecond(player)),
+		BonusDone = false,
+	}
+	return true
+end
+
+-- Est-ce que cet événement fait avancer cette mission ?
+local function matches(mission, kind: string, info: any): boolean
+	if mission.Id == kind then
+		return true
+	end
+	if kind == "Buy" and (mission.Id == "BuyRare" or mission.Id == "BuyEpic") then
+		local ghost = type(info) == "string" and GhostData.get(info)
+		local minRarity = Missions.Defs[mission.Id].MinRarity
+		return ghost ~= nil and ghost ~= false and Rarities.rank(ghost.Rarity) >= Rarities.rank(minRarity)
+	end
+	return false
+end
+
+local function progress(player: Player, kind: string, amount: number, info: any)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	if MissionService.ensure(player) then
+		dirty[player] = true
+	end
+	local completedOne = false
+	for _, mission in data.Missions.List do
+		if not mission.Done and matches(mission, kind, info) then
+			-- "Buy" compte 1 fantôme acheté, sauf pour les missions qui demandent une rareté
+			local step = if kind == "Buy" then 1 else amount
+			mission.Progress = math.min(mission.Target, mission.Progress + step)
+			dirty[player] = true
+			if mission.Progress >= mission.Target then
+				mission.Done = true
+				completedOne = true
+				local coins = Missions.reward(mission.Tier, EconomyService.incomePerSecond(player))
+				EconomyService.add(player, coins)
+				AnnounceService.notify(player, "MissionDone", { coins = Format.short(coins) }, "good")
+				AnnounceService.effect("Gift", {}, player)
+			end
+		end
+	end
+	if completedOne and not data.Missions.BonusDone then
+		local allDone = true
+		for _, mission in data.Missions.List do
+			if not mission.Done then
+				allDone = false
+			end
+		end
+		if allDone then
+			data.Missions.BonusDone = true
+			local coins = Missions.reward("bonus", EconomyService.incomePerSecond(player))
+			EconomyService.add(player, coins)
+			AnnounceService.notify(player, "MissionsAllDone", { coins = Format.short(coins) }, "good")
+		end
+	end
+	if completedOne then
+		MissionService.sync(player)
+	end
+end
+MissionService.progress = progress
+
+function MissionService.setup(player: Player)
+	MissionService.ensure(player)
+	MissionService.sync(player)
+end
+
+function MissionService.start()
+	for _, kind in { "Buy", "Sell", "Steal", "Bonk", "Lock", "Earn", "NightOutside" } do
+		Hooks.on(kind, function(player: Player, value: any)
+			local amount = if type(value) == "number" then value else 1
+			progress(player, kind, amount, value)
+		end)
+	end
+	Players.PlayerRemoving:Connect(function(player)
+		dirty[player] = nil
+	end)
+	-- Envoie les progrès aux joueurs (toutes les 2 s au plus) et change les missions à minuit
+	task.spawn(function()
+		local sinceDayCheck = 0
+		while true do
+			task.wait(2)
+			sinceDayCheck += 2
+			if sinceDayCheck >= 60 then
+				sinceDayCheck = 0
+				for _, player in Players:GetPlayers() do
+					if MissionService.ensure(player) then
+						dirty[player] = true
+					end
+				end
+			end
+			for player in dirty do
+				if player.Parent then
+					MissionService.sync(player)
+				else
+					dirty[player] = nil
+				end
+			end
+		end
+	end)
+end
+
+return MissionService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="28">
         <Properties>
           <string name="Name">MonetizationService</string>
           <string name="Source"><![CDATA[--[[
@@ -4617,7 +4949,7 @@ return MonetizationService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="26">
+      <Item class="ModuleScript" referent="29">
         <Properties>
           <string name="Name">NightService</string>
           <string name="Source"><![CDATA[--[[
@@ -4648,6 +4980,7 @@ local BaseService = require(script.Parent.BaseService)
 local EconomyService = require(script.Parent.EconomyService)
 local GhostService = require(script.Parent.GhostService)
 local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
 local StealService = require(script.Parent.StealService)
 
 local NightService = {}
@@ -4664,6 +4997,21 @@ local monsterSpeed = Config.MonsterSpeed
 local catchRange = Config.MonsterCatchRange
 local candyFolder: Folder? = nil
 local rng = Random.new()
+local outsideTime: { [Player]: number } = {}
+
+-- Mission du jour "reste dehors pendant la nuit" : on compte les secondes hors des bases
+local function countOutside(dt: number)
+	for _, player in Players:GetPlayers() do
+		local root = Guard.root(player)
+		if root and not BaseService.baseAt(root.Position) then
+			outsideTime[player] = (outsideTime[player] or 0) + dt
+			if outsideTime[player] >= 1 then
+				outsideTime[player] -= 1
+				Hooks.fire("NightOutside", player, 1)
+			end
+		end
+	end
+end
 
 local function now(): number
 	return workspace:GetServerTimeNow()
@@ -4943,7 +5291,9 @@ local function runNight()
 	while now() < endsAt do
 		task.wait(TICK)
 		local t = os.clock()
-		stepMonster(math.min(t - last, 0.2))
+		local dt = math.min(t - last, 0.2)
+		stepMonster(dt)
+		countOutside(dt)
 		last = t
 	end
 	removeMonster()
@@ -4974,6 +5324,7 @@ function NightService.start()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		immuneUntil[player] = nil
+		outsideTime[player] = nil
 	end)
 end
 
@@ -4981,7 +5332,7 @@ return NightService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="27">
+      <Item class="ModuleScript" referent="30">
         <Properties>
           <string name="Name">RebirthService</string>
           <string name="Source"><![CDATA[--[[
@@ -5100,7 +5451,7 @@ return RebirthService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="28">
+      <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">StealService</string>
           <string name="Source"><![CDATA[--[[
@@ -5129,6 +5480,7 @@ local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
 local LeaderboardService = require(script.Parent.LeaderboardService)
 
 local StealService = {}
@@ -5245,6 +5597,7 @@ local function deliver(carry: Carry)
 		thiefData.TotalSteals += 1
 	end
 	LeaderboardService.recordSteal(thief)
+	Hooks.fire("Steal", thief, 1)
 	EconomyService.refresh(thief)
 	EconomyService.refresh(owner)
 
@@ -5385,6 +5738,7 @@ local function onBonk(player: Player)
 	local thiefRoot = Guard.root(thief)
 	AnnounceService.effect("Bonk", { Position = if thiefRoot then thiefRoot.Position else root.Position })
 	StealService.failCarry(thief, "Bonk", player)
+	Hooks.fire("Bonk", player, 1)
 	-- petit étourdissement du voleur
 	stunnedUntil[thief] = os.clock() + Config.BonkStunTime
 	setSpeed(thief, 4)
@@ -5492,15 +5846,15 @@ return StealService
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="29">
+  <Item class="StarterPlayer" referent="32">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="30">
+    <Item class="StarterPlayerScripts" referent="33">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="31">
+      <Item class="LocalScript" referent="34">
         <Properties>
           <string name="Name">Client</string>
           <string name="Source"><![CDATA[--[[
@@ -5545,11 +5899,11 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="32">
+      <Item class="Folder" referent="35">
         <Properties>
           <string name="Name">Controllers</string>
         </Properties>
-        <Item class="ModuleScript" referent="33">
+        <Item class="ModuleScript" referent="36">
           <Properties>
             <string name="Name">Announce</string>
             <string name="Source"><![CDATA[--[[
@@ -5681,7 +6035,7 @@ return Announce
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="34">
+        <Item class="ModuleScript" referent="37">
           <Properties>
             <string name="Name">BaseView</string>
             <string name="Source"><![CDATA[--[[
@@ -6036,7 +6390,7 @@ return BaseView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="35">
+        <Item class="ModuleScript" referent="38">
           <Properties>
             <string name="Name">CarryView</string>
             <string name="Source"><![CDATA[--[[
@@ -6227,7 +6581,7 @@ return CarryView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="36">
+        <Item class="ModuleScript" referent="39">
           <Properties>
             <string name="Name">Effects</string>
             <string name="Source"><![CDATA[--[[
@@ -6508,7 +6862,7 @@ return Effects
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="37">
+        <Item class="ModuleScript" referent="40">
           <Properties>
             <string name="Name">HUD</string>
             <string name="Source"><![CDATA[--[[
@@ -6748,14 +7102,14 @@ local function buildColumns()
 	HUD.leftColumn = UI.new("Frame", {
 		Name = "Left",
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 12, 0.45, 0),
-		Size = UDim2.fromOffset(100, 380),
+		Position = UDim2.new(0, 12, 0.47, 0),
+		Size = UDim2.fromOffset(92, 430),
 		BackgroundTransparency = 1,
 		Parent = gui,
 	}, {
 		UI.new("UIListLayout", {
 			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, 10),
+			Padding = UDim.new(0, 8),
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		}),
@@ -6935,7 +7289,7 @@ return HUD
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="38">
+        <Item class="ModuleScript" referent="41">
           <Properties>
             <string name="Name">Labels</string>
             <string name="Source"><![CDATA[--[[
@@ -7035,7 +7389,7 @@ return Labels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="39">
+        <Item class="ModuleScript" referent="42">
           <Properties>
             <string name="Name">Lang</string>
             <string name="Source"><![CDATA[--[[
@@ -7121,7 +7475,7 @@ return Lang
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="40">
+        <Item class="ModuleScript" referent="43">
           <Properties>
             <string name="Name">LeaderboardView</string>
             <string name="Source"><![CDATA[--[[
@@ -7241,7 +7595,7 @@ return LeaderboardView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="41">
+        <Item class="ModuleScript" referent="44">
           <Properties>
             <string name="Name">NightView</string>
             <string name="Source"><![CDATA[--[[
@@ -7573,7 +7927,7 @@ return NightView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="42">
+        <Item class="ModuleScript" referent="45">
           <Properties>
             <string name="Name">Panels</string>
             <string name="Source"><![CDATA[--[[
@@ -7592,6 +7946,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Format = require(Shared:WaitForChild("Format"))
 local GhostData = require(Shared:WaitForChild("GhostData"))
 local GhostFactory = require(Shared:WaitForChild("GhostFactory"))
+local Missions = require(Shared:WaitForChild("Missions"))
 local Rarities = require(Shared:WaitForChild("Rarities"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -7607,6 +7962,7 @@ local gui: ScreenGui
 local openPanel: Frame? = nil
 local dailyInfo = nil
 local indexInfo = nil
+local missionsInfo = nil
 local refreshers: { () -> () } = {}
 
 local function rebirthCost(rebirths: number): number
@@ -8134,6 +8490,75 @@ local function buildIndex(): Frame
 	return panel
 end
 
+---------------------------------------------------------------- Missions du jour
+
+local TIER_COLORS = {
+	easy = Color3.fromRGB(80, 220, 120),
+	medium = Color3.fromRGB(255, 190, 40),
+	hard = Color3.fromRGB(255, 80, 90),
+}
+
+local function buildMissions(): Frame
+	local panel, body = makePanel("Missions", "📋 " .. Lang.t("MissionsTitle"), UI.Colors.Info)
+	local cards = {}
+	for i = 1, 3 do
+		local card = UI.new("Frame", {
+			Name = "Mission" .. i,
+			Size = UDim2.new(1, 0, 0, 72),
+			Position = UDim2.fromOffset(0, (i - 1) * 80),
+			BackgroundColor3 = UI.Colors.PanelLight,
+			Parent = body,
+		}, { UI.corner(16), UI.stroke(nil, 3) })
+		local icon = UI.label({ Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(8, 8), MaxTextSize = 44, Parent = card })
+		local tier = UI.label({ Size = UDim2.fromOffset(110, 22), Position = UDim2.fromOffset(72, 4), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 18, Parent = card })
+		local text = UI.label({ Name = "Text", Size = UDim2.new(1, -230, 0, 26), Position = UDim2.fromOffset(72, 24), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 22, Parent = card })
+		local bar = UI.new("Frame", {
+			Position = UDim2.fromOffset(72, 54),
+			Size = UDim2.new(1, -230, 0, 10),
+			BackgroundColor3 = UI.Colors.Stroke,
+			Parent = card,
+		}, { UI.corner(5) })
+		local fill = UI.new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = UI.Colors.Good, Parent = bar }, { UI.corner(5) })
+		local count = UI.label({ Name = "Count", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -110, 0, 18), Size = UDim2.fromOffset(110, 40), MaxTextSize = 26, Parent = card })
+		local reward = UI.label({ Name = "Reward", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(100, 40), TextColor3 = UI.Colors.Gold, MaxTextSize = 26, Parent = card })
+		cards[i] = { Icon = icon, Tier = tier, Text = text, Fill = fill, Count = count, Reward = reward }
+	end
+	local bonus = UI.label({ Name = "Bonus", Size = UDim2.new(1, 0, 0, 34), Position = UDim2.fromOffset(0, 244), TextColor3 = UI.Colors.Gold, MaxTextSize = 24, Parent = body })
+	local footer = UI.label({ Name = "Footer", Size = UDim2.new(1, 0, 0, 28), Position = UDim2.fromOffset(0, 284), TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = body })
+
+	local function refresh()
+		local info = missionsInfo
+		if not info or not panel.Visible then
+			return
+		end
+		local income = player:GetAttribute("Income") or 0
+		for i, card in cards do
+			local mission = info.List[i]
+			if mission then
+				local def = Missions.Defs[mission.Id] or {}
+				local n = if mission.Id == "Earn" then Format.short(mission.Target) else mission.Target
+				card.Icon.Text = if mission.Done then "✅" else (def.Icon or "⭐")
+				card.Tier.Text = Lang.t("MissionTier_" .. mission.Tier)
+				card.Tier.TextColor3 = TIER_COLORS[mission.Tier] or UI.Colors.Text
+				card.Text.Text = Lang.t("Mission_" .. mission.Id, { n = n })
+				card.Fill.Size = UDim2.fromScale(math.clamp(mission.Progress / mission.Target, 0, 1), 1)
+				card.Count.Text = if mission.Id == "Earn"
+					then Format.short(mission.Progress) .. "/" .. Format.short(mission.Target)
+					else mission.Progress .. "/" .. mission.Target
+				card.Reward.Text = if mission.Done then "✅" else "🪙 " .. Format.short(Missions.reward(mission.Tier, income))
+			end
+		end
+		if info.BonusDone then
+			bonus.Text = Lang.t("MissionsBonusDone")
+		else
+			bonus.Text = Lang.t("MissionsBonus", { coins = Format.short(Missions.reward("bonus", income)) })
+		end
+		footer.Text = Lang.t("MissionsNext", { time = Format.time((info.ResetAt or 0) - workspace:GetServerTimeNow()) })
+	end
+	table.insert(refreshers, refresh)
+	return panel
+end
+
 ---------------------------------------------------------------- Démarrage
 
 function Panels.openDaily()
@@ -8146,15 +8571,18 @@ end
 function Panels.start()
 	gui = UI.screen("SAG_Panels", 3)
 	local daily = buildDaily()
+	local missions = buildMissions()
 	local index = buildIndex()
 	local rebirth = buildRebirth()
 	local shop = buildShop()
 
 	local column = HUD.leftColumn
-	local giftButton = UI.bigButton({ Name = "Gift", Icon = "🎁", Text = Lang.t("Daily"), Color = UI.Colors.Gold, Size = 84, LayoutOrder = 1, Parent = column })
-	local indexButton = UI.bigButton({ Name = "Index", Icon = "📖", Text = Lang.t("Index"), Color = UI.Colors.Purple, Size = 84, LayoutOrder = 2, Parent = column })
-	local rebirthButton = UI.bigButton({ Name = "Rebirth", Icon = "♻️", Text = Lang.t("Rebirth"), Color = Color3.fromRGB(60, 190, 150), Size = 84, LayoutOrder = 3, Parent = column })
-	local shopButton = UI.bigButton({ Name = "Shop", Icon = "🛒", Text = Lang.t("Shop"), Color = UI.Colors.Orange, Size = 84, LayoutOrder = 4, Parent = column })
+	local size = 76
+	local giftButton = UI.bigButton({ Name = "Gift", Icon = "🎁", Text = Lang.t("Daily"), Color = UI.Colors.Gold, Size = size, LayoutOrder = 1, Parent = column })
+	local missionsButton = UI.bigButton({ Name = "MissionsButton", Icon = "📋", Text = Lang.t("Missions"), Color = UI.Colors.Info, Size = size, LayoutOrder = 2, Parent = column })
+	local indexButton = UI.bigButton({ Name = "Index", Icon = "📖", Text = Lang.t("Index"), Color = UI.Colors.Purple, Size = size, LayoutOrder = 3, Parent = column })
+	local rebirthButton = UI.bigButton({ Name = "Rebirth", Icon = "♻️", Text = Lang.t("Rebirth"), Color = Color3.fromRGB(60, 190, 150), Size = size, LayoutOrder = 4, Parent = column })
+	local shopButton = UI.bigButton({ Name = "Shop", Icon = "🛒", Text = Lang.t("Shop"), Color = UI.Colors.Orange, Size = size, LayoutOrder = 5, Parent = column })
 
 	-- Pastille rouge sur un bouton (cadeau prêt, nouveau fantôme...)
 	local function makeDot(parent: Instance, text: string): TextLabel
@@ -8175,6 +8603,23 @@ function Panels.start()
 	end
 	local dot = makeDot(giftButton, "!")
 	local indexDot = makeDot(indexButton, "!")
+	local missionsDot = makeDot(missionsButton, "!")
+	local seenMissionsDay = nil
+
+	missionsButton.Activated:Connect(function()
+		Effects.sound("Click")
+		missionsDot.Visible = false
+		seenMissionsDay = missionsInfo and missionsInfo.Day
+		open(missions)
+	end)
+	Remotes.get("MissionsInfo").OnClientEvent:Connect(function(info)
+		missionsInfo = info
+		-- point rouge : nouvelles missions pas encore regardées
+		missionsDot.Visible = info.Day ~= seenMissionsDay and not info.BonusDone
+		for _, refresh in refreshers do
+			refresh()
+		end
+	end)
 
 	giftButton.Activated:Connect(function()
 		Effects.sound("Click")
@@ -8239,7 +8684,7 @@ return Panels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="43">
+        <Item class="ModuleScript" referent="46">
           <Properties>
             <string name="Name">PathView</string>
             <string name="Source"><![CDATA[--[[
@@ -8408,7 +8853,7 @@ return PathView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="44">
+        <Item class="ModuleScript" referent="47">
           <Properties>
             <string name="Name">Tutorial</string>
             <string name="Source"><![CDATA[--[[
@@ -8647,7 +9092,7 @@ return Tutorial
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="45">
+        <Item class="ModuleScript" referent="48">
           <Properties>
             <string name="Name">UI</string>
             <string name="Source"><![CDATA[--[[
@@ -8839,13 +9284,13 @@ return UI
       </Item>
     </Item>
   </Item>
-  <Item class="TextChatService" referent="46">
+  <Item class="TextChatService" referent="49">
     <Properties>
       <string name="Name">TextChatService</string>
       <token name="ChatVersion">1</token>
     </Properties>
   </Item>
-  <Item class="Workspace" referent="47">
+  <Item class="Workspace" referent="50">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>

@@ -19,6 +19,7 @@ local AnnounceService = require(script.Parent.AnnounceService)
 local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
 
 local EconomyService = {}
 
@@ -120,6 +121,7 @@ function EconomyService.add(player: Player, amount: number, countAsEarned: boole
 	data.Coins += amount
 	if countAsEarned then
 		data.TotalEarned += amount
+		Hooks.fire("Earn", player, amount)
 	end
 	EconomyService.refresh(player)
 end

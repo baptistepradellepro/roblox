@@ -24,6 +24,7 @@ local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
 local LeaderboardService = require(script.Parent.LeaderboardService)
 
 local StealService = {}
@@ -140,6 +141,7 @@ local function deliver(carry: Carry)
 		thiefData.TotalSteals += 1
 	end
 	LeaderboardService.recordSteal(thief)
+	Hooks.fire("Steal", thief, 1)
 	EconomyService.refresh(thief)
 	EconomyService.refresh(owner)
 
@@ -280,6 +282,7 @@ local function onBonk(player: Player)
 	local thiefRoot = Guard.root(thief)
 	AnnounceService.effect("Bonk", { Position = if thiefRoot then thiefRoot.Position else root.Position })
 	StealService.failCarry(thief, "Bonk", player)
+	Hooks.fire("Bonk", player, 1)
 	-- petit étourdissement du voleur
 	stunnedUntil[thief] = os.clock() + Config.BonkStunTime
 	setSpeed(thief, 4)

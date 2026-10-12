@@ -71,6 +71,12 @@ Pour ne pas attendre 8 minutes, mets `Config.DayDuration = 30` pendant les tests
 - **Week-end x2** : du vendredi 17h UTC au dimanche 23h UTC, une pastille "Week-end x2 !" apparaît sous les pièces et les revenus doublent. `Config.WeekendBoost.Enabled = false` pour le couper.
 - **Classement** : le grand écran au-dessus du milieu du chemin affiche le top 10 des voleurs de la semaine. Dans Studio sans accès aux API, il montre les vols de la partie en cours. Il se met à jour toutes les minutes.
 
+## Tester les missions du jour
+
+Bouton 📋 à gauche. Chaque joueur a 3 missions par jour : une facile, une moyenne, une difficile (par exemple "Achète 3 fantômes", "Vends 2 fantômes", "Vole un fantôme à un autre joueur"). La barre avance toute seule, et quand une mission est finie les pièces arrivent directement avec un message "Mission réussie". Les 3 réussies donnent un bonus. Les missions changent à minuit UTC (2h du matin à Paris en été, 1h en hiver).
+
+Les missions difficiles demandent souvent un deuxième joueur (vol, Marteau Pouet) : teste-les avec le Serveur local à 2 ou 3 joueurs.
+
 ## Tester la sauvegarde
 
 Il faut avoir publié le jeu et activé l'accès aux API (voir le README).

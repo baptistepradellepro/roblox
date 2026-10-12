@@ -101,7 +101,7 @@ Achète des fantômes complètement absurdes, pose-les dans ta base et regarde l
 🎉 Pièces x2 tout le week-end
 ♻️ Rebirth pour gagner plus, pour toujours
 👥 +10 % de pièces par ami dans ton serveur
-🎁 Un cadeau chaque jour
+🎁 Un cadeau et 3 missions chaque jour
 📖 Complète le Fantômédex pour +10 % de revenus
 ```
 
@@ -122,7 +122,7 @@ Buy totally ridiculous ghosts, put them in your base and watch the coins roll in
 🎉 x2 coins all weekend
 ♻️ Rebirth to earn more, forever
 👥 +10% coins for each friend in your server
-🎁 A free gift every day
+🎁 A free gift and 3 missions every day
 📖 Complete the Ghostdex for +10% income
 ```
 

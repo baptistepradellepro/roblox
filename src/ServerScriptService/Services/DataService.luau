@@ -61,6 +61,7 @@ local function template()
 		IndexRewards = {}, -- séries déjà récompensées : ["Common"] = true
 		IndexComplete = false, -- bonus permanent du Fantômédex complet
 		RedeemedCodes = {}, -- codes promo déjà utilisés : ["BOUH2026"] = true
+		Missions = {}, -- missions du jour : { Day, List, BonusDone }
 	}
 end
 

@@ -235,14 +235,14 @@ local function buildColumns()
 	HUD.leftColumn = UI.new("Frame", {
 		Name = "Left",
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 12, 0.45, 0),
-		Size = UDim2.fromOffset(100, 380),
+		Position = UDim2.new(0, 12, 0.47, 0),
+		Size = UDim2.fromOffset(92, 430),
 		BackgroundTransparency = 1,
 		Parent = gui,
 	}, {
 		UI.new("UIListLayout", {
 			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, 10),
+			Padding = UDim.new(0, 8),
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		}),

@@ -21,6 +21,7 @@ local BaseService = require(script.Parent.BaseService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
 
 local GhostService = {}
 
@@ -170,6 +171,7 @@ local function onBuy(player: Player, uid: any)
 	AnnounceService.notify(player, "Bought", { ghost = ghostKey }, "good")
 	AnnounceService.effect("Bought", { GhostId = ghostKey }, player)
 	player:SetAttribute("HasBought", true)
+	Hooks.fire("Buy", player, ghostKey)
 	local _, mutation = GhostData.split(ghostKey)
 	if mutation == "Rainbow" then
 		AnnounceService.announce("AnnBigBuy", { player = player.DisplayName, ghost = ghostKey }, "rainbow")
@@ -199,6 +201,7 @@ local function onSell(player: Player, slot: any)
 	local value = math.floor(GhostData.priceOf(ghostId) * Config.SellRatio)
 	EconomyService.add(player, value)
 	AnnounceService.notify(player, "Sold", { coins = Format.short(value) }, "good")
+	Hooks.fire("Sell", player, 1)
 	AnnounceService.effect("Sold", { Position = BaseService.pedestalPosition(base, slot) })
 end
 

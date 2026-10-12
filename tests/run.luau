@@ -123,6 +123,42 @@ for _, rarity in Rarities.Order do
 end
 check(Config.StartPedestals <= Config.MaxPedestals and Config.MaxPedestals == 12, "nombre de socles")
 
+---------------------------------------------------------------- Missions du jour
+local Missions = loadModule(SHARED .. "Missions.luau")
+local m1 = Missions.generate(20373, 101, 10)
+local m2 = Missions.generate(20373, 101, 10)
+check(#m1 == 3, "3 missions par jour")
+for i, tier in Missions.Tiers do
+	check(m1[i].Tier == tier, "mission " .. i .. " de difficulté " .. tier)
+	check(table.find(Missions.Pool[tier], m1[i].Id) ~= nil, "mission tirée dans la bonne liste (" .. m1[i].Id .. ")")
+	check(m1[i].Id == m2[i].Id, "mêmes missions pour le même jour")
+	check(m1[i].Target > 0 and m1[i].Progress == 0 and not m1[i].Done, "mission neuve")
+end
+local different = false
+for day = 20374, 20390 do
+	local other = Missions.generate(day, 101, 10)
+	for i = 1, 3 do
+		if other[i].Id ~= m1[i].Id then
+			different = true
+		end
+	end
+end
+check(different, "les missions changent d'un jour à l'autre")
+local seen = {}
+for day = 20000, 20200 do
+	for _, mission in Missions.generate(day, 7, 10) do
+		seen[mission.Id] = true
+	end
+end
+for _, tier in Missions.Tiers do
+	for _, id in Missions.Pool[tier] do
+		check(seen[id], "la mission " .. id .. " finit par tomber")
+		check(Missions.Defs[id] ~= nil, "définition de la mission " .. id)
+	end
+end
+check(Missions.earnTarget(0) == 500 and Missions.earnTarget(100) == 60000, "objectif 'Gagne X pièces'")
+check(Missions.reward("hard", 0) == 1200 and Missions.reward("bonus", 100) == 60000, "récompenses des missions")
+
 ---------------------------------------------------------------- Textes FR / EN
 local Strings = loadModule(SHARED .. "Strings.luau")
 local function placeholders(text: string)

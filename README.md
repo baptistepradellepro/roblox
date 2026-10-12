@@ -66,6 +66,8 @@ src/
       IndexService               Fantômédex (collection et récompenses)
       CodeService                codes promo
       LeaderboardService         classement des voleurs de la semaine
+      MissionService             missions du jour
+      Hooks                      événements partagés entre services (achat, vol...)
       AnnounceService            messages et annonces
       Guard                      vérifications anti-triche
   StarterPlayer/StarterPlayerScripts/

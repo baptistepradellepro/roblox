@@ -275,6 +275,26 @@ Sched.advance(0.1)
 check(findText(indexPanel, "flotter") ~= nil, "toucher une case affiche la blague du fantôme")
 indexPanel.Close.Activated:Fire()
 
+section("Missions du jour (panneau)")
+local missionsButton = find(gui.SAG_HUD, function(d)
+	return d.Name == "MissionsButton"
+end)
+check(missionsButton ~= nil, "bouton Missions")
+missionsButton.Activated:Fire()
+local missionsPanel = gui.SAG_Panels:FindFirstChild("Missions")
+check(missionsPanel and missionsPanel.Visible == true, "panneau Missions ouvert")
+Sched.advance(0.6)
+for i = 1, 3 do
+	local card = missionsPanel:FindFirstChild("Mission" .. i, true)
+	local text = card and card:FindFirstChild("Text")
+	check(text and #text.Text > 5 and not string.find(text.Text, "Mission_", 1, true), "mission " .. i .. " affichée (" .. tostring(text and text.Text) .. ")")
+	local count = card and card:FindFirstChild("Count")
+	check(count and string.find(count.Text, "/", 1, true) ~= nil, "progression de la mission " .. i)
+end
+check(findText(missionsPanel, "Nouvelles missions dans") ~= nil, "compte à rebours des missions")
+check(findText(missionsPanel, "Les 3 missions") ~= nil or findText(missionsPanel, "Bonus du jour") ~= nil, "ligne du bonus")
+missionsPanel.Close.Activated:Fire()
+
 section("Codes secrets (boutique)")
 shopButton.Activated:Fire()
 Sched.advance(0.3)

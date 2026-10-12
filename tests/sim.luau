@@ -402,6 +402,8 @@ Sched.advance(1.1)
 check(RS:GetAttribute("WeekendBoost") == false, "retour à la normale")
 
 section("Nuit des Bonbons")
+local MissionService = Fake.require("ServerScriptService.Services.MissionService")
+cData.Missions.List = { { Id = "NightOutside", Tier = "medium", Target = 3, Progress = 0, Done = false } }
 local savedThemes = Config.NightThemes
 Config.NightThemes = { Classic = 0, Fog = 0, Candy = 1 }
 Sched.advance(RS:GetAttribute("NextNightAt") - workspace:GetServerTimeNow() + 1)
@@ -428,6 +430,7 @@ check(cData.Coins < cBefore + 25 * 2 + 50, "une pièce ne se ramasse qu'une fois
 Sched.advance(3.5)
 check(#candy:GetChildren() == Config.CandyCoinCount, "une nouvelle pièce réapparaît")
 Fake.moveTo(chloe, baseCenter(chloe))
+check(cData.Missions.List[1].Done == true, "mission 'reste dehors la nuit' réussie par Chloé")
 Sched.advance(Config.NightDuration)
 check(workspace:FindFirstChild("CandyCoins") == nil, "les pièces disparaissent au matin")
 
@@ -566,6 +569,85 @@ Sched.advance(1.1)
 m = mark()
 Fake.fire(bob, "RedeemCode", "GLOUTROUILLE")
 check(notified(bob, "CodeInvalid", m) and not bData.RedeemedCodes.GLOUTROUILLE, "trop d'essais ratés : codes bloqués")
+
+section("Missions du jour")
+for _, p in { alice, bob, chloe } do
+	local data = DataService.get(p)
+	check(type(data.Missions.List) == "table" and #data.Missions.List >= 1, p.Name .. " a des missions")
+end
+local sentMissions = false
+for _, entry in Fake.sentToClients do
+	if entry.remote == "MissionsInfo" and entry.to == alice then
+		sentMissions = true
+	end
+end
+check(sentMissions, "les missions sont envoyées au joueur")
+-- Alice : gagner des pièces, acheter un Rare, vendre
+aData.Missions.List = {
+	{ Id = "Earn", Tier = "easy", Target = 10, Progress = 0, Done = false },
+	{ Id = "Sell", Tier = "medium", Target = 1, Progress = 0, Done = false },
+	{ Id = "BuyRare", Tier = "hard", Target = 1, Progress = 0, Done = false },
+}
+aData.Missions.BonusDone = false
+m = mark()
+Sched.advance(6)
+check(aData.Missions.List[1].Done, "mission 'Gagne 10 pièces' réussie grâce aux revenus")
+check(notified(alice, "MissionDone", m), "message 'Mission réussie'")
+GhostService.spawn("Caquetome")
+local rareHolder
+for _, h in RS.PathGhosts:GetChildren() do
+	if h:GetAttribute("GhostId") == "Caquetome" then
+		rareHolder = h
+	end
+end
+aData.Coins += 10000
+Sched.advance(0.3)
+Fake.moveTo(alice, pathPosition(rareHolder))
+Fake.fire(alice, "BuyGhost", rareHolder.Name)
+check(aData.Missions.List[3].Done, "mission 'Achète un Rare ou mieux' réussie")
+local rareSlot
+for key, id in aData.Slots do
+	if id == "Caquetome" then
+		rareSlot = tonumber(key)
+	end
+end
+Sched.advance(0.4)
+m = mark()
+local coinsBeforeBonus = aData.Coins
+Fake.moveTo(alice, pedestalPos(alice, rareSlot))
+Fake.fire(alice, "SellGhost", rareSlot)
+check(aData.Missions.List[2].Done, "mission 'Vends' réussie")
+check(aData.Missions.BonusDone and notified(alice, "MissionsAllDone", m), "bonus des 3 missions")
+check(aData.Coins > coinsBeforeBonus + 2000, "le bonus est versé")
+-- Bob : voler ; Chloé : Marteau Pouet
+bData.Missions.List = { { Id = "Steal", Tier = "hard", Target = 1, Progress = 0, Done = false } }
+cData.Missions.List = { { Id = "Bonk", Tier = "hard", Target = 1, Progress = 0, Done = false } }
+park(alice, 160, 75)
+park(chloe, -160, -75)
+Sched.advance(1)
+steal(bob, alice, 1)
+check(bob:GetAttribute("CarryGhost") ~= nil, "vol pour la mission")
+Fake.walk(bob, baseCenter(bob), Config.CarrierWalkSpeed * 0.95)
+Sched.advance(0.3)
+check(bData.Missions.List[1].Done, "mission 'Vole un fantôme' réussie par Bob")
+GhostService.giveGhost(alice, "DrapMou")
+Sched.advance(1)
+local aliceSlot
+for key in aData.Slots do
+	aliceSlot = tonumber(key)
+end
+steal(bob, alice, aliceSlot)
+Fake.moveTo(bob, Vector3.new(0, 3, 12))
+Fake.moveTo(chloe, Vector3.new(3, 3, 12))
+Sched.advance(3.5)
+Fake.fire(chloe, "Bonk")
+Sched.advance(0.1)
+check(cData.Missions.List[1].Done, "mission 'Marteau Pouet' réussie par Chloé")
+-- changement de jour
+local oldDay = aData.Missions.Day
+aData.Missions.Day = oldDay - 1
+check(MissionService.ensure(alice) == true and aData.Missions.Day == oldDay and #aData.Missions.List == 3 and not aData.Missions.BonusDone, "nouvelles missions le lendemain")
+check(MissionService.ensure(alice) == false, "pas de nouveau tirage le même jour")
 
 section("Le propriétaire quitte pendant un vol")
 GhostService.giveGhost(chloe, "WifiFantome")

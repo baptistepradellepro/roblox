@@ -14,6 +14,7 @@ local Config = require(Shared:WaitForChild("Config"))
 local Format = require(Shared:WaitForChild("Format"))
 local GhostData = require(Shared:WaitForChild("GhostData"))
 local GhostFactory = require(Shared:WaitForChild("GhostFactory"))
+local Missions = require(Shared:WaitForChild("Missions"))
 local Rarities = require(Shared:WaitForChild("Rarities"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
@@ -29,6 +30,7 @@ local gui: ScreenGui
 local openPanel: Frame? = nil
 local dailyInfo = nil
 local indexInfo = nil
+local missionsInfo = nil
 local refreshers: { () -> () } = {}
 
 local function rebirthCost(rebirths: number): number
@@ -556,6 +558,75 @@ local function buildIndex(): Frame
 	return panel
 end
 
+---------------------------------------------------------------- Missions du jour
+
+local TIER_COLORS = {
+	easy = Color3.fromRGB(80, 220, 120),
+	medium = Color3.fromRGB(255, 190, 40),
+	hard = Color3.fromRGB(255, 80, 90),
+}
+
+local function buildMissions(): Frame
+	local panel, body = makePanel("Missions", "📋 " .. Lang.t("MissionsTitle"), UI.Colors.Info)
+	local cards = {}
+	for i = 1, 3 do
+		local card = UI.new("Frame", {
+			Name = "Mission" .. i,
+			Size = UDim2.new(1, 0, 0, 72),
+			Position = UDim2.fromOffset(0, (i - 1) * 80),
+			BackgroundColor3 = UI.Colors.PanelLight,
+			Parent = body,
+		}, { UI.corner(16), UI.stroke(nil, 3) })
+		local icon = UI.label({ Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(8, 8), MaxTextSize = 44, Parent = card })
+		local tier = UI.label({ Size = UDim2.fromOffset(110, 22), Position = UDim2.fromOffset(72, 4), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 18, Parent = card })
+		local text = UI.label({ Name = "Text", Size = UDim2.new(1, -230, 0, 26), Position = UDim2.fromOffset(72, 24), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 22, Parent = card })
+		local bar = UI.new("Frame", {
+			Position = UDim2.fromOffset(72, 54),
+			Size = UDim2.new(1, -230, 0, 10),
+			BackgroundColor3 = UI.Colors.Stroke,
+			Parent = card,
+		}, { UI.corner(5) })
+		local fill = UI.new("Frame", { Size = UDim2.fromScale(0, 1), BackgroundColor3 = UI.Colors.Good, Parent = bar }, { UI.corner(5) })
+		local count = UI.label({ Name = "Count", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -110, 0, 18), Size = UDim2.fromOffset(110, 40), MaxTextSize = 26, Parent = card })
+		local reward = UI.label({ Name = "Reward", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -8, 0, 18), Size = UDim2.fromOffset(100, 40), TextColor3 = UI.Colors.Gold, MaxTextSize = 26, Parent = card })
+		cards[i] = { Icon = icon, Tier = tier, Text = text, Fill = fill, Count = count, Reward = reward }
+	end
+	local bonus = UI.label({ Name = "Bonus", Size = UDim2.new(1, 0, 0, 34), Position = UDim2.fromOffset(0, 244), TextColor3 = UI.Colors.Gold, MaxTextSize = 24, Parent = body })
+	local footer = UI.label({ Name = "Footer", Size = UDim2.new(1, 0, 0, 28), Position = UDim2.fromOffset(0, 284), TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = body })
+
+	local function refresh()
+		local info = missionsInfo
+		if not info or not panel.Visible then
+			return
+		end
+		local income = player:GetAttribute("Income") or 0
+		for i, card in cards do
+			local mission = info.List[i]
+			if mission then
+				local def = Missions.Defs[mission.Id] or {}
+				local n = if mission.Id == "Earn" then Format.short(mission.Target) else mission.Target
+				card.Icon.Text = if mission.Done then "✅" else (def.Icon or "⭐")
+				card.Tier.Text = Lang.t("MissionTier_" .. mission.Tier)
+				card.Tier.TextColor3 = TIER_COLORS[mission.Tier] or UI.Colors.Text
+				card.Text.Text = Lang.t("Mission_" .. mission.Id, { n = n })
+				card.Fill.Size = UDim2.fromScale(math.clamp(mission.Progress / mission.Target, 0, 1), 1)
+				card.Count.Text = if mission.Id == "Earn"
+					then Format.short(mission.Progress) .. "/" .. Format.short(mission.Target)
+					else mission.Progress .. "/" .. mission.Target
+				card.Reward.Text = if mission.Done then "✅" else "🪙 " .. Format.short(Missions.reward(mission.Tier, income))
+			end
+		end
+		if info.BonusDone then
+			bonus.Text = Lang.t("MissionsBonusDone")
+		else
+			bonus.Text = Lang.t("MissionsBonus", { coins = Format.short(Missions.reward("bonus", income)) })
+		end
+		footer.Text = Lang.t("MissionsNext", { time = Format.time((info.ResetAt or 0) - workspace:GetServerTimeNow()) })
+	end
+	table.insert(refreshers, refresh)
+	return panel
+end
+
 ---------------------------------------------------------------- Démarrage
 
 function Panels.openDaily()
@@ -568,15 +639,18 @@ end
 function Panels.start()
 	gui = UI.screen("SAG_Panels", 3)
 	local daily = buildDaily()
+	local missions = buildMissions()
 	local index = buildIndex()
 	local rebirth = buildRebirth()
 	local shop = buildShop()
 
 	local column = HUD.leftColumn
-	local giftButton = UI.bigButton({ Name = "Gift", Icon = "🎁", Text = Lang.t("Daily"), Color = UI.Colors.Gold, Size = 84, LayoutOrder = 1, Parent = column })
-	local indexButton = UI.bigButton({ Name = "Index", Icon = "📖", Text = Lang.t("Index"), Color = UI.Colors.Purple, Size = 84, LayoutOrder = 2, Parent = column })
-	local rebirthButton = UI.bigButton({ Name = "Rebirth", Icon = "♻️", Text = Lang.t("Rebirth"), Color = Color3.fromRGB(60, 190, 150), Size = 84, LayoutOrder = 3, Parent = column })
-	local shopButton = UI.bigButton({ Name = "Shop", Icon = "🛒", Text = Lang.t("Shop"), Color = UI.Colors.Orange, Size = 84, LayoutOrder = 4, Parent = column })
+	local size = 76
+	local giftButton = UI.bigButton({ Name = "Gift", Icon = "🎁", Text = Lang.t("Daily"), Color = UI.Colors.Gold, Size = size, LayoutOrder = 1, Parent = column })
+	local missionsButton = UI.bigButton({ Name = "MissionsButton", Icon = "📋", Text = Lang.t("Missions"), Color = UI.Colors.Info, Size = size, LayoutOrder = 2, Parent = column })
+	local indexButton = UI.bigButton({ Name = "Index", Icon = "📖", Text = Lang.t("Index"), Color = UI.Colors.Purple, Size = size, LayoutOrder = 3, Parent = column })
+	local rebirthButton = UI.bigButton({ Name = "Rebirth", Icon = "♻️", Text = Lang.t("Rebirth"), Color = Color3.fromRGB(60, 190, 150), Size = size, LayoutOrder = 4, Parent = column })
+	local shopButton = UI.bigButton({ Name = "Shop", Icon = "🛒", Text = Lang.t("Shop"), Color = UI.Colors.Orange, Size = size, LayoutOrder = 5, Parent = column })
 
 	-- Pastille rouge sur un bouton (cadeau prêt, nouveau fantôme...)
 	local function makeDot(parent: Instance, text: string): TextLabel
@@ -597,6 +671,23 @@ function Panels.start()
 	end
 	local dot = makeDot(giftButton, "!")
 	local indexDot = makeDot(indexButton, "!")
+	local missionsDot = makeDot(missionsButton, "!")
+	local seenMissionsDay = nil
+
+	missionsButton.Activated:Connect(function()
+		Effects.sound("Click")
+		missionsDot.Visible = false
+		seenMissionsDay = missionsInfo and missionsInfo.Day
+		open(missions)
+	end)
+	Remotes.get("MissionsInfo").OnClientEvent:Connect(function(info)
+		missionsInfo = info
+		-- point rouge : nouvelles missions pas encore regardées
+		missionsDot.Visible = info.Day ~= seenMissionsDay and not info.BonusDone
+		for _, refresh in refreshers do
+			refresh()
+		end
+	end)
 
 	giftButton.Activated:Connect(function()
 		Effects.sound("Click")

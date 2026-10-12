@@ -26,6 +26,7 @@ local BaseService = require(script.Parent.BaseService)
 local EconomyService = require(script.Parent.EconomyService)
 local GhostService = require(script.Parent.GhostService)
 local Guard = require(script.Parent.Guard)
+local Hooks = require(script.Parent.Hooks)
 local StealService = require(script.Parent.StealService)
 
 local NightService = {}
@@ -42,6 +43,21 @@ local monsterSpeed = Config.MonsterSpeed
 local catchRange = Config.MonsterCatchRange
 local candyFolder: Folder? = nil
 local rng = Random.new()
+local outsideTime: { [Player]: number } = {}
+
+-- Mission du jour "reste dehors pendant la nuit" : on compte les secondes hors des bases
+local function countOutside(dt: number)
+	for _, player in Players:GetPlayers() do
+		local root = Guard.root(player)
+		if root and not BaseService.baseAt(root.Position) then
+			outsideTime[player] = (outsideTime[player] or 0) + dt
+			if outsideTime[player] >= 1 then
+				outsideTime[player] -= 1
+				Hooks.fire("NightOutside", player, 1)
+			end
+		end
+	end
+end
 
 local function now(): number
 	return workspace:GetServerTimeNow()
@@ -321,7 +337,9 @@ local function runNight()
 	while now() < endsAt do
 		task.wait(TICK)
 		local t = os.clock()
-		stepMonster(math.min(t - last, 0.2))
+		local dt = math.min(t - last, 0.2)
+		stepMonster(dt)
+		countOutside(dt)
 		last = t
 	end
 	removeMonster()
@@ -352,6 +370,7 @@ function NightService.start()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		immuneUntil[player] = nil
+		outsideTime[player] = nil
 	end)
 end
 

@@ -26,6 +26,7 @@ Remotes.Names = {
 	"Effect", -- (kind, data) effet visuel / sonore
 	"DailyInfo", -- (info) état du cadeau du jour
 	"IndexInfo", -- (info) fantômes découverts dans le Fantômédex
+	"MissionsInfo", -- (info) missions du jour et progrès
 }
 
 local FOLDER_NAME = "Remotes"

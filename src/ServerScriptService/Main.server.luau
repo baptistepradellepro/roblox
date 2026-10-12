@@ -26,6 +26,7 @@ local Guard = require(Services:WaitForChild("Guard"))
 local IndexService = require(Services:WaitForChild("IndexService"))
 local LeaderboardService = require(Services:WaitForChild("LeaderboardService"))
 local MapBuilder = require(Services:WaitForChild("MapBuilder"))
+local MissionService = require(Services:WaitForChild("MissionService"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local NightService = require(Services:WaitForChild("NightService"))
 local RebirthService = require(Services:WaitForChild("RebirthService"))
@@ -46,6 +47,7 @@ RebirthService.start()
 MonetizationService.start()
 CodeService.start()
 LeaderboardService.start()
+MissionService.start()
 EconomyService.giveGhostCallback = GhostService.giveGhost
 BaseService.onGhostPlaced = IndexService.discover -- chaque nouveau fantôme entre dans le Fantômédex
 
@@ -73,6 +75,7 @@ local function onPlayerAdded(player: Player)
 	RebirthService.setup(player) -- aura des rebirths
 	EconomyService.setup(player)
 	IndexService.setup(player) -- collection (avant le cadeau, pour ne pas afficher 2 messages)
+	MissionService.setup(player) -- missions du jour
 
 	-- Premier lancement : un fantôme offert tout de suite
 	if not data.StarterGiven then

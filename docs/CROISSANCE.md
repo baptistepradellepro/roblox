@@ -44,7 +44,7 @@ Accélère une session de jeu : un seul Drap Mou au début, compteur de pièces 
 
 ## Déjà dans le jeu au lancement
 
-Pour que le jeu soit le plus complet possible dès le départ, tout ce qui était prévu pour novembre est déjà codé : le Fantômédex et les codes secrets, les fantômes Dorés et Arc-en-ciel, les 4 fantômes d'automne, les nuits à thème (Brouillard, Bonbons), la Super Nuit du samedi soir, le week-end x2 et le classement des voleurs de la semaine.
+Pour que le jeu soit le plus complet possible dès le départ, tout ce qui était prévu pour novembre est déjà codé : le Fantômédex et les codes secrets, les fantômes Dorés et Arc-en-ciel, les 4 fantômes d'automne, les nuits à thème (Brouillard, Bonbons), la Super Nuit du samedi soir, le week-end x2, le classement des voleurs de la semaine et les 3 missions du jour.
 
 Ça donne aussi de quoi filmer dès la première semaine : un Arc-en-ciel annoncé à tout le serveur, une Super Nuit avec le Gloutrouille géant, ou toi en tête du classement.
 
@@ -54,10 +54,10 @@ Le principe ne change pas : une nouveauté visible chaque semaine, annoncée dan
 
 Chaque semaine, regarde dans Creator Hub > Analytics la rétention à 1 jour (vise 20 % ou plus), la rétention à 7 jours (5 % ou plus) et la durée moyenne des sessions (12 minutes ou plus). Si la rétention à 1 jour passe sous 15 %, on retravaille d'abord les 5 premières minutes de jeu avant d'ajouter du contenu.
 
-### Semaine 1 (2-8 novembre) : bilan et missions du jour
+### Semaine 1 (2-8 novembre) : bilan et défis de la semaine
 
-- Équilibrage à partir des vraies données : prix, revenus, chance des variantes, fréquence des nuits. Tout se règle dans `Config.luau` et `GhostData.luau`.
-- Trois missions par jour, qui changent chaque jour : "Vole 2 fantômes", "Achète un Épique", "Reste 30 secondes dehors pendant une Nuit Hantée". Une récompense par mission et un bonus si les trois sont faites. C'est ce qui donne une raison de revenir chaque jour, en plus du cadeau.
+- Équilibrage à partir des vraies données : prix, revenus, chance des variantes, fréquence des nuits, difficulté des missions du jour. Tout se règle dans `Config.luau`, `GhostData.luau` et `Missions.luau`.
+- Des défis de la semaine, plus longs que les missions du jour ("Vole 20 fantômes", "Survis à 3 Super Nuits") avec une grosse récompense, par exemple un fantôme Doré garanti.
 - Un nouveau code secret pour la fin d'Halloween.
 - TikTok : "Le dernier Squelette Disco du serveur".
 
