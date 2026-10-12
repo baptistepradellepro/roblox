@@ -1,0 +1,73 @@
+--[[
+	Lang : choisit la langue du joueur (français si son Roblox est en français,
+	sinon anglais) et traduit les textes.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local GhostData = require(Shared:WaitForChild("GhostData"))
+local Strings = require(Shared:WaitForChild("Strings"))
+
+local Lang = {}
+
+local function detect(): string
+	if Config.ForceLanguage == "fr" or Config.ForceLanguage == "en" then
+		return Config.ForceLanguage
+	end
+	local ok, locale = pcall(function()
+		return Players.LocalPlayer.LocaleId
+	end)
+	if ok and type(locale) == "string" and string.sub(string.lower(locale), 1, 2) == "fr" then
+		return "fr"
+	end
+	return "en"
+end
+
+Lang.code = detect()
+
+-- Roblox peut traduire automatiquement l'anglais vers d'autres langues (espagnol,
+-- portugais...). On le désactive pour le français, déjà traduit à la main.
+Lang.autoLocalize = Lang.code ~= "fr"
+
+function Lang.ghostName(ghostId: string): string
+	local ghost = GhostData.get(ghostId)
+	if not ghost then
+		return tostring(ghostId)
+	end
+	return ghost.Name[Lang.code] or ghost.Name.en
+end
+
+function Lang.ghostGag(ghostId: string): string
+	local ghost = GhostData.get(ghostId)
+	if not ghost then
+		return ""
+	end
+	return ghost.Gag[Lang.code] or ghost.Gag.en
+end
+
+function Lang.rarityName(rarity: string): string
+	return Strings.format(Lang.code, "Rarity_" .. rarity)
+end
+
+-- Traduit une clé. Les paramètres "ghost" (Id) et "rarity" sont traduits aussi.
+function Lang.t(key: string, params: { [string]: any }?): string
+	local resolved = nil
+	if params then
+		resolved = {}
+		for name, value in params do
+			if name == "ghost" then
+				resolved[name] = Lang.ghostName(value)
+			elseif name == "rarity" then
+				resolved[name] = Lang.rarityName(value)
+			else
+				resolved[name] = value
+			end
+		end
+	end
+	return Strings.format(Lang.code, key, resolved)
+end
+
+return Lang

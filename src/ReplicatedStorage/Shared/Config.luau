@@ -1,0 +1,104 @@
+--[[
+	Config : TOUS les réglages du jeu au même endroit.
+	Tu peux changer les nombres ici sans toucher au reste du code.
+	(Les durées sont en secondes, les distances en "studs", l'unité de Roblox.)
+]]
+
+local Config = {}
+
+-- Langue forcée pour tes tests : "fr", "en" ou nil (= automatique selon le joueur)
+Config.ForceLanguage = nil
+
+-- ===== Sauvegarde =====
+Config.DataStoreName = "StealAGhost_Data_v1"
+Config.AutosaveInterval = 120 -- sauvegarde automatique toutes les 2 minutes
+Config.SessionLockTimeout = 600 -- verrou de session : évite que 2 serveurs sauvegardent le même joueur
+Config.SessionLockMaxWait = 25 -- au pire, on attend 25 s avant de reprendre la main
+
+-- ===== Bases =====
+Config.BaseCount = 12 -- une base par joueur (mets 12 joueurs max dans les paramètres)
+Config.StartPedestals = 8 -- socles débloqués au départ
+Config.MaxPedestals = 12 -- socles maximum (1 de plus par rebirth)
+Config.StartCoins = 100
+Config.StarterGhost = "DrapMou" -- le fantôme offert au premier lancement
+Config.BaseIncome = 1 -- pièces/s gratuites pour ne jamais être bloqué à 0
+Config.RespawnDelay = 3
+
+-- ===== Chemin hanté =====
+Config.PathStartX = -150
+Config.PathEndX = 150
+Config.PathY = 4.5
+Config.PathZ = 0
+Config.PathSpeed = 7 -- vitesse des fantômes sur le chemin
+Config.PathSpawnInterval = 3.5 -- un nouveau fantôme toutes les 3,5 s
+Config.MaxGhostsOnPath = 12
+Config.BuyRange = 14 -- distance max pour acheter
+Config.SellRatio = 0.5 -- on revend à 50 % du prix
+
+-- ===== Vol =====
+Config.StealHoldDuration = 1.5 -- temps à maintenir pour voler
+Config.StealRange = 12
+Config.NormalWalkSpeed = 16
+Config.CarrierWalkSpeed = 10 -- le voleur est ralenti
+Config.StealTimeout = 45 -- au-delà, le fantôme rentre chez lui
+Config.RecoverRange = 6 -- le propriétaire touche le voleur = fantôme récupéré
+Config.BonkRange = 11 -- portée du Marteau Pouet
+Config.BonkCooldown = 3
+Config.BonkStunTime = 1.5
+
+-- ===== Verrou de base =====
+Config.LockDuration = 60
+Config.LockDurationPass = 90 -- avec le Game Pass "Verrou+"
+Config.LockCooldown = 120 -- recharge après la fin du verrou
+Config.NewPlayerShield = 120 -- protection automatique à l'arrivée
+
+-- ===== Nuit Hantée =====
+Config.DayDuration = 480 -- 8 min de jour...
+Config.NightDuration = 120 -- ...puis 2 min de nuit = une nuit toutes les 10 min
+Config.NightWarning = 10 -- alerte "la nuit tombe" 10 s avant
+Config.MonsterSpeed = 14
+Config.MonsterCatchRange = 5
+Config.MonsterCoinPenalty = 0.05 -- perd 5 % de ses pièces si attrapé
+Config.MonsterStunTime = 2
+
+-- ===== Rebirth =====
+Config.RebirthBaseCost = 1000000
+Config.RebirthCostGrowth = 3.5
+Config.RebirthIncomeBonus = 0.5 -- +50 % de revenus par rebirth
+
+-- ===== Retour des joueurs =====
+Config.FriendBonus = 0.10 -- +10 % par ami dans le serveur
+Config.FriendBonusMax = 0.50
+Config.OfflineRate = 0.5 -- 50 % des revenus pendant l'absence
+Config.OfflineCapSeconds = 3 * 3600 -- plafond : 3 heures
+Config.OfflineMinSeconds = 60
+-- Récompense quotidienne (jour 1 à 7, puis ça recommence)
+-- Minutes = combien de minutes de revenus on reçoit, Min = minimum de pièces
+Config.DailyRewards = {
+	{ Minutes = 2, Min = 100 },
+	{ Minutes = 3, Min = 250 },
+	{ Minutes = 4, Min = 500 },
+	{ Minutes = 5, Min = 1000 },
+	{ Minutes = 6, Min = 2000 },
+	{ Minutes = 8, Min = 4000 },
+	{ Minutes = 10, Min = 8000, RandomGhostRarity = "Epic" },
+}
+
+-- ===== Événement Halloween =====
+-- Dates en "temps Unix" (UTC). 1790812800 = 1er oct. 2026, 1793664000 = 3 nov. 2026
+Config.HalloweenStart = 1790812800
+Config.HalloweenEnd = 1793664000
+Config.ForceHalloween = false -- mets true pour tester les fantômes Halloween hors période
+
+-- ===== Monétisation (mets 0 tant que tu ne les as pas créés) =====
+Config.GamePasses = {
+	DoubleCoins = 0, -- ID du Game Pass "x2 Pièces"
+	LongLock = 0, -- ID du Game Pass "Verrou+"
+}
+Config.Products = {
+	CoinPack = 0, -- ID du Developer Product "Pack de pièces"
+}
+Config.CoinPackMinutes = 10 -- le pack donne 10 min de revenus...
+Config.CoinPackMin = 5000 -- ...et au moins 5 000 pièces
+
+return Config
