@@ -298,6 +298,44 @@ function Bodies.Candy(ctx)
 	}
 end
 
+function Bodies.Leaf(ctx)
+	local s = ctx.s
+	local leafCf = CFrame.Angles(0, 0, math.rad(45))
+	block(ctx, Vector3.new(3, 3, 0.4) * s, leafCf, ctx.color, { Material = ctx.material })
+	-- nervure centrale et petite tige
+	block(ctx, Vector3.new(0.18 * s, 4.2 * s, 0.45 * s), CFrame.new(0, 0, 0.02 * s), ctx.accent)
+	upCyl(ctx, 1.2 * s, 0.3 * s, Vector3.new(0, -2.5 * s, 0), ctx.accent)
+	return {
+		top = 2.1 * s,
+		bottom = -3.1 * s,
+		faceY = 0.2 * s,
+		faceX = 0,
+		halfWidth = 2.1 * s,
+		back = 0.2 * s,
+		front = -0.25 * s,
+	}
+end
+
+function Bodies.Mushroom(ctx)
+	local s = ctx.s
+	-- chapeau rouge à pois blancs + pied clair (le visage est sur le pied)
+	upCyl(ctx, 1.3 * s, 4.8 * s, Vector3.new(0, 1.1 * s, 0), ctx.color, { Material = ctx.material })
+	ball(ctx, 3.6 * s, Vector3.new(0, 1.6 * s, 0), ctx.color, { Material = ctx.material })
+	for _, p in { Vector3.new(-1.3, 2.6, -0.9), Vector3.new(1.1, 2.9, -0.6), Vector3.new(0.1, 3.3, 0.6), Vector3.new(-0.4, 2.2, -1.8) } do
+		ball(ctx, 0.7 * s, p * s, WHITE)
+	end
+	upCyl(ctx, 2.6 * s, 2.4 * s, Vector3.new(0, -0.8 * s, 0), ctx.accent)
+	return {
+		top = 3.4 * s,
+		bottom = -2.1 * s,
+		faceY = -0.85 * s,
+		faceX = 0,
+		halfWidth = 2.4 * s,
+		back = 1.2 * s,
+		cylR = 1.2 * s,
+	}
+end
+
 ----------------------------------------------------------------------
 -- VISAGES
 ----------------------------------------------------------------------
@@ -730,6 +768,83 @@ function Accessories.DiscoBall(ctx, m)
 	e.Parent = disco
 end
 
+function Accessories.Hilum(ctx, m)
+	local s = ctx.s
+	ball(ctx, 1.6 * s, Vector3.new(0, m.top - 0.25 * s, 0.3 * s), ctx.accent)
+	upCyl(ctx, 0.6 * s, 0.25 * s, Vector3.new(0, m.top + 0.4 * s, 0.3 * s), ctx.color)
+end
+
+function Accessories.SquirrelTail(ctx, m)
+	local s = ctx.s
+	ball(ctx, 2.4 * s, Vector3.new(0, -0.6 * s, m.back + 0.8 * s), ctx.accent)
+	ball(ctx, 2.6 * s, Vector3.new(0, 1.3 * s, m.back + 1.3 * s), ctx.accent)
+	ball(ctx, 2 * s, Vector3.new(0, 2.9 * s, m.back + 0.9 * s), ctx.accent)
+end
+
+----------------------------------------------------------------------
+-- VARIANTES (Doré, Arc-en-ciel)
+----------------------------------------------------------------------
+local RAINBOW = {
+	Color3.fromRGB(255, 80, 80),
+	Color3.fromRGB(255, 170, 40),
+	Color3.fromRGB(255, 240, 70),
+	Color3.fromRGB(90, 230, 100),
+	Color3.fromRGB(70, 180, 255),
+	Color3.fromRGB(170, 100, 255),
+}
+
+-- Les petits détails sombres (yeux, bouche) gardent leur couleur
+local function isFaceDetail(part: BasePart): boolean
+	local c = part.Color
+	return c.R + c.G + c.B < 0.45
+end
+
+local function applyMutation(ctx, m, mutation: string)
+	local model = ctx.model
+	local index = 0
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") and d.Name ~= "Root" and d.Transparency < 1 and not isFaceDetail(d) then
+			index += 1
+			if mutation == "Gold" then
+				d.Color = d.Color:Lerp(GOLD, 0.75)
+				d.Reflectance = 0.3
+			elseif mutation == "Rainbow" then
+				d.Color = RAINBOW[(index - 1) % #RAINBOW + 1]
+				d.Material = Enum.Material.Neon
+			end
+		end
+	end
+	-- Arc-en-ciel : un petit arc de 6 boules colorées au-dessus de la tête
+	if mutation == "Rainbow" then
+		local s = ctx.s
+		for i, color in RAINBOW do
+			local angle = math.rad(180 * (i - 1) / (#RAINBOW - 1))
+			local pos = Vector3.new(math.cos(angle) * 2.2 * s, m.top + 0.9 * s + math.sin(angle) * 1.4 * s, 0)
+			ball(ctx, 0.75 * s, pos, color, { Material = Enum.Material.Neon })
+		end
+	end
+	local root = model.PrimaryPart :: BasePart
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Name = "MutationSparkles"
+	sparkle.LightEmission = 1
+	sparkle.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0) })
+	sparkle.Speed = NumberRange.new(1, 3)
+	sparkle.SpreadAngle = Vector2.new(180, 180)
+	sparkle.Lifetime = NumberRange.new(0.8, 1.4)
+	if mutation == "Gold" then
+		sparkle.Color = ColorSequence.new(GOLD, WHITE)
+		sparkle.Rate = 6
+	else
+		sparkle.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, RAINBOW[1]),
+			ColorSequenceKeypoint.new(0.5, RAINBOW[4]),
+			ColorSequenceKeypoint.new(1, RAINBOW[6]),
+		})
+		sparkle.Rate = 12
+	end
+	sparkle.Parent = root
+end
+
 ----------------------------------------------------------------------
 -- CONSTRUCTION
 ----------------------------------------------------------------------
@@ -743,8 +858,13 @@ function GhostFactory.scaleOf(ghostId: string): number
 	return ghost.Look.Scale or Rarities.Info[ghost.Rarity].Scale
 end
 
-function GhostFactory.build(ghostId: string): Model
-	local ghost = GhostData.get(ghostId) or GhostData.get("DrapMou")
+-- ghostKey = "DrapMou" ou "DrapMou#Gold" (avec variante)
+function GhostFactory.build(ghostKey: string): Model
+	local ghost = GhostData.get(ghostKey) or GhostData.get("DrapMou")
+	local _, mutation = GhostData.split(ghostKey)
+	if mutation and not GhostData.Mutations[mutation] then
+		mutation = nil
+	end
 	local look = ghost.Look
 	local rarityInfo = Rarities.Info[ghost.Rarity]
 
@@ -810,7 +930,11 @@ function GhostFactory.build(ghostId: string): Model
 		sparkles.Parent = root
 	end
 
-	model:SetAttribute("GhostId", ghost.Id)
+	if mutation then
+		applyMutation(ctx, m, mutation)
+	end
+
+	model:SetAttribute("GhostId", GhostData.key(ghost.Id, mutation))
 	model:SetAttribute("Top", m.top)
 	model:SetAttribute("Bottom", -m.bottom)
 	model:SetAttribute("Spin", look.Spin or 1)

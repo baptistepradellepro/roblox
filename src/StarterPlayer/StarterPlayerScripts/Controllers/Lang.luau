@@ -32,12 +32,19 @@ Lang.code = detect()
 -- portugais...). On le désactive pour le français, déjà traduit à la main.
 Lang.autoLocalize = Lang.code ~= "fr"
 
-function Lang.ghostName(ghostId: string): string
-	local ghost = GhostData.get(ghostId)
+-- "DrapMou#Gold" -> "Drap Mou Doré" (fr) / "Golden Floppy Sheet" (en)
+function Lang.ghostName(ghostKey: string): string
+	local ghost = GhostData.get(ghostKey)
 	if not ghost then
-		return tostring(ghostId)
+		return tostring(ghostKey)
 	end
-	return ghost.Name[Lang.code] or ghost.Name.en
+	local name = ghost.Name[Lang.code] or ghost.Name.en
+	local mutation = GhostData.mutationOf(ghostKey)
+	if mutation then
+		local tag = mutation.Name[Lang.code] or mutation.Name.en
+		return if Lang.code == "fr" then name .. " " .. tag else tag .. " " .. name
+	end
+	return name
 end
 
 function Lang.ghostGag(ghostId: string): string

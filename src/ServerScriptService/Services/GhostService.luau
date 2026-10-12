@@ -73,32 +73,42 @@ end
 
 -- Fait apparaître un fantôme au début du chemin (au hasard si ghostId est nil)
 function GhostService.spawn(ghostId: string?)
-	local ghost
+	local ghostKey: string
 	if ghostId then
-		ghost = GhostData.get(ghostId)
+		if not GhostData.get(ghostId) then
+			return
+		end
+		ghostKey = ghostId
 	else
 		local rarity = Rarities.roll(rng:NextNumber(), GhostService.isNight(), GhostService.isEventActive())
-		ghost = GhostData.pick(rarity, rng:NextNumber())
+		local ghost = GhostData.pick(rarity, rng:NextNumber())
+		-- parfois une variante Dorée (x3) ou Arc-en-ciel (x5)
+		local mutation = GhostData.rollMutation(rng:NextNumber(), GhostService.isNight(), GhostService.mutationBoost)
+		ghostKey = GhostData.key(ghost.Id, mutation)
 	end
-	if not ghost then
-		return
-	end
+	local ghost = GhostData.get(ghostKey)
+	local _, mutation = GhostData.split(ghostKey)
 	counter += 1
 	local uid = tostring(counter)
 	local holder = Instance.new("Configuration")
 	holder.Name = uid
-	holder:SetAttribute("GhostId", ghost.Id)
+	holder:SetAttribute("GhostId", ghostKey)
 	holder:SetAttribute("SpawnTime", now())
 	holder.Parent = folder
-	entries[uid] = { Uid = uid, GhostId = ghost.Id, SpawnTime = now(), Holder = holder }
+	entries[uid] = { Uid = uid, GhostId = ghostKey, SpawnTime = now(), Holder = holder }
 
 	-- Annonce à tout le serveur pour les apparitions très rares
-	if ghost.Rarity == "Mythic" then
-		AnnounceService.announce("AnnMythicSpawn", { ghost = ghost.Id }, "mythic")
+	if mutation == "Rainbow" then
+		AnnounceService.announce("AnnRainbowSpawn", { ghost = ghostKey }, "rainbow")
+	elseif ghost.Rarity == "Mythic" then
+		AnnounceService.announce("AnnMythicSpawn", { ghost = ghostKey }, "mythic")
 	elseif ghost.Rarity == "Halloween" then
-		AnnounceService.announce("AnnHalloweenSpawn", { ghost = ghost.Id }, "halloween")
+		AnnounceService.announce("AnnHalloweenSpawn", { ghost = ghostKey }, "halloween")
 	end
 end
+
+-- Multiplicateur de chance des variantes (la Super Nuit l'augmente)
+GhostService.mutationBoost = 1
 
 -- Donne un fantôme directement dans la base (cadeau). Renvoie le socle ou nil si plein.
 function GhostService.giveGhost(player: Player, ghostId: string): number?
@@ -144,22 +154,27 @@ local function onBuy(player: Player, uid: any)
 		AnnounceService.notify(player, "NoFreePedestal", nil, "bad")
 		return
 	end
-	if not EconomyService.trySpend(player, ghost.Price) then
+	local ghostKey = entry.GhostId
+	local price = GhostData.priceOf(ghostKey)
+	if not EconomyService.trySpend(player, price) then
 		AnnounceService.notify(player, "NotEnoughCoins", nil, "bad")
 		return
 	end
 
 	removeEntry(uid)
-	local slot = GhostService.giveGhost(player, ghost.Id)
+	local slot = GhostService.giveGhost(player, ghostKey)
 	if not slot then
-		EconomyService.add(player, ghost.Price) -- ne devrait pas arriver : on rembourse
+		EconomyService.add(player, price) -- ne devrait pas arriver : on rembourse
 		return
 	end
-	AnnounceService.notify(player, "Bought", { ghost = ghost.Id }, "good")
-	AnnounceService.effect("Bought", { GhostId = ghost.Id }, player)
+	AnnounceService.notify(player, "Bought", { ghost = ghostKey }, "good")
+	AnnounceService.effect("Bought", { GhostId = ghostKey }, player)
 	player:SetAttribute("HasBought", true)
-	if Rarities.rank(ghost.Rarity) >= Rarities.rank("Legendary") then
-		AnnounceService.announce("AnnBigBuy", { player = player.DisplayName, ghost = ghost.Id }, string.lower(ghost.Rarity))
+	local _, mutation = GhostData.split(ghostKey)
+	if mutation == "Rainbow" then
+		AnnounceService.announce("AnnBigBuy", { player = player.DisplayName, ghost = ghostKey }, "rainbow")
+	elseif Rarities.rank(ghost.Rarity) >= Rarities.rank("Legendary") then
+		AnnounceService.announce("AnnBigBuy", { player = player.DisplayName, ghost = ghostKey }, string.lower(ghost.Rarity))
 	end
 end
 
@@ -180,9 +195,8 @@ local function onSell(player: Player, slot: any)
 		AnnounceService.notify(player, "TooFar", nil, "bad")
 		return
 	end
-	local ghost = GhostData.get(ghostId)
 	BaseService.removeGhost(player, slot)
-	local value = if ghost then math.floor(ghost.Price * Config.SellRatio) else 0
+	local value = math.floor(GhostData.priceOf(ghostId) * Config.SellRatio)
 	EconomyService.add(player, value)
 	AnnounceService.notify(player, "Sold", { coins = Format.short(value) }, "good")
 	AnnounceService.effect("Sold", { Position = BaseService.pedestalPosition(base, slot) })

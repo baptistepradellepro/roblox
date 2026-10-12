@@ -72,8 +72,9 @@ local function checkRewards(player: Player, data)
 end
 
 -- Un fantôme arrive dans la base du joueur
-function IndexService.discover(player: Player, ghostId: string, silent: boolean?)
+function IndexService.discover(player: Player, ghostKey: string, silent: boolean?)
 	local data = DataService.get(player)
+	local ghostId = GhostData.split(ghostKey) -- la collection compte le fantôme, pas sa variante
 	if not data or not GhostData.get(ghostId) or data.Discovered[ghostId] then
 		return
 	end
@@ -92,7 +93,8 @@ function IndexService.setup(player: Player)
 		return
 	end
 	data.Discovered[Config.StarterGhost] = true
-	for _, ghostId in data.Slots do
+	for _, ghostKey in data.Slots do
+		local ghostId = GhostData.split(ghostKey)
 		if GhostData.get(ghostId) then
 			data.Discovered[ghostId] = true
 		end

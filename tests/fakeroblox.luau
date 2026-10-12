@@ -262,6 +262,19 @@ local function setParent(inst, parent)
 	end
 end
 
+-- Vérification des propriétés : chaque écriture est rejouée sur une vraie instance
+-- Lune (base de données officielle des classes Roblox) pour détecter les fautes.
+Fake.propertyErrors = {}
+local probes = {}
+local INTERNAL = { SourcePath = true, Source = true, Kicked = true, ProcessReceipt = true } -- ProcessReceipt est un "callback", pas une propriété
+local function probeFor(className: string)
+	if probes[className] == nil then
+		local ok, real = pcall(roblox.Instance.new, className)
+		probes[className] = if ok then real else false
+	end
+	return probes[className]
+end
+
 InstanceMT.__index = function(self, key)
 	local classMethods = ClassMethods[self.__props.ClassName]
 	if classMethods and classMethods[key] then
@@ -291,20 +304,17 @@ InstanceMT.__index = function(self, key)
 			return child
 		end
 	end
-	return nil
-end
-
--- Vérification des propriétés : chaque écriture est rejouée sur une vraie instance
--- Lune (base de données officielle des classes Roblox) pour détecter les fautes.
-Fake.propertyErrors = {}
-local probes = {}
-local INTERNAL = { SourcePath = true, Source = true, Kicked = true, ProcessReceipt = true } -- ProcessReceipt est un "callback", pas une propriété
-local function probeFor(className: string)
-	if probes[className] == nil then
-		local ok, real = pcall(roblox.Instance.new, className)
-		probes[className] = if ok then real else false
+	-- valeur par défaut réelle de Roblox (ex. Transparency = 0)
+	local probe = probeFor(props.ClassName)
+	if probe then
+		local ok, default = pcall(function()
+			return probe[key]
+		end)
+		if ok and typeof(default) ~= "Instance" then
+			return default
+		end
 	end
-	return probes[className]
+	return nil
 end
 
 InstanceMT.__newindex = function(self, key, value)

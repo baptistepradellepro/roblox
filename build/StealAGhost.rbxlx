@@ -216,7 +216,7 @@ return Format
         <Properties>
           <string name="Name">GhostData</string>
           <string name="Source"><![CDATA[--[[
-	GhostData : la liste des 32 fantômes du jeu (tous inventés).
+	GhostData : la liste des 36 fantômes du jeu (tous inventés), et leurs variantes Dorée et Arc-en-ciel.
 
 	Pour chaque fantôme :
 	  Id       : nom interne (sans espace ni accent, ne JAMAIS le changer après publication)
@@ -280,6 +280,12 @@ GhostData.List = {
 		Gag = { fr = "Encore en chargement... 99 %.", en = "Still loading... 99%." },
 		Look = { Body = "Sheet", Color = { 190, 190, 200 }, Accent = { 80, 255, 255 }, Face = "Blank", Transparency = 0.35, Accessories = { "LoadingRing" } },
 	},
+	{
+		Id = "FeuilleMorteRaleuse", Rarity = "Common", Price = 50, Income = 3,
+		Name = { fr = "Feuille Morte Râleuse", en = "Grumpy Dead Leaf" },
+		Gag = { fr = "Tombée de l'arbre. Elle ne l'a pas digéré.", en = "Fell off the tree. Still mad about it." },
+		Look = { Body = "Leaf", Color = { 230, 110, 30 }, Accent = { 120, 60, 25 }, Face = "Angry", FaceScale = 0.85, Accessories = {} },
+	},
 
 	-- ===================== RARES =====================
 	{
@@ -324,6 +330,12 @@ GhostData.List = {
 		Gag = { fr = "Coupe la connexion quand tu gagnes.", en = "Cuts your connection when you win." },
 		Look = { Body = "Sheet", Color = { 120, 255, 200 }, Accent = { 40, 255, 120 }, Face = "Cool", Accessories = { "Antenna" } },
 	},
+	{
+		Id = "ChampignonChuchoteur", Rarity = "Rare", Price = 700, Income = 20,
+		Name = { fr = "Champignon Chuchoteur", en = "Whispering Mushroom" },
+		Gag = { fr = "Raconte des secrets aux racines.", en = "Tells secrets to the roots." },
+		Look = { Body = "Mushroom", Color = { 230, 50, 60 }, Accent = { 250, 240, 215 }, Face = "Shy", FaceScale = 0.6, Accessories = {} },
+	},
 
 	-- ===================== ÉPIQUES =====================
 	{
@@ -362,6 +374,12 @@ GhostData.List = {
 		Gag = { fr = "Éclate de rire. Littéralement.", en = "Bursts out laughing. Literally." },
 		Look = { Body = "Blob", Color = { 255, 80, 90 }, Accent = { 255, 255, 255 }, Face = "Happy", Reflectance = 0.15, Accessories = { "String" } },
 	},
+	{
+		Id = "MarronToutTremblant", Rarity = "Epic", Price = 9000, Income = 130,
+		Name = { fr = "Marron Tout Tremblant", en = "Shivering Chestnut" },
+		Gag = { fr = "A peur des écureuils. Avec raison.", en = "Scared of squirrels. Rightly so." },
+		Look = { Body = "Blob", Color = { 125, 70, 40 }, Accent = { 215, 175, 120 }, Face = "Shocked", Accessories = { "Hilum" } },
+	},
 
 	-- ===================== LÉGENDAIRES =====================
 	{
@@ -387,6 +405,12 @@ GhostData.List = {
 		Name = { fr = "Grand-Mère Turbo", en = "Rocket Granny" },
 		Gag = { fr = "0 à 100 km/h en 2 secondes. Avec ses biscuits.", en = "0 to 60 in 2 seconds. With cookies." },
 		Look = { Body = "Sheet", Color = { 255, 230, 240 }, Accent = { 170, 170, 180 }, Face = "Happy", Accessories = { "Bun", "Rocket" } },
+	},
+	{
+		Id = "EcureuilFantomeStresse", Rarity = "Legendary", Price = 100000, Income = 950,
+		Name = { fr = "Écureuil Fantôme Stressé", en = "Stressed Ghost Squirrel" },
+		Gag = { fr = "A caché ses noisettes en 1923. Les cherche encore.", en = "Hid his nuts in 1923. Still looking." },
+		Look = { Body = "Sheet", Color = { 175, 115, 60 }, Accent = { 230, 190, 140 }, Face = "Shocked", Accessories = { "CatEars", "SquirrelTail" } },
 	},
 
 	-- ===================== MYTHIQUES =====================
@@ -448,8 +472,73 @@ for index, ghost in GhostData.List do
 	table.insert(GhostData.ByRarity[ghost.Rarity], ghost)
 end
 
-function GhostData.get(id: string)
-	return GhostData.ById[id]
+-- Variantes rares : un fantôme du chemin peut être Doré (x3) ou Arc-en-ciel (x5).
+-- Elles multiplient le revenu ET le prix. Chance = de jour, NightChance = pendant la nuit.
+GhostData.Mutations = {
+	Gold = { Mult = 3, Chance = 0.03, NightChance = 0.06, Color = { 255, 200, 40 }, Name = { fr = "Doré", en = "Golden" } },
+	Rainbow = { Mult = 5, Chance = 0.006, NightChance = 0.015, Color = { 255, 110, 230 }, Name = { fr = "Arc-en-ciel", en = "Rainbow" } },
+}
+GhostData.MutationOrder = { "Gold", "Rainbow" }
+
+-- Un fantôme est noté "DrapMou" ou, s'il a une variante, "DrapMou#Gold".
+-- split("DrapMou#Gold") -> "DrapMou", "Gold"
+function GhostData.split(key: string): (string, string?)
+	local base, mutation = string.match(key, "^(%w+)#(%w+)$")
+	if base then
+		return base, mutation
+	end
+	return key, nil
+end
+
+function GhostData.key(baseId: string, mutation: string?): string
+	if mutation then
+		return baseId .. "#" .. mutation
+	end
+	return baseId
+end
+
+-- Les infos du fantôme (sans la variante). Marche avec "DrapMou" comme avec "DrapMou#Gold".
+function GhostData.get(key: string)
+	if type(key) ~= "string" then
+		return nil
+	end
+	local base, mutation = GhostData.split(key)
+	if mutation and not GhostData.Mutations[mutation] then
+		return nil
+	end
+	return GhostData.ById[base]
+end
+
+function GhostData.mutationOf(key: string)
+	local _, mutation = GhostData.split(key)
+	return mutation and GhostData.Mutations[mutation]
+end
+
+-- Revenu par seconde et prix, variante comprise
+function GhostData.incomeOf(key: string): number
+	local ghost = GhostData.get(key)
+	local mutation = GhostData.mutationOf(key)
+	return if ghost then ghost.Income * (if mutation then mutation.Mult else 1) else 0
+end
+
+function GhostData.priceOf(key: string): number
+	local ghost = GhostData.get(key)
+	local mutation = GhostData.mutationOf(key)
+	return if ghost then ghost.Price * (if mutation then mutation.Mult else 1) else 0
+end
+
+-- Tire une variante au hasard (ou nil). roll = nombre entre 0 et 1.
+function GhostData.rollMutation(roll: number, isNight: boolean, boost: number?): string?
+	local acc = 0
+	for i = #GhostData.MutationOrder, 1, -1 do
+		local name = GhostData.MutationOrder[i]
+		local m = GhostData.Mutations[name]
+		acc += (if isNight then m.NightChance else m.Chance) * (boost or 1)
+		if roll < acc then
+			return name
+		end
+	end
+	return nil
 end
 
 -- Choisit un fantôme au hasard dans une rareté. roll = nombre entre 0 et 1.
@@ -766,6 +855,44 @@ function Bodies.Candy(ctx)
 		halfWidth = 1.6 * s,
 		back = 1.6 * s,
 		sphere = { center = Vector3.zero, r = 1.6 * s },
+	}
+end
+
+function Bodies.Leaf(ctx)
+	local s = ctx.s
+	local leafCf = CFrame.Angles(0, 0, math.rad(45))
+	block(ctx, Vector3.new(3, 3, 0.4) * s, leafCf, ctx.color, { Material = ctx.material })
+	-- nervure centrale et petite tige
+	block(ctx, Vector3.new(0.18 * s, 4.2 * s, 0.45 * s), CFrame.new(0, 0, 0.02 * s), ctx.accent)
+	upCyl(ctx, 1.2 * s, 0.3 * s, Vector3.new(0, -2.5 * s, 0), ctx.accent)
+	return {
+		top = 2.1 * s,
+		bottom = -3.1 * s,
+		faceY = 0.2 * s,
+		faceX = 0,
+		halfWidth = 2.1 * s,
+		back = 0.2 * s,
+		front = -0.25 * s,
+	}
+end
+
+function Bodies.Mushroom(ctx)
+	local s = ctx.s
+	-- chapeau rouge à pois blancs + pied clair (le visage est sur le pied)
+	upCyl(ctx, 1.3 * s, 4.8 * s, Vector3.new(0, 1.1 * s, 0), ctx.color, { Material = ctx.material })
+	ball(ctx, 3.6 * s, Vector3.new(0, 1.6 * s, 0), ctx.color, { Material = ctx.material })
+	for _, p in { Vector3.new(-1.3, 2.6, -0.9), Vector3.new(1.1, 2.9, -0.6), Vector3.new(0.1, 3.3, 0.6), Vector3.new(-0.4, 2.2, -1.8) } do
+		ball(ctx, 0.7 * s, p * s, WHITE)
+	end
+	upCyl(ctx, 2.6 * s, 2.4 * s, Vector3.new(0, -0.8 * s, 0), ctx.accent)
+	return {
+		top = 3.4 * s,
+		bottom = -2.1 * s,
+		faceY = -0.85 * s,
+		faceX = 0,
+		halfWidth = 2.4 * s,
+		back = 1.2 * s,
+		cylR = 1.2 * s,
 	}
 end
 
@@ -1201,6 +1328,83 @@ function Accessories.DiscoBall(ctx, m)
 	e.Parent = disco
 end
 
+function Accessories.Hilum(ctx, m)
+	local s = ctx.s
+	ball(ctx, 1.6 * s, Vector3.new(0, m.top - 0.25 * s, 0.3 * s), ctx.accent)
+	upCyl(ctx, 0.6 * s, 0.25 * s, Vector3.new(0, m.top + 0.4 * s, 0.3 * s), ctx.color)
+end
+
+function Accessories.SquirrelTail(ctx, m)
+	local s = ctx.s
+	ball(ctx, 2.4 * s, Vector3.new(0, -0.6 * s, m.back + 0.8 * s), ctx.accent)
+	ball(ctx, 2.6 * s, Vector3.new(0, 1.3 * s, m.back + 1.3 * s), ctx.accent)
+	ball(ctx, 2 * s, Vector3.new(0, 2.9 * s, m.back + 0.9 * s), ctx.accent)
+end
+
+----------------------------------------------------------------------
+-- VARIANTES (Doré, Arc-en-ciel)
+----------------------------------------------------------------------
+local RAINBOW = {
+	Color3.fromRGB(255, 80, 80),
+	Color3.fromRGB(255, 170, 40),
+	Color3.fromRGB(255, 240, 70),
+	Color3.fromRGB(90, 230, 100),
+	Color3.fromRGB(70, 180, 255),
+	Color3.fromRGB(170, 100, 255),
+}
+
+-- Les petits détails sombres (yeux, bouche) gardent leur couleur
+local function isFaceDetail(part: BasePart): boolean
+	local c = part.Color
+	return c.R + c.G + c.B < 0.45
+end
+
+local function applyMutation(ctx, m, mutation: string)
+	local model = ctx.model
+	local index = 0
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") and d.Name ~= "Root" and d.Transparency < 1 and not isFaceDetail(d) then
+			index += 1
+			if mutation == "Gold" then
+				d.Color = d.Color:Lerp(GOLD, 0.75)
+				d.Reflectance = 0.3
+			elseif mutation == "Rainbow" then
+				d.Color = RAINBOW[(index - 1) % #RAINBOW + 1]
+				d.Material = Enum.Material.Neon
+			end
+		end
+	end
+	-- Arc-en-ciel : un petit arc de 6 boules colorées au-dessus de la tête
+	if mutation == "Rainbow" then
+		local s = ctx.s
+		for i, color in RAINBOW do
+			local angle = math.rad(180 * (i - 1) / (#RAINBOW - 1))
+			local pos = Vector3.new(math.cos(angle) * 2.2 * s, m.top + 0.9 * s + math.sin(angle) * 1.4 * s, 0)
+			ball(ctx, 0.75 * s, pos, color, { Material = Enum.Material.Neon })
+		end
+	end
+	local root = model.PrimaryPart :: BasePart
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Name = "MutationSparkles"
+	sparkle.LightEmission = 1
+	sparkle.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(1, 0) })
+	sparkle.Speed = NumberRange.new(1, 3)
+	sparkle.SpreadAngle = Vector2.new(180, 180)
+	sparkle.Lifetime = NumberRange.new(0.8, 1.4)
+	if mutation == "Gold" then
+		sparkle.Color = ColorSequence.new(GOLD, WHITE)
+		sparkle.Rate = 6
+	else
+		sparkle.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, RAINBOW[1]),
+			ColorSequenceKeypoint.new(0.5, RAINBOW[4]),
+			ColorSequenceKeypoint.new(1, RAINBOW[6]),
+		})
+		sparkle.Rate = 12
+	end
+	sparkle.Parent = root
+end
+
 ----------------------------------------------------------------------
 -- CONSTRUCTION
 ----------------------------------------------------------------------
@@ -1214,8 +1418,13 @@ function GhostFactory.scaleOf(ghostId: string): number
 	return ghost.Look.Scale or Rarities.Info[ghost.Rarity].Scale
 end
 
-function GhostFactory.build(ghostId: string): Model
-	local ghost = GhostData.get(ghostId) or GhostData.get("DrapMou")
+-- ghostKey = "DrapMou" ou "DrapMou#Gold" (avec variante)
+function GhostFactory.build(ghostKey: string): Model
+	local ghost = GhostData.get(ghostKey) or GhostData.get("DrapMou")
+	local _, mutation = GhostData.split(ghostKey)
+	if mutation and not GhostData.Mutations[mutation] then
+		mutation = nil
+	end
 	local look = ghost.Look
 	local rarityInfo = Rarities.Info[ghost.Rarity]
 
@@ -1281,7 +1490,11 @@ function GhostFactory.build(ghostId: string): Model
 		sparkles.Parent = root
 	end
 
-	model:SetAttribute("GhostId", ghost.Id)
+	if mutation then
+		applyMutation(ctx, m, mutation)
+	end
+
+	model:SetAttribute("GhostId", GhostData.key(ghost.Id, mutation))
 	model:SetAttribute("Top", m.top)
 	model:SetAttribute("Bottom", -m.bottom)
 	model:SetAttribute("Spin", look.Spin or 1)
@@ -1535,6 +1748,7 @@ Strings.fr = {
 	AnnSteal = "{thief} a volé {ghost} à {owner} !",
 	AnnMythicSpawn = "Un fantôme MYTHIQUE apparaît : {ghost} !",
 	AnnHalloweenSpawn = "Un fantôme HALLOWEEN apparaît : {ghost} !",
+	AnnRainbowSpawn = "Un fantôme ARC-EN-CIEL apparaît : {ghost} !",
 	AnnBigBuy = "{player} a attrapé {ghost} !",
 	AnnRebirth = "{player} a fait son rebirth n°{count} !",
 	AnnCaught = "Gloutrouille a attrapé {player} !",
@@ -1678,6 +1892,7 @@ Strings.en = {
 	AnnSteal = "{thief} stole {ghost} from {owner}!",
 	AnnMythicSpawn = "A MYTHIC ghost appeared: {ghost}!",
 	AnnHalloweenSpawn = "A HALLOWEEN ghost appeared: {ghost}!",
+	AnnRainbowSpawn = "A RAINBOW ghost appeared: {ghost}!",
 	AnnBigBuy = "{player} grabbed {ghost}!",
 	AnnRebirth = "{player} just did rebirth #{count}!",
 	AnnCaught = "Gloutrouille caught {player}!",
@@ -2507,7 +2722,7 @@ local function redeem(player: Player, raw: any)
 		if GhostService.giveGhost(player, def.Ghost) then
 			ghostId = def.Ghost
 		else
-			coins += GhostData.get(def.Ghost).Price -- base pleine : on donne sa valeur
+			coins += GhostData.priceOf(def.Ghost) -- base pleine : on donne sa valeur
 		end
 	end
 	if coins > 0 then
@@ -2865,11 +3080,8 @@ end
 -- Revenu par seconde AVANT multiplicateur
 function EconomyService.baseIncome(player: Player): number
 	local total = Config.BaseIncome
-	for _, ghostId in BaseService.activeGhostIds(player) do
-		local ghost = GhostData.get(ghostId)
-		if ghost then
-			total += ghost.Income
-		end
+	for _, ghostKey in BaseService.activeGhostIds(player) do
+		total += GhostData.incomeOf(ghostKey) -- variante Dorée / Arc-en-ciel comprise
 	end
 	return total
 end
@@ -3198,32 +3410,42 @@ end
 
 -- Fait apparaître un fantôme au début du chemin (au hasard si ghostId est nil)
 function GhostService.spawn(ghostId: string?)
-	local ghost
+	local ghostKey: string
 	if ghostId then
-		ghost = GhostData.get(ghostId)
+		if not GhostData.get(ghostId) then
+			return
+		end
+		ghostKey = ghostId
 	else
 		local rarity = Rarities.roll(rng:NextNumber(), GhostService.isNight(), GhostService.isEventActive())
-		ghost = GhostData.pick(rarity, rng:NextNumber())
+		local ghost = GhostData.pick(rarity, rng:NextNumber())
+		-- parfois une variante Dorée (x3) ou Arc-en-ciel (x5)
+		local mutation = GhostData.rollMutation(rng:NextNumber(), GhostService.isNight(), GhostService.mutationBoost)
+		ghostKey = GhostData.key(ghost.Id, mutation)
 	end
-	if not ghost then
-		return
-	end
+	local ghost = GhostData.get(ghostKey)
+	local _, mutation = GhostData.split(ghostKey)
 	counter += 1
 	local uid = tostring(counter)
 	local holder = Instance.new("Configuration")
 	holder.Name = uid
-	holder:SetAttribute("GhostId", ghost.Id)
+	holder:SetAttribute("GhostId", ghostKey)
 	holder:SetAttribute("SpawnTime", now())
 	holder.Parent = folder
-	entries[uid] = { Uid = uid, GhostId = ghost.Id, SpawnTime = now(), Holder = holder }
+	entries[uid] = { Uid = uid, GhostId = ghostKey, SpawnTime = now(), Holder = holder }
 
 	-- Annonce à tout le serveur pour les apparitions très rares
-	if ghost.Rarity == "Mythic" then
-		AnnounceService.announce("AnnMythicSpawn", { ghost = ghost.Id }, "mythic")
+	if mutation == "Rainbow" then
+		AnnounceService.announce("AnnRainbowSpawn", { ghost = ghostKey }, "rainbow")
+	elseif ghost.Rarity == "Mythic" then
+		AnnounceService.announce("AnnMythicSpawn", { ghost = ghostKey }, "mythic")
 	elseif ghost.Rarity == "Halloween" then
-		AnnounceService.announce("AnnHalloweenSpawn", { ghost = ghost.Id }, "halloween")
+		AnnounceService.announce("AnnHalloweenSpawn", { ghost = ghostKey }, "halloween")
 	end
 end
+
+-- Multiplicateur de chance des variantes (la Super Nuit l'augmente)
+GhostService.mutationBoost = 1
 
 -- Donne un fantôme directement dans la base (cadeau). Renvoie le socle ou nil si plein.
 function GhostService.giveGhost(player: Player, ghostId: string): number?
@@ -3269,22 +3491,27 @@ local function onBuy(player: Player, uid: any)
 		AnnounceService.notify(player, "NoFreePedestal", nil, "bad")
 		return
 	end
-	if not EconomyService.trySpend(player, ghost.Price) then
+	local ghostKey = entry.GhostId
+	local price = GhostData.priceOf(ghostKey)
+	if not EconomyService.trySpend(player, price) then
 		AnnounceService.notify(player, "NotEnoughCoins", nil, "bad")
 		return
 	end
 
 	removeEntry(uid)
-	local slot = GhostService.giveGhost(player, ghost.Id)
+	local slot = GhostService.giveGhost(player, ghostKey)
 	if not slot then
-		EconomyService.add(player, ghost.Price) -- ne devrait pas arriver : on rembourse
+		EconomyService.add(player, price) -- ne devrait pas arriver : on rembourse
 		return
 	end
-	AnnounceService.notify(player, "Bought", { ghost = ghost.Id }, "good")
-	AnnounceService.effect("Bought", { GhostId = ghost.Id }, player)
+	AnnounceService.notify(player, "Bought", { ghost = ghostKey }, "good")
+	AnnounceService.effect("Bought", { GhostId = ghostKey }, player)
 	player:SetAttribute("HasBought", true)
-	if Rarities.rank(ghost.Rarity) >= Rarities.rank("Legendary") then
-		AnnounceService.announce("AnnBigBuy", { player = player.DisplayName, ghost = ghost.Id }, string.lower(ghost.Rarity))
+	local _, mutation = GhostData.split(ghostKey)
+	if mutation == "Rainbow" then
+		AnnounceService.announce("AnnBigBuy", { player = player.DisplayName, ghost = ghostKey }, "rainbow")
+	elseif Rarities.rank(ghost.Rarity) >= Rarities.rank("Legendary") then
+		AnnounceService.announce("AnnBigBuy", { player = player.DisplayName, ghost = ghostKey }, string.lower(ghost.Rarity))
 	end
 end
 
@@ -3305,9 +3532,8 @@ local function onSell(player: Player, slot: any)
 		AnnounceService.notify(player, "TooFar", nil, "bad")
 		return
 	end
-	local ghost = GhostData.get(ghostId)
 	BaseService.removeGhost(player, slot)
-	local value = if ghost then math.floor(ghost.Price * Config.SellRatio) else 0
+	local value = math.floor(GhostData.priceOf(ghostId) * Config.SellRatio)
 	EconomyService.add(player, value)
 	AnnounceService.notify(player, "Sold", { coins = Format.short(value) }, "good")
 	AnnounceService.effect("Sold", { Position = BaseService.pedestalPosition(base, slot) })
@@ -3491,8 +3717,9 @@ local function checkRewards(player: Player, data)
 end
 
 -- Un fantôme arrive dans la base du joueur
-function IndexService.discover(player: Player, ghostId: string, silent: boolean?)
+function IndexService.discover(player: Player, ghostKey: string, silent: boolean?)
 	local data = DataService.get(player)
+	local ghostId = GhostData.split(ghostKey) -- la collection compte le fantôme, pas sa variante
 	if not data or not GhostData.get(ghostId) or data.Discovered[ghostId] then
 		return
 	end
@@ -3511,7 +3738,8 @@ function IndexService.setup(player: Player)
 		return
 	end
 	data.Discovered[Config.StarterGhost] = true
-	for _, ghostId in data.Slots do
+	for _, ghostKey in data.Slots do
+		local ghostId = GhostData.split(ghostKey)
 		if GhostData.get(ghostId) then
 			data.Discovered[ghostId] = true
 		end
@@ -5018,6 +5246,7 @@ local KIND_COLORS = {
 	mythic = Rarities.color("Mythic"),
 	halloween = Rarities.color("Halloween"),
 	legendary = Rarities.color("Legendary"),
+	rainbow = Color3.fromRGB(255, 110, 230),
 	rebirth = Color3.fromRGB(120, 255, 200),
 	night = Color3.fromRGB(170, 110, 255),
 	info = Color3.fromRGB(120, 190, 255),
@@ -5028,6 +5257,7 @@ local KIND_ICONS = {
 	mythic = "🌟",
 	halloween = "🎃",
 	legendary = "✨",
+	rainbow = "🌈",
 	rebirth = "♻️",
 	night = "🌙",
 	info = "📣",
@@ -5110,7 +5340,7 @@ function Announce.start()
 		local text = Lang.t(key, params)
 		Announce.show(text, kind)
 		chatMessage(text, KIND_COLORS[kind] or KIND_COLORS.info)
-		if kind == "mythic" or kind == "halloween" then
+		if kind == "mythic" or kind == "halloween" or kind == "rainbow" then
 			Effects.sound("Mythic")
 		end
 	end)
@@ -5335,7 +5565,7 @@ local function renderSlot(slot: Slot)
 	-- Texte du bouton "Vendre"
 	local ghost = if ghostId ~= "" then GhostData.get(ghostId) else nil
 	if ghost then
-		slot.Sell.ActionText = Lang.t("SellFor", { coins = "🪙 " .. Format.short(math.floor(ghost.Price * Config.SellRatio)) })
+		slot.Sell.ActionText = Lang.t("SellFor", { coins = "🪙 " .. Format.short(math.floor(GhostData.priceOf(ghostId) * Config.SellRatio)) })
 		slot.Sell.ObjectText = Lang.ghostName(ghostId)
 		slot.Steal.ObjectText = Lang.ghostName(ghostId)
 	end
@@ -6395,18 +6625,26 @@ function Labels.ghost(adornee: BasePart, ghostId: string, mode: string, height: 
 		MaxTextSize = 60,
 		Parent = gui,
 	})
+	local rarityText = string.upper(Lang.rarityName(ghost.Rarity))
+	local mutation = GhostData.mutationOf(ghostId)
+	if mutation then
+		-- variante : "✨ DORÉ x3 • COMMUN"
+		rarityText = "✨ " .. string.upper(mutation.Name[Lang.code] or mutation.Name.en) .. " x" .. mutation.Mult .. " • " .. rarityText
+		rarityColor = Color3.fromRGB(mutation.Color[1], mutation.Color[2], mutation.Color[3])
+	end
 	UI.label({
 		Name = "Rarity",
 		Size = UDim2.fromScale(1, 0.26),
 		Position = UDim2.fromScale(0, 0.4),
-		Text = string.upper(Lang.rarityName(ghost.Rarity)),
+		Text = rarityText,
 		TextColor3 = rarityColor,
 		MaxTextSize = 40,
 		Parent = gui,
 	})
+	local price, income = GhostData.priceOf(ghostId), GhostData.incomeOf(ghostId)
 	local info = if mode == "path"
-		then "🪙 " .. Format.short(ghost.Price) .. "   +" .. Format.short(ghost.Income) .. "/s"
-		else "+" .. Format.short(ghost.Income) .. "/s"
+		then "🪙 " .. Format.short(price) .. "   +" .. Format.short(income) .. "/s"
+		else "+" .. Format.short(income) .. "/s"
 	UI.label({
 		Name = "Info",
 		Size = UDim2.fromScale(1, 0.34),
@@ -6483,12 +6721,19 @@ Lang.code = detect()
 -- portugais...). On le désactive pour le français, déjà traduit à la main.
 Lang.autoLocalize = Lang.code ~= "fr"
 
-function Lang.ghostName(ghostId: string): string
-	local ghost = GhostData.get(ghostId)
+-- "DrapMou#Gold" -> "Drap Mou Doré" (fr) / "Golden Floppy Sheet" (en)
+function Lang.ghostName(ghostKey: string): string
+	local ghost = GhostData.get(ghostKey)
 	if not ghost then
-		return tostring(ghostId)
+		return tostring(ghostKey)
 	end
-	return ghost.Name[Lang.code] or ghost.Name.en
+	local name = ghost.Name[Lang.code] or ghost.Name.en
+	local mutation = GhostData.mutationOf(ghostKey)
+	if mutation then
+		local tag = mutation.Name[Lang.code] or mutation.Name.en
+		return if Lang.code == "fr" then name .. " " .. tag else tag .. " " .. name
+	end
+	return name
 end
 
 function Lang.ghostGag(ghostId: string): string
@@ -7576,7 +7821,7 @@ local function add(holder: Instance)
 	Labels.ghost(root, ghostId, "path", top)
 
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = Lang.t("Buy") .. "  🪙 " .. Format.short(ghost.Price)
+	prompt.ActionText = Lang.t("Buy") .. "  🪙 " .. Format.short(GhostData.priceOf(ghostId))
 	prompt.ObjectText = Lang.ghostName(ghostId)
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = Config.BuyRange
@@ -7588,8 +7833,11 @@ local function add(holder: Instance)
 		Remotes.get("BuyGhost"):FireServer(holder.Name)
 	end)
 
+	local mutation = GhostData.mutationOf(ghostId)
 	if Rarities.rank(ghost.Rarity) >= Rarities.rank("Mythic") then
 		addBeacon(model, Rarities.color(ghost.Rarity))
+	elseif mutation and mutation.Mult >= 5 then
+		addBeacon(model, Color3.fromRGB(mutation.Color[1], mutation.Color[2], mutation.Color[3]))
 	end
 
 	model.Parent = container

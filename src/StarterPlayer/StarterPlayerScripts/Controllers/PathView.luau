@@ -82,7 +82,7 @@ local function add(holder: Instance)
 	Labels.ghost(root, ghostId, "path", top)
 
 	local prompt = Instance.new("ProximityPrompt")
-	prompt.ActionText = Lang.t("Buy") .. "  🪙 " .. Format.short(ghost.Price)
+	prompt.ActionText = Lang.t("Buy") .. "  🪙 " .. Format.short(GhostData.priceOf(ghostId))
 	prompt.ObjectText = Lang.ghostName(ghostId)
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = Config.BuyRange
@@ -94,8 +94,11 @@ local function add(holder: Instance)
 		Remotes.get("BuyGhost"):FireServer(holder.Name)
 	end)
 
+	local mutation = GhostData.mutationOf(ghostId)
 	if Rarities.rank(ghost.Rarity) >= Rarities.rank("Mythic") then
 		addBeacon(model, Rarities.color(ghost.Rarity))
+	elseif mutation and mutation.Mult >= 5 then
+		addBeacon(model, Color3.fromRGB(mutation.Color[1], mutation.Color[2], mutation.Color[3]))
 	end
 
 	model.Parent = container

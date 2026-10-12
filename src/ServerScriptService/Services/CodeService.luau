@@ -73,7 +73,7 @@ local function redeem(player: Player, raw: any)
 		if GhostService.giveGhost(player, def.Ghost) then
 			ghostId = def.Ghost
 		else
-			coins += GhostData.get(def.Ghost).Price -- base pleine : on donne sa valeur
+			coins += GhostData.priceOf(def.Ghost) -- base pleine : on donne sa valeur
 		end
 	end
 	if coins > 0 then

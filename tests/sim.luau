@@ -163,6 +163,36 @@ Sched.advance(0.3)
 Fake.fire(bob, "BuyGhost", "inexistant")
 check(notified(bob, "AlreadyGone", m), "uid invalide refusé proprement")
 
+section("Variante Dorée")
+GhostService.spawn("Caquetome#Gold")
+local goldHolder = nil
+for _, h in RS.PathGhosts:GetChildren() do
+	if h:GetAttribute("GhostId") == "Caquetome#Gold" then
+		goldHolder = h
+	end
+end
+check(goldHolder ~= nil, "un Caquetôme Doré apparaît sur le chemin")
+Sched.advance(0.3)
+local coinsGold = aData.Coins
+local incomeBefore = alice:GetAttribute("Income")
+Fake.moveTo(alice, pathPosition(goldHolder))
+Fake.fire(alice, "BuyGhost", goldHolder.Name)
+check(coinsGold - aData.Coins == GhostData.get("Caquetome").Price * 3, "le Doré coûte 3 fois plus")
+check(alice:GetAttribute("Income") - incomeBefore == GhostData.get("Caquetome").Income * 3, "et rapporte 3 fois plus")
+check(aData.Discovered.Caquetome == true, "il compte dans le Fantômédex")
+local goldSlot
+for key, id in aData.Slots do
+	if id == "Caquetome#Gold" then
+		goldSlot = tonumber(key)
+	end
+end
+Sched.advance(0.4)
+local beforeSell = aData.Coins
+Fake.moveTo(alice, pedestalPos(alice, goldSlot))
+Fake.fire(alice, "SellGhost", goldSlot)
+check(aData.Coins - beforeSell == math.floor(GhostData.get("Caquetome").Price * 3 * Config.SellRatio), "revendu au prix Doré")
+Sched.advance(0.4)
+
 section("Vente")
 local coinsBefore = aData.Coins
 Fake.moveTo(alice, pedestalPos(alice, 2))

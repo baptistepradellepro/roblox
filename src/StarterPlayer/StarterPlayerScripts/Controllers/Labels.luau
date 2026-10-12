@@ -36,18 +36,26 @@ function Labels.ghost(adornee: BasePart, ghostId: string, mode: string, height: 
 		MaxTextSize = 60,
 		Parent = gui,
 	})
+	local rarityText = string.upper(Lang.rarityName(ghost.Rarity))
+	local mutation = GhostData.mutationOf(ghostId)
+	if mutation then
+		-- variante : "✨ DORÉ x3 • COMMUN"
+		rarityText = "✨ " .. string.upper(mutation.Name[Lang.code] or mutation.Name.en) .. " x" .. mutation.Mult .. " • " .. rarityText
+		rarityColor = Color3.fromRGB(mutation.Color[1], mutation.Color[2], mutation.Color[3])
+	end
 	UI.label({
 		Name = "Rarity",
 		Size = UDim2.fromScale(1, 0.26),
 		Position = UDim2.fromScale(0, 0.4),
-		Text = string.upper(Lang.rarityName(ghost.Rarity)),
+		Text = rarityText,
 		TextColor3 = rarityColor,
 		MaxTextSize = 40,
 		Parent = gui,
 	})
+	local price, income = GhostData.priceOf(ghostId), GhostData.incomeOf(ghostId)
 	local info = if mode == "path"
-		then "🪙 " .. Format.short(ghost.Price) .. "   +" .. Format.short(ghost.Income) .. "/s"
-		else "+" .. Format.short(ghost.Income) .. "/s"
+		then "🪙 " .. Format.short(price) .. "   +" .. Format.short(income) .. "/s"
+		else "+" .. Format.short(income) .. "/s"
 	UI.label({
 		Name = "Info",
 		Size = UDim2.fromScale(1, 0.34),

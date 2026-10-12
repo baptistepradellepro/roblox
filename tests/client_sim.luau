@@ -249,7 +249,8 @@ for _, child in grid:GetChildren() do
 		tileCount += 1
 	end
 end
-check(tileCount == 32, "32 cases (" .. tileCount .. ")")
+local GhostDataClient = Fake.require("ReplicatedStorage.Shared.GhostData")
+check(tileCount == #GhostDataClient.List, "une case par fantôme (" .. tileCount .. ")")
 local starterTile = grid:FindFirstChild(Config.StarterGhost)
 local starterViewport = starterTile and starterTile:FindFirstChildOfClass("ViewportFrame")
 check(starterViewport and starterViewport.ImageColor3 == roblox.Color3.new(1, 1, 1), "le Drap Mou est visible en couleur")

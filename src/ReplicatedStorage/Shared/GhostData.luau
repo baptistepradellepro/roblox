@@ -1,5 +1,5 @@
 --[[
-	GhostData : la liste des 32 fantômes du jeu (tous inventés).
+	GhostData : la liste des 36 fantômes du jeu (tous inventés), et leurs variantes Dorée et Arc-en-ciel.
 
 	Pour chaque fantôme :
 	  Id       : nom interne (sans espace ni accent, ne JAMAIS le changer après publication)
@@ -63,6 +63,12 @@ GhostData.List = {
 		Gag = { fr = "Encore en chargement... 99 %.", en = "Still loading... 99%." },
 		Look = { Body = "Sheet", Color = { 190, 190, 200 }, Accent = { 80, 255, 255 }, Face = "Blank", Transparency = 0.35, Accessories = { "LoadingRing" } },
 	},
+	{
+		Id = "FeuilleMorteRaleuse", Rarity = "Common", Price = 50, Income = 3,
+		Name = { fr = "Feuille Morte Râleuse", en = "Grumpy Dead Leaf" },
+		Gag = { fr = "Tombée de l'arbre. Elle ne l'a pas digéré.", en = "Fell off the tree. Still mad about it." },
+		Look = { Body = "Leaf", Color = { 230, 110, 30 }, Accent = { 120, 60, 25 }, Face = "Angry", FaceScale = 0.85, Accessories = {} },
+	},
 
 	-- ===================== RARES =====================
 	{
@@ -107,6 +113,12 @@ GhostData.List = {
 		Gag = { fr = "Coupe la connexion quand tu gagnes.", en = "Cuts your connection when you win." },
 		Look = { Body = "Sheet", Color = { 120, 255, 200 }, Accent = { 40, 255, 120 }, Face = "Cool", Accessories = { "Antenna" } },
 	},
+	{
+		Id = "ChampignonChuchoteur", Rarity = "Rare", Price = 700, Income = 20,
+		Name = { fr = "Champignon Chuchoteur", en = "Whispering Mushroom" },
+		Gag = { fr = "Raconte des secrets aux racines.", en = "Tells secrets to the roots." },
+		Look = { Body = "Mushroom", Color = { 230, 50, 60 }, Accent = { 250, 240, 215 }, Face = "Shy", FaceScale = 0.6, Accessories = {} },
+	},
 
 	-- ===================== ÉPIQUES =====================
 	{
@@ -145,6 +157,12 @@ GhostData.List = {
 		Gag = { fr = "Éclate de rire. Littéralement.", en = "Bursts out laughing. Literally." },
 		Look = { Body = "Blob", Color = { 255, 80, 90 }, Accent = { 255, 255, 255 }, Face = "Happy", Reflectance = 0.15, Accessories = { "String" } },
 	},
+	{
+		Id = "MarronToutTremblant", Rarity = "Epic", Price = 9000, Income = 130,
+		Name = { fr = "Marron Tout Tremblant", en = "Shivering Chestnut" },
+		Gag = { fr = "A peur des écureuils. Avec raison.", en = "Scared of squirrels. Rightly so." },
+		Look = { Body = "Blob", Color = { 125, 70, 40 }, Accent = { 215, 175, 120 }, Face = "Shocked", Accessories = { "Hilum" } },
+	},
 
 	-- ===================== LÉGENDAIRES =====================
 	{
@@ -170,6 +188,12 @@ GhostData.List = {
 		Name = { fr = "Grand-Mère Turbo", en = "Rocket Granny" },
 		Gag = { fr = "0 à 100 km/h en 2 secondes. Avec ses biscuits.", en = "0 to 60 in 2 seconds. With cookies." },
 		Look = { Body = "Sheet", Color = { 255, 230, 240 }, Accent = { 170, 170, 180 }, Face = "Happy", Accessories = { "Bun", "Rocket" } },
+	},
+	{
+		Id = "EcureuilFantomeStresse", Rarity = "Legendary", Price = 100000, Income = 950,
+		Name = { fr = "Écureuil Fantôme Stressé", en = "Stressed Ghost Squirrel" },
+		Gag = { fr = "A caché ses noisettes en 1923. Les cherche encore.", en = "Hid his nuts in 1923. Still looking." },
+		Look = { Body = "Sheet", Color = { 175, 115, 60 }, Accent = { 230, 190, 140 }, Face = "Shocked", Accessories = { "CatEars", "SquirrelTail" } },
 	},
 
 	-- ===================== MYTHIQUES =====================
@@ -231,8 +255,73 @@ for index, ghost in GhostData.List do
 	table.insert(GhostData.ByRarity[ghost.Rarity], ghost)
 end
 
-function GhostData.get(id: string)
-	return GhostData.ById[id]
+-- Variantes rares : un fantôme du chemin peut être Doré (x3) ou Arc-en-ciel (x5).
+-- Elles multiplient le revenu ET le prix. Chance = de jour, NightChance = pendant la nuit.
+GhostData.Mutations = {
+	Gold = { Mult = 3, Chance = 0.03, NightChance = 0.06, Color = { 255, 200, 40 }, Name = { fr = "Doré", en = "Golden" } },
+	Rainbow = { Mult = 5, Chance = 0.006, NightChance = 0.015, Color = { 255, 110, 230 }, Name = { fr = "Arc-en-ciel", en = "Rainbow" } },
+}
+GhostData.MutationOrder = { "Gold", "Rainbow" }
+
+-- Un fantôme est noté "DrapMou" ou, s'il a une variante, "DrapMou#Gold".
+-- split("DrapMou#Gold") -> "DrapMou", "Gold"
+function GhostData.split(key: string): (string, string?)
+	local base, mutation = string.match(key, "^(%w+)#(%w+)$")
+	if base then
+		return base, mutation
+	end
+	return key, nil
+end
+
+function GhostData.key(baseId: string, mutation: string?): string
+	if mutation then
+		return baseId .. "#" .. mutation
+	end
+	return baseId
+end
+
+-- Les infos du fantôme (sans la variante). Marche avec "DrapMou" comme avec "DrapMou#Gold".
+function GhostData.get(key: string)
+	if type(key) ~= "string" then
+		return nil
+	end
+	local base, mutation = GhostData.split(key)
+	if mutation and not GhostData.Mutations[mutation] then
+		return nil
+	end
+	return GhostData.ById[base]
+end
+
+function GhostData.mutationOf(key: string)
+	local _, mutation = GhostData.split(key)
+	return mutation and GhostData.Mutations[mutation]
+end
+
+-- Revenu par seconde et prix, variante comprise
+function GhostData.incomeOf(key: string): number
+	local ghost = GhostData.get(key)
+	local mutation = GhostData.mutationOf(key)
+	return if ghost then ghost.Income * (if mutation then mutation.Mult else 1) else 0
+end
+
+function GhostData.priceOf(key: string): number
+	local ghost = GhostData.get(key)
+	local mutation = GhostData.mutationOf(key)
+	return if ghost then ghost.Price * (if mutation then mutation.Mult else 1) else 0
+end
+
+-- Tire une variante au hasard (ou nil). roll = nombre entre 0 et 1.
+function GhostData.rollMutation(roll: number, isNight: boolean, boost: number?): string?
+	local acc = 0
+	for i = #GhostData.MutationOrder, 1, -1 do
+		local name = GhostData.MutationOrder[i]
+		local m = GhostData.Mutations[name]
+		acc += (if isNight then m.NightChance else m.Chance) * (boost or 1)
+		if roll < acc then
+			return name
+		end
+	end
+	return nil
 end
 
 -- Choisit un fantôme au hasard dans une rareté. roll = nombre entre 0 et 1.

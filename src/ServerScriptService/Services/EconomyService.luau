@@ -51,11 +51,8 @@ end
 -- Revenu par seconde AVANT multiplicateur
 function EconomyService.baseIncome(player: Player): number
 	local total = Config.BaseIncome
-	for _, ghostId in BaseService.activeGhostIds(player) do
-		local ghost = GhostData.get(ghostId)
-		if ghost then
-			total += ghost.Income
-		end
+	for _, ghostKey in BaseService.activeGhostIds(player) do
+		total += GhostData.incomeOf(ghostKey) -- variante Dorée / Arc-en-ciel comprise
 	end
 	return total
 end

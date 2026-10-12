@@ -84,6 +84,27 @@ check(maxPrice.Common < maxPrice.Rare and maxPrice.Rare < maxPrice.Epic, "prix c
 check(maxPrice.Epic < maxPrice.Legendary and maxPrice.Legendary < maxPrice.Mythic, "prix croissants Épique < Légendaire < Mythique")
 check(GhostData.pick("Rare", 0.999).Rarity == "Rare", "pick respecte la rareté")
 
+-- Variantes Dorée / Arc-en-ciel
+local base, mut = GhostData.split("DrapMou#Gold")
+check(base == "DrapMou" and mut == "Gold", "split d'une variante")
+check(GhostData.split("DrapMou") == "DrapMou", "split sans variante")
+check(GhostData.get("DrapMou#Gold") == GhostData.get("DrapMou"), "get ignore la variante")
+check(GhostData.get("DrapMou#Platine") == nil, "variante inconnue refusée")
+check(GhostData.get(nil :: any) == nil, "get(nil) ne plante pas")
+check(GhostData.incomeOf("DrapMou#Gold") == GhostData.get("DrapMou").Income * 3, "Doré = revenu x3")
+check(GhostData.priceOf("DrapMou#Rainbow") == GhostData.get("DrapMou").Price * 5, "Arc-en-ciel = prix x5")
+check(GhostData.rollMutation(0.0001, false) == "Rainbow", "petit tirage = Arc-en-ciel")
+check(GhostData.rollMutation(0.02, false) == "Gold", "tirage moyen = Doré")
+check(GhostData.rollMutation(0.5, true) == nil, "la plupart du temps : pas de variante")
+local mutated = 0
+for i = 0, 9999 do
+	if GhostData.rollMutation(i / 10000, false) then
+		mutated += 1
+	end
+end
+check(mutated >= 300 and mutated <= 400, "environ 3,6 % de variantes le jour (" .. mutated .. " sur 10 000)")
+check(GhostData.key("DrapMou", nil) == "DrapMou" and GhostData.key("DrapMou", "Gold") == "DrapMou#Gold", "key")
+
 local Config = loadModule(SHARED .. "Config.luau")
 check(GhostData.get(Config.StarterGhost) ~= nil, "le fantôme de départ existe")
 for day, reward in Config.DailyRewards do
@@ -192,6 +213,14 @@ for _, ghost in GhostData.List do
 	end
 end
 print(string.format("Pièces par fantôme en moyenne : %.1f", totalParts / #GhostData.List))
+for _, key in { "DrapMou#Gold", "SpectroPizzaSupreme#Rainbow", "ChampignonChuchoteur#Gold" } do
+	local ok, model = pcall(GhostFactory.build, key)
+	check(ok, "construction de la variante " .. key .. " : " .. tostring(model))
+	if ok then
+		check(model:GetAttribute("GhostId") == key, key .. " garde sa variante")
+		check(model.PrimaryPart:FindFirstChild("MutationSparkles") ~= nil, key .. " brille")
+	end
+end
 
 ---------------------------------------------------------------- Construction de la map
 local MapBuilder = loadModule("src/ServerScriptService/Services/MapBuilder.luau")

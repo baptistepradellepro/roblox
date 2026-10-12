@@ -210,7 +210,7 @@ local function renderSlot(slot: Slot)
 	-- Texte du bouton "Vendre"
 	local ghost = if ghostId ~= "" then GhostData.get(ghostId) else nil
 	if ghost then
-		slot.Sell.ActionText = Lang.t("SellFor", { coins = "🪙 " .. Format.short(math.floor(ghost.Price * Config.SellRatio)) })
+		slot.Sell.ActionText = Lang.t("SellFor", { coins = "🪙 " .. Format.short(math.floor(GhostData.priceOf(ghostId) * Config.SellRatio)) })
 		slot.Sell.ObjectText = Lang.ghostName(ghostId)
 		slot.Steal.ObjectText = Lang.ghostName(ghostId)
 	end

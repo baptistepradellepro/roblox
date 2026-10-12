@@ -23,6 +23,7 @@ local KIND_COLORS = {
 	mythic = Rarities.color("Mythic"),
 	halloween = Rarities.color("Halloween"),
 	legendary = Rarities.color("Legendary"),
+	rainbow = Color3.fromRGB(255, 110, 230),
 	rebirth = Color3.fromRGB(120, 255, 200),
 	night = Color3.fromRGB(170, 110, 255),
 	info = Color3.fromRGB(120, 190, 255),
@@ -33,6 +34,7 @@ local KIND_ICONS = {
 	mythic = "🌟",
 	halloween = "🎃",
 	legendary = "✨",
+	rainbow = "🌈",
 	rebirth = "♻️",
 	night = "🌙",
 	info = "📣",
@@ -115,7 +117,7 @@ function Announce.start()
 		local text = Lang.t(key, params)
 		Announce.show(text, kind)
 		chatMessage(text, KIND_COLORS[kind] or KIND_COLORS.info)
-		if kind == "mythic" or kind == "halloween" then
+		if kind == "mythic" or kind == "halloween" or kind == "rainbow" then
 			Effects.sound("Mythic")
 		end
 	end)
