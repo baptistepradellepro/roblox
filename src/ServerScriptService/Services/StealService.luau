@@ -39,6 +39,11 @@ type Carry = {
 	WindowStart: number,
 	WindowPos: Vector3,
 	Violations: number,
+	LastTick: number,
+	LastPos: Vector3,
+	LeftBases: boolean, -- vu hors des deux bases (on ne livre pas à travers un mur)
+	MinTime: number, -- temps minimum pour rentrer chez soi en marchant
+	WindowSpeed: number?,
 }
 
 local carries: { [Player]: Carry } = {}
@@ -219,7 +224,10 @@ local function onSteal(player: Player, baseIndex: any, slot: any)
 	if not root then
 		return
 	end
-	if (root.Position - BaseService.pedestalPosition(base, slot)).Magnitude > Config.StealRange + 3 then
+	-- il faut être dans la base volée, au même étage, près du socle (pas à travers un mur)
+	local pedestal = BaseService.pedestalPosition(base, slot)
+	local offset = root.Position - pedestal
+	if offset.Magnitude > Config.StealRange + 2 or math.abs(offset.Y) > 7 or not BaseService.isInside(base, root.Position) then
 		AnnounceService.notify(player, "TooFar", nil, "bad")
 		return
 	end
@@ -230,6 +238,8 @@ local function onSteal(player: Player, baseIndex: any, slot: any)
 
 	-- C'est parti !
 	local t = os.clock()
+	local home = BaseService.getBase(player)
+	local walk = if home then (flat(home.Origin.Position) - flat(pedestal)).Magnitude else 0
 	BaseService.setStolenOut(owner, slot, true)
 	carries[player] = {
 		Thief = player,
@@ -241,6 +251,10 @@ local function onSteal(player: Player, baseIndex: any, slot: any)
 		WindowStart = t,
 		WindowPos = flat(root.Position),
 		Violations = 0,
+		LastTick = t,
+		LastPos = flat(root.Position),
+		LeftBases = false,
+		MinTime = walk / (Config.CarrierWalkSpeed * 1.5),
 	}
 	player:SetAttribute("CarryGhost", ghostId)
 	player:SetAttribute("CarryOwner", owner.UserId)
@@ -294,7 +308,68 @@ function StealService.thieves(): { Player }
 	return list
 end
 
--- Vérifie tous les vols en cours (10 fois par seconde)
+-- Vérifie un vol en cours
+local function check(carry: Carry, t: number)
+	local thief = carry.Thief
+	local root = Guard.root(thief)
+	if not root then
+		StealService.failCarry(thief, "Died")
+		return
+	end
+	if t - carry.StartedAt > Config.StealTimeout then
+		StealService.failCarry(thief, "Timeout")
+		return
+	end
+	local pos = flat(root.Position)
+	if Guard.teleportedWithin(thief, 0.5) then
+		-- le serveur vient de le déplacer (ascenseur...) : on repart de sa nouvelle place
+		carry.WindowStart, carry.WindowPos = t, pos
+	else
+		-- Anti-triche : un saut énorme d'un coup = téléportation
+		local dt = t - carry.LastTick
+		if (pos - carry.LastPos).Magnitude > Config.CarrierWalkSpeed * dt * 2 + 5 then
+			StealService.failCarry(thief, "Cheat")
+			return
+		end
+		-- Anti-triche vitesse : la distance parcourue chaque seconde
+		if t - carry.WindowStart >= 1 then
+			local elapsed = t - carry.WindowStart
+			local speed = (pos - carry.WindowPos).Magnitude / elapsed
+			local allowed = math.max(normalSpeedFor(thief), carry.WindowSpeed or 0) * 1.25 + 2
+			if speed > allowed then
+				carry.Violations += 1
+			else
+				carry.Violations = math.max(0, carry.Violations - 0.5)
+			end
+			carry.WindowStart = t
+			carry.WindowPos = pos
+			if carry.Violations >= 2 then
+				StealService.failCarry(thief, "Cheat")
+				return
+			end
+		end
+	end
+	carry.WindowSpeed = normalSpeedFor(thief)
+	carry.LastTick, carry.LastPos = t, pos
+
+	local thiefBase = BaseService.getBase(thief)
+	local inThiefBase = thiefBase ~= nil and BaseService.isInside(thiefBase, root.Position)
+	if not inThiefBase and not BaseService.isInside(carry.Base, root.Position) then
+		carry.LeftBases = true
+	end
+	-- Arrivé dans sa base ? (en étant vraiment sorti de la base volée, et pas plus vite qu'à pied)
+	if inThiefBase and carry.LeftBases and t - carry.StartedAt >= carry.MinTime then
+		deliver(carry)
+		return
+	end
+	-- Rattrapé par le propriétaire ?
+	local ownerRoot = Guard.root(carry.Owner)
+	if ownerRoot and (ownerRoot.Position - root.Position).Magnitude <= Config.RecoverRange then
+		StealService.failCarry(thief, "Caught")
+	end
+end
+
+-- Vérifie tous les vols en cours (10 fois par seconde). Une erreur sur un vol ne bloque pas les autres.
 local function monitor()
 	local t = os.clock()
 	local list = {}
@@ -302,42 +377,8 @@ local function monitor()
 		table.insert(list, carry)
 	end
 	for _, carry in list do
-		local thief = carry.Thief
-		local root = Guard.root(thief)
-		if not root then
-			StealService.failCarry(thief, "Died")
-			continue
-		end
-		if t - carry.StartedAt > Config.StealTimeout then
-			StealService.failCarry(thief, "Timeout")
-			continue
-		end
-		-- Anti-triche vitesse : on mesure la distance parcourue chaque seconde
-		if t - carry.WindowStart >= 1 then
-			local elapsed = t - carry.WindowStart
-			local speed = (flat(root.Position) - carry.WindowPos).Magnitude / elapsed
-			if speed > Config.CarrierWalkSpeed * 1.35 + 2 then
-				carry.Violations += 1
-			else
-				carry.Violations = 0
-			end
-			carry.WindowStart = t
-			carry.WindowPos = flat(root.Position)
-			if carry.Violations >= 2 then
-				StealService.failCarry(thief, "Cheat")
-				continue
-			end
-		end
-		-- Arrivé dans sa base ?
-		local thiefBase = BaseService.getBase(thief)
-		if thiefBase and BaseService.isInside(thiefBase, root.Position) then
-			deliver(carry)
-			continue
-		end
-		-- Rattrapé par le propriétaire ?
-		local ownerRoot = Guard.root(carry.Owner)
-		if ownerRoot and (ownerRoot.Position - root.Position).Magnitude <= Config.RecoverRange then
-			StealService.failCarry(thief, "Caught")
+		if carries[carry.Thief] == carry then
+			Guard.safely("StealCheck", check, carry, t)
 		end
 	end
 end

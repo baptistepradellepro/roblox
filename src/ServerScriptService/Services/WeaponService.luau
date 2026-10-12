@@ -76,7 +76,7 @@ end
 local function pushOut(base, target: Player)
 	local character = target.Character
 	if character then
-		character:PivotTo(base.Origin * CFrame.new(math.random(-4, 4), 3, -MapBuilder.BASE_DEPTH / 2 - 6))
+		Guard.teleport(target, character, base.Origin * CFrame.new(math.random(-4, 4), 3, -MapBuilder.BASE_DEPTH / 2 - 6))
 	end
 end
 

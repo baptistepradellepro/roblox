@@ -30,6 +30,8 @@ export type Profile = {
 
 local IS_STUDIO = RunService:IsStudio()
 local profiles: { [Player]: Profile } = {}
+local inFlight = 0 -- sauvegardes en cours (le serveur attend qu'elles finissent avant de fermer)
+local releasing: { [number]: boolean } = {} -- joueurs partis dont la dernière sauvegarde n'est pas finie
 
 local store: DataStore? = nil
 do
@@ -131,6 +133,13 @@ function DataService.load(player: Player): Profile?
 	local attempts = 0
 	local waitedForLock = 0
 
+	-- Il revient sur le même serveur juste après être parti : on attend que sa
+	-- dernière sauvegarde soit écrite, sinon on lirait une version plus ancienne
+	local waitStart = os.clock()
+	while releasing[player.UserId] and player.Parent and os.clock() - waitStart < 30 do
+		task.wait(0.5)
+	end
+
 	while player.Parent do
 		attempts += 1
 		local lockedElsewhere = false
@@ -174,25 +183,31 @@ function DataService.load(player: Player): Profile?
 	return nil
 end
 
-local function writeOnce(profile: Profile, release: boolean): (boolean, any)
-	local snapshot = deepCopy(profile.Data)
-	snapshot.LastOnline = os.time()
-	snapshot.Lock = if release then nil else { Job = game.JobId, Time = os.time() }
+-- Renvoie : pas d'erreur ?, l'erreur, les données ont-elles vraiment été écrites ?
+local function writeOnce(profile: Profile, release: boolean): (boolean, any, boolean)
 	local ds = store :: DataStore
-	return pcall(function()
+	local wrote = false
+	local ok, err = pcall(function()
+		local snapshot = deepCopy(profile.Data)
+		snapshot.LastOnline = os.time()
+		snapshot.Lock = if release then nil else { Job = game.JobId, Time = os.time() }
 		ds:UpdateAsync(profile.Key, function(old)
+			wrote = false
 			if profile.Released and not release then
 				return nil -- le joueur est déjà parti : une vieille sauvegarde auto ne doit rien écrire
 			end
 			if type(old) == "table" and type(old.Lock) == "table" and old.Lock.Job ~= game.JobId then
 				return nil -- un autre serveur a repris ce joueur : on n'écrase pas
 			end
+			wrote = true
 			return snapshot
 		end)
 	end)
+	return ok, err, ok and wrote
 end
 
 -- Sauvegarde un joueur. release = true quand il quitte le jeu.
+-- Renvoie true seulement si les données sont bien écrites (ou s'il n'y a rien à écrire).
 function DataService.save(player: Player, release: boolean?): boolean
 	local profile = profiles[player]
 	if not profile then
@@ -204,21 +219,29 @@ function DataService.save(player: Player, release: boolean?): boolean
 	if not profile.CanSave or not store then
 		return true
 	end
+	inFlight += 1
+	local result = false
 	for attempt = 1, 3 do
-		local ok, err = writeOnce(profile, release == true)
+		local ok, err, wrote = writeOnce(profile, release == true)
 		if ok then
-			return true
+			result = wrote
+			break
 		end
 		warn(string.format("[DataService] Échec de sauvegarde pour %s (essai %d) : %s", player.Name, attempt, tostring(err)))
 		task.wait(attempt)
 	end
-	return false
+	inFlight -= 1
+	return result
 end
 
 -- Appelé quand le joueur quitte : dernière sauvegarde puis on oublie son profil
 function DataService.release(player: Player)
-	DataService.save(player, true)
+	local userId = player.UserId
+	releasing[userId] = true
+	local ok = Guard.safely("Release", DataService.save, player, true)
+	releasing[userId] = nil
 	profiles[player] = nil
+	return ok
 end
 
 function DataService.getProfile(player: Player): Profile?
@@ -269,8 +292,9 @@ function DataService.start()
 				end)
 			end
 		end
+		-- on attend aussi les sauvegardes déjà lancées (joueurs partis juste avant)
 		local started = os.clock()
-		while pending > 0 and os.clock() - started < 25 do
+		while (pending > 0 or inFlight > 0) and os.clock() - started < 25 do
 			task.wait(0.2)
 		end
 	end)

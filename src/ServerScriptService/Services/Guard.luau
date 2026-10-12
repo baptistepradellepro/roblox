@@ -4,11 +4,13 @@
 	- isInt() : vérifie qu'une valeur envoyée par le client est un entier valide
 	- root()  : renvoie le HumanoidRootPart d'un joueur vivant (ou nil)
 	- safely(): lance une fonction sans que son erreur arrête la boucle qui l'appelle
+	- teleport(): déplace un joueur (sans que l'anti-triche le prenne pour un tricheur)
 ]]
 
 local Guard = {}
 
 local lastCall: { [Player]: { [string]: number } } = {}
+local teleportedAt: { [Player]: number } = {}
 
 -- true si le joueur a le droit d'agir (pas plus d'une fois toutes les "interval" secondes)
 function Guard.rate(player: Player, key: string, interval: number): boolean
@@ -28,6 +30,18 @@ end
 
 function Guard.clear(player: Player)
 	lastCall[player] = nil
+	teleportedAt[player] = nil
+end
+
+-- Le serveur vient de déplacer ce joueur d'un coup (ascenseur, renvoi devant une base...).
+-- L'anti-triche ne doit pas prendre ce saut pour une téléportation de tricheur.
+function Guard.teleport(player: Player, character: Model, cframe: CFrame)
+	teleportedAt[player] = os.clock()
+	character:PivotTo(cframe)
+end
+
+function Guard.teleportedWithin(player: Player, seconds: number): boolean
+	return (teleportedAt[player] or -math.huge) > os.clock() - seconds
 end
 
 function Guard.isInt(value: any, min: number, max: number): boolean

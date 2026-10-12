@@ -100,6 +100,7 @@ Config.NightThemes = { Classic = 50, Fog = 25, Candy = 25 }
 Config.FogMonsterSpeed = 15 -- Nuit du Brouillard : Gloutrouille va plus vite
 Config.CandyCoinCount = 24 -- Nuit des Bonbons : pièces bonus posées en même temps
 Config.CandyCoinSeconds = 8 -- chaque pièce vaut 8 s de revenus (minimum 25 pièces)
+Config.CandyMaxPerPlayer = 20 -- pièces bonus ramassées au plus par joueur et par nuit
 -- Super Nuit : chaque samedi de 17h à 18h UTC (= 18h-19h à Paris en hiver)
 -- Gloutrouille géant, un Mythique garanti et 3 fois plus de variantes
 Config.SuperNight = { WeekDay = 7, StartHour = 17, EndHour = 18 } -- WeekDay : 1 = dimanche ... 7 = samedi
@@ -4346,7 +4347,7 @@ local function pushIntruders(base: Base)
 			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if root and BaseService.isInside(base, root.Position) then
 				local outside = base.Origin * CFrame.new(math.random(-4, 4), 3, -MapBuilder.BASE_DEPTH / 2 - 6)
-				character:PivotTo(outside)
+				Guard.teleport(other, character, outside)
 			end
 		end
 	end
@@ -4358,7 +4359,7 @@ function BaseService.teleportHome(player: Player)
 	local base = byPlayer[player]
 	local character = player.Character
 	if base and character then
-		character:PivotTo(base.Spawn.CFrame * CFrame.new(0, 3.5, 0))
+		Guard.teleport(player, character, base.Spawn.CFrame * CFrame.new(0, 3.5, 0))
 	end
 end
 
@@ -4463,7 +4464,7 @@ local function useElevator(base: Base, hit: BasePart, up: boolean)
 	end
 	elevatorCooldown[player] = os.clock() + 1
 	local y = if up then MapBuilder.FLOOR2_Y + 3 else 3
-	character:PivotTo(base.Origin * CFrame.new(0, y, 6))
+	Guard.teleport(player, character :: Model, base.Origin * CFrame.new(0, y, 6))
 	AnnounceService.effect("Elevator", { Position = base.Origin.Position }, player)
 end
 
@@ -4671,6 +4672,8 @@ export type Profile = {
 
 local IS_STUDIO = RunService:IsStudio()
 local profiles: { [Player]: Profile } = {}
+local inFlight = 0 -- sauvegardes en cours (le serveur attend qu'elles finissent avant de fermer)
+local releasing: { [number]: boolean } = {} -- joueurs partis dont la dernière sauvegarde n'est pas finie
 
 local store: DataStore? = nil
 do
@@ -4772,6 +4775,13 @@ function DataService.load(player: Player): Profile?
 	local attempts = 0
 	local waitedForLock = 0
 
+	-- Il revient sur le même serveur juste après être parti : on attend que sa
+	-- dernière sauvegarde soit écrite, sinon on lirait une version plus ancienne
+	local waitStart = os.clock()
+	while releasing[player.UserId] and player.Parent and os.clock() - waitStart < 30 do
+		task.wait(0.5)
+	end
+
 	while player.Parent do
 		attempts += 1
 		local lockedElsewhere = false
@@ -4815,25 +4825,31 @@ function DataService.load(player: Player): Profile?
 	return nil
 end
 
-local function writeOnce(profile: Profile, release: boolean): (boolean, any)
-	local snapshot = deepCopy(profile.Data)
-	snapshot.LastOnline = os.time()
-	snapshot.Lock = if release then nil else { Job = game.JobId, Time = os.time() }
+-- Renvoie : pas d'erreur ?, l'erreur, les données ont-elles vraiment été écrites ?
+local function writeOnce(profile: Profile, release: boolean): (boolean, any, boolean)
 	local ds = store :: DataStore
-	return pcall(function()
+	local wrote = false
+	local ok, err = pcall(function()
+		local snapshot = deepCopy(profile.Data)
+		snapshot.LastOnline = os.time()
+		snapshot.Lock = if release then nil else { Job = game.JobId, Time = os.time() }
 		ds:UpdateAsync(profile.Key, function(old)
+			wrote = false
 			if profile.Released and not release then
 				return nil -- le joueur est déjà parti : une vieille sauvegarde auto ne doit rien écrire
 			end
 			if type(old) == "table" and type(old.Lock) == "table" and old.Lock.Job ~= game.JobId then
 				return nil -- un autre serveur a repris ce joueur : on n'écrase pas
 			end
+			wrote = true
 			return snapshot
 		end)
 	end)
+	return ok, err, ok and wrote
 end
 
 -- Sauvegarde un joueur. release = true quand il quitte le jeu.
+-- Renvoie true seulement si les données sont bien écrites (ou s'il n'y a rien à écrire).
 function DataService.save(player: Player, release: boolean?): boolean
 	local profile = profiles[player]
 	if not profile then
@@ -4845,21 +4861,29 @@ function DataService.save(player: Player, release: boolean?): boolean
 	if not profile.CanSave or not store then
 		return true
 	end
+	inFlight += 1
+	local result = false
 	for attempt = 1, 3 do
-		local ok, err = writeOnce(profile, release == true)
+		local ok, err, wrote = writeOnce(profile, release == true)
 		if ok then
-			return true
+			result = wrote
+			break
 		end
 		warn(string.format("[DataService] Échec de sauvegarde pour %s (essai %d) : %s", player.Name, attempt, tostring(err)))
 		task.wait(attempt)
 	end
-	return false
+	inFlight -= 1
+	return result
 end
 
 -- Appelé quand le joueur quitte : dernière sauvegarde puis on oublie son profil
 function DataService.release(player: Player)
-	DataService.save(player, true)
+	local userId = player.UserId
+	releasing[userId] = true
+	local ok = Guard.safely("Release", DataService.save, player, true)
+	releasing[userId] = nil
 	profiles[player] = nil
+	return ok
 end
 
 function DataService.getProfile(player: Player): Profile?
@@ -4910,8 +4934,9 @@ function DataService.start()
 				end)
 			end
 		end
+		-- on attend aussi les sauvegardes déjà lancées (joueurs partis juste avant)
 		local started = os.clock()
-		while pending > 0 and os.clock() - started < 25 do
+		while (pending > 0 or inFlight > 0) and os.clock() - started < 25 do
 			task.wait(0.2)
 		end
 	end)
@@ -5665,11 +5690,13 @@ return GhostService
 	- isInt() : vérifie qu'une valeur envoyée par le client est un entier valide
 	- root()  : renvoie le HumanoidRootPart d'un joueur vivant (ou nil)
 	- safely(): lance une fonction sans que son erreur arrête la boucle qui l'appelle
+	- teleport(): déplace un joueur (sans que l'anti-triche le prenne pour un tricheur)
 ]]
 
 local Guard = {}
 
 local lastCall: { [Player]: { [string]: number } } = {}
+local teleportedAt: { [Player]: number } = {}
 
 -- true si le joueur a le droit d'agir (pas plus d'une fois toutes les "interval" secondes)
 function Guard.rate(player: Player, key: string, interval: number): boolean
@@ -5689,6 +5716,18 @@ end
 
 function Guard.clear(player: Player)
 	lastCall[player] = nil
+	teleportedAt[player] = nil
+end
+
+-- Le serveur vient de déplacer ce joueur d'un coup (ascenseur, renvoi devant une base...).
+-- L'anti-triche ne doit pas prendre ce saut pour une téléportation de tricheur.
+function Guard.teleport(player: Player, character: Model, cframe: CFrame)
+	teleportedAt[player] = os.clock()
+	character:PivotTo(cframe)
+end
+
+function Guard.teleportedWithin(player: Player, seconds: number): boolean
+	return (teleportedAt[player] or -math.huge) > os.clock() - seconds
 end
 
 function Guard.isInt(value: any, min: number, max: number): boolean
@@ -7297,7 +7336,8 @@ local function onShopBuy(player: Player, key: any)
 	if not item then
 		return
 	end
-	if item.Random and player:GetAttribute("RandomItemsRestricted") then
+	-- tant que la règle du pays n'est pas connue (nil), on bloque aussi
+	if item.Random and player:GetAttribute("RandomItemsRestricted") ~= false then
 		AnnounceService.notify(player, "ShopRestricted", nil, "bad")
 		return
 	end
@@ -7391,9 +7431,23 @@ function MonetizationService.start()
 			return
 		end
 		local item = Shop.fromId("Pass", passId, Config)
-		if item then
-			grantPass(player, item)
-			thanks(player)
+		if not item or player:GetAttribute(item.Attribute) then
+			return
+		end
+		-- on demande à Roblox si le pass est vraiment acheté (on ne croit pas le message sur parole)
+		for attempt = 1, 3 do
+			local ok, owns = pcall(function()
+				return MarketplaceService:UserOwnsGamePassAsync(player.UserId, passId)
+			end)
+			if ok and owns then
+				grantPass(player, item)
+				thanks(player)
+				return
+			end
+			if not player.Parent then
+				return
+			end
+			task.wait(attempt * 2)
 		end
 	end)
 end
@@ -7785,6 +7839,9 @@ end
 
 ---------------------------------------------------------------- Nuit des Bonbons
 
+local candyTaken: { [Player]: number } = {} -- pièces ramassées cette nuit
+local candyLast: { [Player]: number } = {}
+
 local function coinReward(player: Player): number
 	return math.max(25, math.floor(EconomyService.incomePerSecond(player) * Config.CandyCoinSeconds))
 end
@@ -7828,9 +7885,20 @@ local function spawnCoin()
 			return
 		end
 		local player = Players:GetPlayerFromCharacter(hit.Parent)
-		if not player or not Guard.root(player) then
+		local root = player and Guard.root(player)
+		if not player or not root then
 			return
 		end
+		-- anti-triche : vraiment à côté de la pièce, pas trop vite, et un maximum par nuit
+		if (root.Position - coin.Position).Magnitude > 8 then
+			return
+		end
+		local t = os.clock()
+		if (candyLast[player] or 0) > t - 0.4 or (candyTaken[player] or 0) >= Config.CandyMaxPerPlayer then
+			return
+		end
+		candyLast[player] = t
+		candyTaken[player] = (candyTaken[player] or 0) + 1
 		taken = true
 		local amount = coinReward(player)
 		EconomyService.add(player, amount, true)
@@ -7842,6 +7910,7 @@ local function spawnCoin()
 end
 
 local function startCandy()
+	table.clear(candyTaken)
 	local folder = Instance.new("Folder")
 	folder.Name = "CandyCoins"
 	folder.Parent = workspace
@@ -7892,6 +7961,7 @@ local function runNight()
 		CatchRange = if theme == "Super" then Config.MonsterCatchRange + 3 else Config.MonsterCatchRange,
 		Scale = if theme == "Super" then Config.SuperMonsterScale else 1,
 		Penalty = Config.MonsterCoinPenalty,
+		Duration = Config.NightDuration + 5, -- sécurité : il repart même si la nuit s'arrête mal
 	})
 	local last = os.clock()
 	while now() < endsAt do
@@ -7920,6 +7990,9 @@ function NightService.start()
 				task.wait(nextAt - now())
 			end
 			Guard.safely("Night", runNight)
+			-- même après une erreur pendant la nuit, on remet tout comme avant
+			stopCandy()
+			GhostService.mutationBoost = 1
 			setState(false, 0, now() + Config.DayDuration)
 			AnnounceService.announce("NightEnd", nil, "info")
 			AnnounceService.effect("NightEnd", {})
@@ -7927,6 +8000,8 @@ function NightService.start()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		outsideTime[player] = nil
+		candyTaken[player] = nil
+		candyLast[player] = nil
 	end)
 end
 
@@ -8102,6 +8177,11 @@ type Carry = {
 	WindowStart: number,
 	WindowPos: Vector3,
 	Violations: number,
+	LastTick: number,
+	LastPos: Vector3,
+	LeftBases: boolean, -- vu hors des deux bases (on ne livre pas à travers un mur)
+	MinTime: number, -- temps minimum pour rentrer chez soi en marchant
+	WindowSpeed: number?,
 }
 
 local carries: { [Player]: Carry } = {}
@@ -8282,7 +8362,10 @@ local function onSteal(player: Player, baseIndex: any, slot: any)
 	if not root then
 		return
 	end
-	if (root.Position - BaseService.pedestalPosition(base, slot)).Magnitude > Config.StealRange + 3 then
+	-- il faut être dans la base volée, au même étage, près du socle (pas à travers un mur)
+	local pedestal = BaseService.pedestalPosition(base, slot)
+	local offset = root.Position - pedestal
+	if offset.Magnitude > Config.StealRange + 2 or math.abs(offset.Y) > 7 or not BaseService.isInside(base, root.Position) then
 		AnnounceService.notify(player, "TooFar", nil, "bad")
 		return
 	end
@@ -8293,6 +8376,8 @@ local function onSteal(player: Player, baseIndex: any, slot: any)
 
 	-- C'est parti !
 	local t = os.clock()
+	local home = BaseService.getBase(player)
+	local walk = if home then (flat(home.Origin.Position) - flat(pedestal)).Magnitude else 0
 	BaseService.setStolenOut(owner, slot, true)
 	carries[player] = {
 		Thief = player,
@@ -8304,6 +8389,10 @@ local function onSteal(player: Player, baseIndex: any, slot: any)
 		WindowStart = t,
 		WindowPos = flat(root.Position),
 		Violations = 0,
+		LastTick = t,
+		LastPos = flat(root.Position),
+		LeftBases = false,
+		MinTime = walk / (Config.CarrierWalkSpeed * 1.5),
 	}
 	player:SetAttribute("CarryGhost", ghostId)
 	player:SetAttribute("CarryOwner", owner.UserId)
@@ -8357,7 +8446,68 @@ function StealService.thieves(): { Player }
 	return list
 end
 
--- Vérifie tous les vols en cours (10 fois par seconde)
+-- Vérifie un vol en cours
+local function check(carry: Carry, t: number)
+	local thief = carry.Thief
+	local root = Guard.root(thief)
+	if not root then
+		StealService.failCarry(thief, "Died")
+		return
+	end
+	if t - carry.StartedAt > Config.StealTimeout then
+		StealService.failCarry(thief, "Timeout")
+		return
+	end
+	local pos = flat(root.Position)
+	if Guard.teleportedWithin(thief, 0.5) then
+		-- le serveur vient de le déplacer (ascenseur...) : on repart de sa nouvelle place
+		carry.WindowStart, carry.WindowPos = t, pos
+	else
+		-- Anti-triche : un saut énorme d'un coup = téléportation
+		local dt = t - carry.LastTick
+		if (pos - carry.LastPos).Magnitude > Config.CarrierWalkSpeed * dt * 2 + 5 then
+			StealService.failCarry(thief, "Cheat")
+			return
+		end
+		-- Anti-triche vitesse : la distance parcourue chaque seconde
+		if t - carry.WindowStart >= 1 then
+			local elapsed = t - carry.WindowStart
+			local speed = (pos - carry.WindowPos).Magnitude / elapsed
+			local allowed = math.max(normalSpeedFor(thief), carry.WindowSpeed or 0) * 1.25 + 2
+			if speed > allowed then
+				carry.Violations += 1
+			else
+				carry.Violations = math.max(0, carry.Violations - 0.5)
+			end
+			carry.WindowStart = t
+			carry.WindowPos = pos
+			if carry.Violations >= 2 then
+				StealService.failCarry(thief, "Cheat")
+				return
+			end
+		end
+	end
+	carry.WindowSpeed = normalSpeedFor(thief)
+	carry.LastTick, carry.LastPos = t, pos
+
+	local thiefBase = BaseService.getBase(thief)
+	local inThiefBase = thiefBase ~= nil and BaseService.isInside(thiefBase, root.Position)
+	if not inThiefBase and not BaseService.isInside(carry.Base, root.Position) then
+		carry.LeftBases = true
+	end
+	-- Arrivé dans sa base ? (en étant vraiment sorti de la base volée, et pas plus vite qu'à pied)
+	if inThiefBase and carry.LeftBases and t - carry.StartedAt >= carry.MinTime then
+		deliver(carry)
+		return
+	end
+	-- Rattrapé par le propriétaire ?
+	local ownerRoot = Guard.root(carry.Owner)
+	if ownerRoot and (ownerRoot.Position - root.Position).Magnitude <= Config.RecoverRange then
+		StealService.failCarry(thief, "Caught")
+	end
+end
+
+-- Vérifie tous les vols en cours (10 fois par seconde). Une erreur sur un vol ne bloque pas les autres.
 local function monitor()
 	local t = os.clock()
 	local list = {}
@@ -8365,42 +8515,8 @@ local function monitor()
 		table.insert(list, carry)
 	end
 	for _, carry in list do
-		local thief = carry.Thief
-		local root = Guard.root(thief)
-		if not root then
-			StealService.failCarry(thief, "Died")
-			continue
-		end
-		if t - carry.StartedAt > Config.StealTimeout then
-			StealService.failCarry(thief, "Timeout")
-			continue
-		end
-		-- Anti-triche vitesse : on mesure la distance parcourue chaque seconde
-		if t - carry.WindowStart >= 1 then
-			local elapsed = t - carry.WindowStart
-			local speed = (flat(root.Position) - carry.WindowPos).Magnitude / elapsed
-			if speed > Config.CarrierWalkSpeed * 1.35 + 2 then
-				carry.Violations += 1
-			else
-				carry.Violations = 0
-			end
-			carry.WindowStart = t
-			carry.WindowPos = flat(root.Position)
-			if carry.Violations >= 2 then
-				StealService.failCarry(thief, "Cheat")
-				continue
-			end
-		end
-		-- Arrivé dans sa base ?
-		local thiefBase = BaseService.getBase(thief)
-		if thiefBase and BaseService.isInside(thiefBase, root.Position) then
-			deliver(carry)
-			continue
-		end
-		-- Rattrapé par le propriétaire ?
-		local ownerRoot = Guard.root(carry.Owner)
-		if ownerRoot and (ownerRoot.Position - root.Position).Magnitude <= Config.RecoverRange then
-			StealService.failCarry(thief, "Caught")
+		if carries[carry.Thief] == carry then
+			Guard.safely("StealCheck", check, carry, t)
 		end
 	end
 end
@@ -8584,6 +8700,19 @@ end
 
 ---------------------------------------------------------------- Déclenchement
 
+-- Les missions "pièges" comptent un même intrus au plus une fois par minute
+-- (sinon un ami qui reste dans la toile ferait toute la mission en 20 s)
+local countedAt: { [string]: number } = {}
+local function countForMissions(owner: Player, intruder: Player)
+	local key = owner.UserId .. ":" .. intruder.UserId
+	local t = now()
+	if (countedAt[key] or -math.huge) > t - 60 then
+		return
+	end
+	countedAt[key] = t
+	Hooks.fire("Trap", owner, 1)
+end
+
 local function slip(base, owner: Player, intruder: Player, root: BasePart)
 	local settings = Config.Traps.Banana
 	bananaReadyAt[base] = now() + settings.Cooldown
@@ -8602,7 +8731,7 @@ local function slip(base, owner: Player, intruder: Player, root: BasePart)
 	AnnounceService.effect("Knockback", { Direction = Vector3.new(0, 0, 0), Power = 0 }, intruder)
 	AnnounceService.notify(intruder, "TrapSlipped", nil, "bad")
 	AnnounceService.notify(owner, "TrapCaught", { player = intruder.DisplayName, trap = "Banana" }, "good")
-	Hooks.fire("Trap", owner, 1)
+	countForMissions(owner, intruder)
 end
 
 local function web(owner: Player, intruder: Player, root: BasePart)
@@ -8613,7 +8742,7 @@ local function web(owner: Player, intruder: Player, root: BasePart)
 	AnnounceService.effect("Web", { Position = root.Position })
 	AnnounceService.notify(intruder, "TrapWebbed", nil, "bad")
 	AnnounceService.notify(owner, "TrapCaught", { player = intruder.DisplayName, trap = "Web" }, "good")
-	Hooks.fire("Trap", owner, 1)
+	countForMissions(owner, intruder)
 end
 
 local function alarm(base, owner: Player, intruder: Player)
@@ -8779,7 +8908,7 @@ end
 local function pushOut(base, target: Player)
 	local character = target.Character
 	if character then
-		character:PivotTo(base.Origin * CFrame.new(math.random(-4, 4), 3, -MapBuilder.BASE_DEPTH / 2 - 6))
+		Guard.teleport(target, character, base.Origin * CFrame.new(math.random(-4, 4), 3, -MapBuilder.BASE_DEPTH / 2 - 6))
 	end
 end
 

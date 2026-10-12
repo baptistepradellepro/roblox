@@ -128,6 +128,19 @@ end
 
 ---------------------------------------------------------------- Déclenchement
 
+-- Les missions "pièges" comptent un même intrus au plus une fois par minute
+-- (sinon un ami qui reste dans la toile ferait toute la mission en 20 s)
+local countedAt: { [string]: number } = {}
+local function countForMissions(owner: Player, intruder: Player)
+	local key = owner.UserId .. ":" .. intruder.UserId
+	local t = now()
+	if (countedAt[key] or -math.huge) > t - 60 then
+		return
+	end
+	countedAt[key] = t
+	Hooks.fire("Trap", owner, 1)
+end
+
 local function slip(base, owner: Player, intruder: Player, root: BasePart)
 	local settings = Config.Traps.Banana
 	bananaReadyAt[base] = now() + settings.Cooldown
@@ -146,7 +159,7 @@ local function slip(base, owner: Player, intruder: Player, root: BasePart)
 	AnnounceService.effect("Knockback", { Direction = Vector3.new(0, 0, 0), Power = 0 }, intruder)
 	AnnounceService.notify(intruder, "TrapSlipped", nil, "bad")
 	AnnounceService.notify(owner, "TrapCaught", { player = intruder.DisplayName, trap = "Banana" }, "good")
-	Hooks.fire("Trap", owner, 1)
+	countForMissions(owner, intruder)
 end
 
 local function web(owner: Player, intruder: Player, root: BasePart)
@@ -157,7 +170,7 @@ local function web(owner: Player, intruder: Player, root: BasePart)
 	AnnounceService.effect("Web", { Position = root.Position })
 	AnnounceService.notify(intruder, "TrapWebbed", nil, "bad")
 	AnnounceService.notify(owner, "TrapCaught", { player = intruder.DisplayName, trap = "Web" }, "good")
-	Hooks.fire("Trap", owner, 1)
+	countForMissions(owner, intruder)
 end
 
 local function alarm(base, owner: Player, intruder: Player)

@@ -466,7 +466,7 @@ local function pushIntruders(base: Base)
 			local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if root and BaseService.isInside(base, root.Position) then
 				local outside = base.Origin * CFrame.new(math.random(-4, 4), 3, -MapBuilder.BASE_DEPTH / 2 - 6)
-				character:PivotTo(outside)
+				Guard.teleport(other, character, outside)
 			end
 		end
 	end
@@ -478,7 +478,7 @@ function BaseService.teleportHome(player: Player)
 	local base = byPlayer[player]
 	local character = player.Character
 	if base and character then
-		character:PivotTo(base.Spawn.CFrame * CFrame.new(0, 3.5, 0))
+		Guard.teleport(player, character, base.Spawn.CFrame * CFrame.new(0, 3.5, 0))
 	end
 end
 
@@ -583,7 +583,7 @@ local function useElevator(base: Base, hit: BasePart, up: boolean)
 	end
 	elevatorCooldown[player] = os.clock() + 1
 	local y = if up then MapBuilder.FLOOR2_Y + 3 else 3
-	character:PivotTo(base.Origin * CFrame.new(0, y, 6))
+	Guard.teleport(player, character :: Model, base.Origin * CFrame.new(0, y, 6))
 	AnnounceService.effect("Elevator", { Position = base.Origin.Position }, player)
 end
 

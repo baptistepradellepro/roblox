@@ -94,7 +94,8 @@ local function onShopBuy(player: Player, key: any)
 	if not item then
 		return
 	end
-	if item.Random and player:GetAttribute("RandomItemsRestricted") then
+	-- tant que la règle du pays n'est pas connue (nil), on bloque aussi
+	if item.Random and player:GetAttribute("RandomItemsRestricted") ~= false then
 		AnnounceService.notify(player, "ShopRestricted", nil, "bad")
 		return
 	end
@@ -188,9 +189,23 @@ function MonetizationService.start()
 			return
 		end
 		local item = Shop.fromId("Pass", passId, Config)
-		if item then
-			grantPass(player, item)
-			thanks(player)
+		if not item or player:GetAttribute(item.Attribute) then
+			return
+		end
+		-- on demande à Roblox si le pass est vraiment acheté (on ne croit pas le message sur parole)
+		for attempt = 1, 3 do
+			local ok, owns = pcall(function()
+				return MarketplaceService:UserOwnsGamePassAsync(player.UserId, passId)
+			end)
+			if ok and owns then
+				grantPass(player, item)
+				thanks(player)
+				return
+			end
+			if not player.Parent then
+				return
+			end
+			task.wait(attempt * 2)
 		end
 	end)
 end

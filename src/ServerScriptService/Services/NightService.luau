@@ -91,6 +91,9 @@ end
 
 ---------------------------------------------------------------- Nuit des Bonbons
 
+local candyTaken: { [Player]: number } = {} -- pièces ramassées cette nuit
+local candyLast: { [Player]: number } = {}
+
 local function coinReward(player: Player): number
 	return math.max(25, math.floor(EconomyService.incomePerSecond(player) * Config.CandyCoinSeconds))
 end
@@ -134,9 +137,20 @@ local function spawnCoin()
 			return
 		end
 		local player = Players:GetPlayerFromCharacter(hit.Parent)
-		if not player or not Guard.root(player) then
+		local root = player and Guard.root(player)
+		if not player or not root then
 			return
 		end
+		-- anti-triche : vraiment à côté de la pièce, pas trop vite, et un maximum par nuit
+		if (root.Position - coin.Position).Magnitude > 8 then
+			return
+		end
+		local t = os.clock()
+		if (candyLast[player] or 0) > t - 0.4 or (candyTaken[player] or 0) >= Config.CandyMaxPerPlayer then
+			return
+		end
+		candyLast[player] = t
+		candyTaken[player] = (candyTaken[player] or 0) + 1
 		taken = true
 		local amount = coinReward(player)
 		EconomyService.add(player, amount, true)
@@ -148,6 +162,7 @@ local function spawnCoin()
 end
 
 local function startCandy()
+	table.clear(candyTaken)
 	local folder = Instance.new("Folder")
 	folder.Name = "CandyCoins"
 	folder.Parent = workspace
@@ -198,6 +213,7 @@ local function runNight()
 		CatchRange = if theme == "Super" then Config.MonsterCatchRange + 3 else Config.MonsterCatchRange,
 		Scale = if theme == "Super" then Config.SuperMonsterScale else 1,
 		Penalty = Config.MonsterCoinPenalty,
+		Duration = Config.NightDuration + 5, -- sécurité : il repart même si la nuit s'arrête mal
 	})
 	local last = os.clock()
 	while now() < endsAt do
@@ -226,6 +242,9 @@ function NightService.start()
 				task.wait(nextAt - now())
 			end
 			Guard.safely("Night", runNight)
+			-- même après une erreur pendant la nuit, on remet tout comme avant
+			stopCandy()
+			GhostService.mutationBoost = 1
 			setState(false, 0, now() + Config.DayDuration)
 			AnnounceService.announce("NightEnd", nil, "info")
 			AnnounceService.effect("NightEnd", {})
@@ -233,6 +252,8 @@ function NightService.start()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		outsideTime[player] = nil
+		candyTaken[player] = nil
+		candyLast[player] = nil
 	end)
 end
 

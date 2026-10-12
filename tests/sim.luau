@@ -11,6 +11,7 @@ local serde = require("@lune/serde")
 local Fake = require("./fakeroblox")
 local Sched = Fake.Sched
 local Vector3 = roblox.Vector3
+local CFrame = roblox.CFrame
 
 local passed, failed = 0, 0
 local function check(condition: any, message: string)
@@ -93,6 +94,11 @@ local function inOwnBase(player): boolean
 end
 local function park(player, x: number, z: number)
 	Fake.moveTo(player, Vector3.new(x, 3, z))
+end
+
+-- Le serveur déplace un joueur (comme l'ascenseur) : l'anti-triche ne compte pas ce saut
+local function place(player, position: Vector3)
+	Fake.require("ServerScriptService.Services.Guard").teleport(player, player.Character, CFrame.new(position))
 end
 
 -- Vol complet : le voleur maintient 1,6 s sur le socle
@@ -388,7 +394,7 @@ check(hasTool(alice, "Batte") and hasTool(bob, "Batte") and hasTool(chloe, "Batt
 check(not hasTool(chloe, "MarteauPouet"), "pas d'arme payante sans Game Pass")
 steal(bob, alice, slot)
 check(bob:GetAttribute("CarryGhost") == "Caquetome", "encore un vol")
-Fake.moveTo(bob, Vector3.new(0, 3, 12))
+place(bob, Vector3.new(0, 3, 12))
 Fake.moveTo(chloe, Vector3.new(10.5, 3, 12))
 Sched.advance(2)
 Fake.fire(chloe, "Bonk", "MarteauPouet")
@@ -537,11 +543,44 @@ Sched.advance(1.1)
 check(bob:GetAttribute("CarryGhost") == nil, "téléportation détectée : vol annulé")
 check(aData.Slots[tostring(slot)] == "Caquetome", "le fantôme est rentré")
 
+section("Anti-triche : livraison et vol à travers un mur")
+Sched.advance(1)
+steal(bob, alice, slot)
+check(bob:GetAttribute("CarryGhost") ~= nil, "vol lancé")
+Fake.moveTo(bob, baseCenter(bob))
+Sched.advance(0.3)
+check(bob:GetAttribute("CarryGhost") == nil, "téléporté chez lui : vol annulé")
+check(aData.Slots[tostring(slot)] == "Caquetome", "le fantôme n'a pas été livré")
+Sched.advance(1)
+-- le serveur le pose chez lui (sans tricher) : il faut quand même être sorti à pied
+steal(bob, alice, slot)
+place(bob, baseCenter(bob))
+Sched.advance(1)
+check(bob:GetAttribute("CarryGhost") ~= nil and aData.Slots[tostring(slot)] == "Caquetome", "pas de livraison sans sortir de la base volée")
+StealService.failCarry(bob, "Timeout")
+Sched.advance(1)
+-- à travers le mur : juste derrière le mur de côté, près d'un socle
+local MapBuilder = Fake.require("ServerScriptService.Services.MapBuilder")
+local aliceOrigin = BaseService.getBase(alice).Origin
+local spot = MapBuilder.PEDESTAL_SPOTS[slot]
+m = mark()
+Fake.moveTo(bob, aliceOrigin:PointToWorldSpace(Vector3.new(spot.Side * (MapBuilder.BASE_WIDTH / 2 + 1), 3, spot.Z)))
+Fake.fire(bob, "StealBegin", BaseService.getBase(alice).Index, slot)
+Sched.advance(1.6)
+Fake.fire(bob, "Steal", BaseService.getBase(alice).Index, slot)
+check(bob:GetAttribute("CarryGhost") == nil and notified(bob, "TooFar", m), "pas de vol à travers le mur")
+-- marche un peu trop vite pendant plusieurs secondes : repéré
+steal(bob, alice, slot)
+check(bob:GetAttribute("CarryGhost") ~= nil, "vol lancé")
+Fake.walk(bob, Fake.position(bob) + Vector3.new(0, 0, -60), Config.CarrierWalkSpeed * 1.6)
+check(bob:GetAttribute("CarryGhost") == nil, "trop rapide : vol annulé")
+Sched.advance(1)
+
 section("Trop lent (45 s)")
 Sched.advance(1)
 steal(bob, alice, slot)
 check(bob:GetAttribute("CarryGhost") ~= nil, "vol lancé")
-park(bob, 40, 12)
+place(bob, Vector3.new(40, 3, 12))
 m = mark()
 Sched.advance(Config.StealTimeout + 1)
 check(bob:GetAttribute("CarryGhost") == nil, "délai dépassé : vol annulé")
@@ -699,6 +738,25 @@ coin.Touched:Fire(chloe.Character.HumanoidRootPart)
 check(cData.Coins < cBefore + 25 * 2 + 50, "une pièce ne se ramasse qu'une fois")
 Sched.advance(3.5)
 check(#candy:GetChildren() == Config.CandyCoinCount, "une nouvelle pièce réapparaît")
+-- anti-triche : de loin, rien ; et un maximum par nuit
+local far = candy:GetChildren()[1]
+Fake.moveTo(chloe, far.Position + Vector3.new(30, 0, 0))
+cBefore = cData.Coins
+far.Touched:Fire(chloe.Character.HumanoidRootPart)
+check(far.Parent ~= nil and cData.Coins < cBefore + 25, "pièce touchée de loin : refusée")
+local picked = 1
+for _ = 1, Config.CandyMaxPerPlayer + 5 do
+	local next = candy:GetChildren()[1]
+	if next then
+		Fake.moveTo(chloe, next.Position)
+		next.Touched:Fire(chloe.Character.HumanoidRootPart)
+		if next.Parent == nil then
+			picked += 1
+		end
+		Sched.advance(0.5)
+	end
+end
+check(picked == Config.CandyMaxPerPlayer, "pas plus de " .. Config.CandyMaxPerPlayer .. " pièces par nuit")
 Fake.moveTo(chloe, baseCenter(chloe))
 check(cData.Missions.List[1].Done == true, "mission 'reste dehors la nuit' réussie par Chloé")
 Sched.advance(Config.NightDuration)
@@ -783,6 +841,12 @@ check(aData.Coins - c1 < 50, "le même achat n'est jamais crédité deux fois")
 local unknown = MarketplaceService.ProcessReceipt({ PlayerId = alice.UserId, PurchaseId = "x", ProductId = 1 })
 check(unknown == roblox.Enum.ProductPurchaseDecision.NotProcessedYet, "produit inconnu non accordé")
 local mult = alice:GetAttribute("Multiplier")
+MarketplaceService.PromptGamePassPurchaseFinished:Fire(alice, 555, true)
+Sched.advance(13)
+check(alice:GetAttribute("DoubleCoins") == nil, "Game Pass pas vraiment acheté : rien")
+Fake.ownedPasses = Fake.ownedPasses or {}
+Fake.ownedPasses[alice.UserId .. ":555"] = true
+Fake.ownedPasses[chloe.UserId .. ":556"] = true
 MarketplaceService.PromptGamePassPurchaseFinished:Fire(alice, 555, true)
 check(alice:GetAttribute("DoubleCoins") == true and alice:GetAttribute("Multiplier") == mult * 2, "Game Pass x2 actif")
 MarketplaceService.PromptGamePassPurchaseFinished:Fire(chloe, 556, true)
@@ -1088,7 +1152,7 @@ for key in aData.Slots do
 	aliceSlot = tonumber(key)
 end
 steal(bob, alice, aliceSlot)
-Fake.moveTo(bob, Vector3.new(0, 3, 12))
+place(bob, Vector3.new(0, 3, 12))
 Fake.moveTo(chloe, Vector3.new(3, 3, 12))
 Sched.advance(3.5)
 Fake.fire(chloe, "Bonk")
