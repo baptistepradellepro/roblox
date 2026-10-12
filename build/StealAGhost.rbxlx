@@ -172,6 +172,8 @@ Config.ForceHalloween = false -- mets true pour tester les fantômes Halloween h
 Config.WinterStart = 1796083200
 Config.WinterEnd = 1799107200
 Config.ForceWinter = false -- mets true pour tester l'hiver hors période
+-- Avant-goût : un peu de neige et une annonce à l'arrivée, à partir du 23 nov. 2026
+Config.WinterTeaserStart = 1795392000
 
 -- ===== Monétisation (mets 0 tant que tu ne les as pas créés) =====
 -- La liste complète des articles, avec les prix conseillés, est dans Shop.luau.
@@ -1917,6 +1919,18 @@ Monsters.List = {
 		Hover = 7,
 		Color = { 90, 200, 255 },
 	},
+	-- Le monstre des nuits de l'Hiver Hanté (pas en vente)
+	{
+		Id = "BonhommeGrelot",
+		Icon = "☃️",
+		Name = { fr = "Bonhomme Grelot", en = "Shiverman" },
+		Desc = { fr = "Le bonhomme de neige qui remplace Gloutrouille les nuits d'hiver.", en = "The snowman who replaces Gloutrouille on winter nights." },
+		Speed = 14,
+		CatchRange = 6,
+		Duration = 120,
+		Hover = 5,
+		Color = { 170, 220, 255 },
+	},
 }
 
 Monsters.ById = {}
@@ -2080,6 +2094,34 @@ function Builders.ChauveSourisTurbo(model: Model)
 	end
 	-- une traînée de vitesse
 	part(model, nil, Vector3.new(0.3, 0.3, 4), CFrame.new(0, 0, 3.6), Color3.fromRGB(150, 220, 255), { Material = Enum.Material.Neon, Transparency = 0.4 })
+end
+
+-- Bonhomme Grelot : un bonhomme de neige grognon, nez carotte, chapeau et écharpe
+function Builders.BonhommeGrelot(model: Model)
+	local snow = Color3.fromRGB(245, 250, 255)
+	part(model, BALL, Vector3.one * 7, CFrame.new(0, -2.6, 0), snow)
+	part(model, BALL, Vector3.one * 5.2, CFrame.new(0, 2, 0), snow)
+	part(model, BALL, Vector3.one * 3.8, CFrame.new(0, 5.6, 0), snow)
+	-- écharpe rouge
+	part(model, CYL, Vector3.new(0.9, 4.2, 4.2), CFrame.new(0, 4.1, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(220, 40, 60))
+	part(model, nil, Vector3.new(0.9, 2.2, 0.3), CFrame.new(1.2, 3, -1.9) * CFrame.Angles(0, 0, math.rad(-10)), Color3.fromRGB(220, 40, 60))
+	-- yeux de charbon, sourcils froncés, nez carotte
+	for _, x in { -0.7, 0.7 } do
+		part(model, BALL, Vector3.one * 0.6, CFrame.new(x, 6, -1.7), BLACK)
+		part(model, nil, Vector3.new(0.9, 0.2, 0.2), CFrame.new(x, 6.6, -1.75) * CFrame.Angles(0, 0, math.rad(x > 0 and 20 or -20)), BLACK)
+	end
+	part(model, CYL, Vector3.new(1.8, 0.5, 0.5), CFrame.new(0, 5.6, -2.5) * CFrame.Angles(0, math.rad(90), 0), Color3.fromRGB(255, 140, 30))
+	-- boutons
+	for _, y in { 2.8, 1.6, 0.4 } do
+		part(model, BALL, Vector3.one * 0.5, CFrame.new(0, y, -2.5), BLACK)
+	end
+	-- chapeau haut-de-forme
+	part(model, CYL, Vector3.new(0.3, 3.6, 3.6), CFrame.new(0, 7.3, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(30, 30, 35))
+	part(model, CYL, Vector3.new(2.2, 2.4, 2.4), CFrame.new(0, 8.5, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(30, 30, 35))
+	-- bras en branches
+	for _, side in { -1, 1 } do
+		part(model, CYL, Vector3.new(3.6, 0.35, 0.35), CFrame.new(side * 3.8, 2.6, 0) * CFrame.Angles(0, 0, math.rad(side * -25)), Color3.fromRGB(110, 70, 40), { Name = "Arm" })
+	end
 end
 
 -- Fabrique le modèle d'un monstre (avec son nom au-dessus)
@@ -2500,6 +2542,8 @@ Strings.fr = {
 	AnnHalloweenSpawn = "Un fantôme HALLOWEEN apparaît : {ghost} !",
 	AnnSecretSpawn = "UN FANTÔME SECRET EST APPARU : {ghost} !",
 	AnnFrostSpawn = "Un fantôme GIVRÉ apparaît : {ghost} !",
+	WinterSoon = "❄️ L'Hiver Hanté arrive dans {days} jours !",
+	WinterOn = "❄️ C'est l'Hiver Hanté ! Des fantômes Givrés sortent la nuit",
 	IndexSecretHidden = "Personne ne sait à quoi il ressemble...",
 	AnnRainbowSpawn = "Un fantôme ARC-EN-CIEL apparaît : {ghost} !",
 	AnnBigBuy = "{player} a attrapé {ghost} !",
@@ -2770,6 +2814,8 @@ Strings.en = {
 	AnnHalloweenSpawn = "A HALLOWEEN ghost appeared: {ghost}!",
 	AnnSecretSpawn = "A SECRET GHOST HAS APPEARED: {ghost}!",
 	AnnFrostSpawn = "A FROSTY ghost appeared: {ghost}!",
+	WinterSoon = "❄️ The Haunted Winter arrives in {days} days!",
+	WinterOn = "❄️ It's the Haunted Winter! Frosty ghosts come out at night",
 	IndexSecretHidden = "Nobody knows what it looks like...",
 	AnnRainbowSpawn = "A RAINBOW ghost appeared: {ghost}!",
 	AnnBigBuy = "{player} grabbed {ghost}!",
@@ -5554,6 +5600,23 @@ function GhostService.start()
 	Remotes.get("BuyGhost").OnServerEvent:Connect(onBuy)
 	Remotes.get("SellGhost").OnServerEvent:Connect(onSell)
 
+	-- Les événements en cours, pour l'affichage chez les joueurs (neige de l'hiver...)
+	local function publishEvents()
+		local events = GhostService.activeEvents()
+		local t = os.time()
+		ReplicatedStorage:SetAttribute("EventHalloween", events.Halloween)
+		ReplicatedStorage:SetAttribute("EventWinter", events.Winter)
+		ReplicatedStorage:SetAttribute("WinterTeaser", not events.Winter and t >= Config.WinterTeaserStart and t < Config.WinterStart)
+		ReplicatedStorage:SetAttribute("WinterStartsAt", Config.WinterStart)
+	end
+	publishEvents()
+	task.spawn(function()
+		while true do
+			task.wait(30)
+			publishEvents()
+		end
+	end)
+
 	-- Boucle d'apparition
 	task.spawn(function()
 		-- quelques fantômes déjà en route au démarrage, pour ne pas avoir un chemin vide
@@ -7793,7 +7856,9 @@ local function runNight()
 		startCandy()
 	end
 
-	local monster = MonsterService.spawn("Gloutrouille", {
+	-- l'hiver, c'est le Bonhomme Grelot qui sort à la place de Gloutrouille
+	local monsterId = if GhostService.activeEvents().Winter then "BonhommeGrelot" else "Gloutrouille"
+	local monster = MonsterService.spawn(monsterId, {
 		Speed = if theme == "Fog" then Config.FogMonsterSpeed else Config.MonsterSpeed,
 		CatchRange = if theme == "Super" then Config.MonsterCatchRange + 3 else Config.MonsterCatchRange,
 		Scale = if theme == "Super" then Config.SuperMonsterScale else 1,
@@ -8997,6 +9062,7 @@ local ORDER = {
 	"BaseView",
 	"CarryView",
 	"NightView",
+	"WinterView",
 	"MonsterView",
 	"WeaponView",
 	"LeaderboardView",
@@ -13543,16 +13609,133 @@ return WeaponView
 ]]></string>
           </Properties>
         </Item>
+        <Item class="ModuleScript" referent="63">
+          <Properties>
+            <string name="Name">WinterView</string>
+            <string name="Source"><![CDATA[--[[
+	WinterView : l'Hiver Hanté côté joueur.
+	  - pendant l'événement (1er déc - 5 janv) : il neige et le sol devient blanc
+	  - la semaine d'avant : quelques flocons et un message « l'Hiver Hanté arrive »
+	Le serveur dit ce qui est en cours (attributs EventWinter et WinterTeaser).
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local HUD = require(script.Parent.HUD)
+local Lang = require(script.Parent.Lang)
+
+local WinterView = {}
+
+local snowPart: Part? = nil
+local emitter: ParticleEmitter? = nil
+local groundColor: Color3? = nil
+local groundMaterial: Enum.Material? = nil
+local toldTeaser, toldWinter = false, false
+
+local SNOW_GROUND = Color3.fromRGB(225, 235, 245)
+
+local function setSnow(rate: number)
+	if rate <= 0 then
+		if snowPart then
+			snowPart:Destroy()
+			snowPart, emitter = nil, nil
+		end
+		return
+	end
+	if not snowPart then
+		local p = Instance.new("Part")
+		p.Name = "SnowCloud"
+		p.Anchored = true
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.CastShadow = false
+		p.Transparency = 1
+		p.Size = Vector3.new(140, 1, 140)
+		p.Parent = workspace
+		local e = Instance.new("ParticleEmitter")
+		e.Name = "Snow"
+		e.EmissionDirection = Enum.NormalId.Bottom
+		e.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255))
+		e.Size = NumberSequence.new(0.35)
+		e.Speed = NumberRange.new(5, 8)
+		e.Lifetime = NumberRange.new(7, 9)
+		e.SpreadAngle = Vector2.new(25, 25)
+		e.Rotation = NumberRange.new(0, 360)
+		e.RotSpeed = NumberRange.new(-40, 40)
+		e.LightEmission = 0.4
+		e.Parent = p
+		snowPart, emitter = p, e
+	end
+	if emitter then
+		emitter.Rate = rate
+	end
+end
+
+-- Le sol blanc pendant l'hiver (seulement sur mon écran)
+local function setSnowyGround(on: boolean)
+	local map = workspace:FindFirstChild("Map")
+	local ground = map and map:FindFirstChild("Ground") :: BasePart?
+	if not ground then
+		return
+	end
+	if on then
+		if not groundColor then
+			groundColor, groundMaterial = ground.Color, ground.Material
+		end
+		ground.Color = SNOW_GROUND
+		ground.Material = Enum.Material.Snow
+	elseif groundColor then
+		ground.Color = groundColor
+		ground.Material = groundMaterial or Enum.Material.Grass
+		groundColor, groundMaterial = nil, nil
+	end
+end
+
+local function update()
+	local winter = ReplicatedStorage:GetAttribute("EventWinter") == true
+	local teaser = ReplicatedStorage:GetAttribute("WinterTeaser") == true
+	setSnow(if winter then 90 elseif teaser then 15 else 0)
+	setSnowyGround(winter)
+	if winter and not toldWinter then
+		toldWinter = true
+		HUD.toast(Lang.t("WinterOn"), "info")
+	elseif teaser and not toldTeaser then
+		toldTeaser = true
+		local startsAt = ReplicatedStorage:GetAttribute("WinterStartsAt") or 0
+		local days = math.max(1, math.ceil((startsAt - workspace:GetServerTimeNow()) / 86400))
+		HUD.toast(Lang.t("WinterSoon", { days = days }), "info")
+	end
+end
+
+function WinterView.start()
+	ReplicatedStorage:GetAttributeChangedSignal("EventWinter"):Connect(update)
+	ReplicatedStorage:GetAttributeChangedSignal("WinterTeaser"):Connect(update)
+	update()
+	-- le nuage de neige suit la caméra
+	RunService.RenderStepped:Connect(function()
+		local camera = workspace.CurrentCamera
+		if snowPart and camera then
+			snowPart.CFrame = CFrame.new(camera.CFrame.Position + Vector3.new(0, 35, 0))
+		end
+	end)
+end
+
+return WinterView
+]]></string>
+          </Properties>
+        </Item>
       </Item>
     </Item>
   </Item>
-  <Item class="TextChatService" referent="63">
+  <Item class="TextChatService" referent="64">
     <Properties>
       <string name="Name">TextChatService</string>
       <token name="ChatVersion">1</token>
     </Properties>
   </Item>
-  <Item class="Workspace" referent="64">
+  <Item class="Workspace" referent="65">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>

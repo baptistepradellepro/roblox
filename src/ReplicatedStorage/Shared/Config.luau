@@ -148,6 +148,8 @@ Config.ForceHalloween = false -- mets true pour tester les fantômes Halloween h
 Config.WinterStart = 1796083200
 Config.WinterEnd = 1799107200
 Config.ForceWinter = false -- mets true pour tester l'hiver hors période
+-- Avant-goût : un peu de neige et une annonce à l'arrivée, à partir du 23 nov. 2026
+Config.WinterTeaserStart = 1795392000
 
 -- ===== Monétisation (mets 0 tant que tu ne les as pas créés) =====
 -- La liste complète des articles, avec les prix conseillés, est dans Shop.luau.

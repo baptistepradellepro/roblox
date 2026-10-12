@@ -725,6 +725,21 @@ check(GhostService.mutationBoost == 1, "chances normales après la Super Nuit")
 Config.SuperNight = { WeekDay = 7, StartHour = 17, EndHour = 18 }
 Config.NightThemes = savedThemes
 
+section("Hiver Hanté")
+Config.ForceWinter = true
+Sched.advance(31)
+check(RS:GetAttribute("EventWinter") == true, "l'hiver est annoncé aux joueurs")
+local nextWinterNight = RS:GetAttribute("NextNightAt")
+m = mark()
+Sched.advance(nextWinterNight - workspace:GetServerTimeNow() + 1)
+check(workspace:FindFirstChild("BonhommeGrelotAnchor") ~= nil and workspace:FindFirstChild("GloutrouilleAnchor") == nil, "la nuit d'hiver, c'est le Bonhomme Grelot qui sort")
+check(announced("AnnFrostSpawn", m), "un fantôme Givré garanti au début de la nuit")
+Sched.advance(Config.NightDuration + 1)
+check(workspace:FindFirstChild("BonhommeGrelotAnchor") == nil, "il repart au matin")
+Config.ForceWinter = false
+Sched.advance(31)
+check(RS:GetAttribute("EventWinter") == false, "fin de l'hiver")
+
 section("Rebirth")
 m = mark()
 aData.Coins = 10

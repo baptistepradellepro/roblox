@@ -584,6 +584,23 @@ check(body.Parent == custom and body.CanCollide, "le modèle d'origine n'est pas
 folder:Destroy()
 check(GhostFactory.build("DrapMou"):FindFirstChild("MonCorps") == nil, "sans le dossier, retour au modèle fabriqué")
 
+section("Hiver Hanté côté joueur")
+check(workspace:FindFirstChild("SnowCloud") == nil, "pas de neige en octobre")
+Config.ForceWinter = true
+for _ = 1, 32 do
+	Sched.advance(1)
+	if RS:GetAttribute("EventWinter") then
+		break
+	end
+end
+Sched.advance(0.2)
+check(workspace:FindFirstChild("SnowCloud") ~= nil, "il neige pendant l'Hiver Hanté")
+check(workspace.Map.Ground.Material == roblox.Enum.Material.Snow, "le sol devient blanc")
+check(findText(gui.SAG_HUD, "Hiver Hanté") ~= nil, "message de l'Hiver Hanté")
+Config.ForceWinter = false
+Sched.advance(31)
+check(workspace:FindFirstChild("SnowCloud") == nil and workspace.Map.Ground.Material == roblox.Enum.Material.Grass, "plus de neige après l'hiver")
+
 section("Bilan")
 for _, w in Fake.warnings do
 	print("  avertissement : " .. w)

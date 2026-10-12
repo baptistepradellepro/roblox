@@ -52,6 +52,18 @@ Monsters.List = {
 		Hover = 7,
 		Color = { 90, 200, 255 },
 	},
+	-- Le monstre des nuits de l'Hiver Hanté (pas en vente)
+	{
+		Id = "BonhommeGrelot",
+		Icon = "☃️",
+		Name = { fr = "Bonhomme Grelot", en = "Shiverman" },
+		Desc = { fr = "Le bonhomme de neige qui remplace Gloutrouille les nuits d'hiver.", en = "The snowman who replaces Gloutrouille on winter nights." },
+		Speed = 14,
+		CatchRange = 6,
+		Duration = 120,
+		Hover = 5,
+		Color = { 170, 220, 255 },
+	},
 }
 
 Monsters.ById = {}
@@ -215,6 +227,34 @@ function Builders.ChauveSourisTurbo(model: Model)
 	end
 	-- une traînée de vitesse
 	part(model, nil, Vector3.new(0.3, 0.3, 4), CFrame.new(0, 0, 3.6), Color3.fromRGB(150, 220, 255), { Material = Enum.Material.Neon, Transparency = 0.4 })
+end
+
+-- Bonhomme Grelot : un bonhomme de neige grognon, nez carotte, chapeau et écharpe
+function Builders.BonhommeGrelot(model: Model)
+	local snow = Color3.fromRGB(245, 250, 255)
+	part(model, BALL, Vector3.one * 7, CFrame.new(0, -2.6, 0), snow)
+	part(model, BALL, Vector3.one * 5.2, CFrame.new(0, 2, 0), snow)
+	part(model, BALL, Vector3.one * 3.8, CFrame.new(0, 5.6, 0), snow)
+	-- écharpe rouge
+	part(model, CYL, Vector3.new(0.9, 4.2, 4.2), CFrame.new(0, 4.1, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(220, 40, 60))
+	part(model, nil, Vector3.new(0.9, 2.2, 0.3), CFrame.new(1.2, 3, -1.9) * CFrame.Angles(0, 0, math.rad(-10)), Color3.fromRGB(220, 40, 60))
+	-- yeux de charbon, sourcils froncés, nez carotte
+	for _, x in { -0.7, 0.7 } do
+		part(model, BALL, Vector3.one * 0.6, CFrame.new(x, 6, -1.7), BLACK)
+		part(model, nil, Vector3.new(0.9, 0.2, 0.2), CFrame.new(x, 6.6, -1.75) * CFrame.Angles(0, 0, math.rad(x > 0 and 20 or -20)), BLACK)
+	end
+	part(model, CYL, Vector3.new(1.8, 0.5, 0.5), CFrame.new(0, 5.6, -2.5) * CFrame.Angles(0, math.rad(90), 0), Color3.fromRGB(255, 140, 30))
+	-- boutons
+	for _, y in { 2.8, 1.6, 0.4 } do
+		part(model, BALL, Vector3.one * 0.5, CFrame.new(0, y, -2.5), BLACK)
+	end
+	-- chapeau haut-de-forme
+	part(model, CYL, Vector3.new(0.3, 3.6, 3.6), CFrame.new(0, 7.3, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(30, 30, 35))
+	part(model, CYL, Vector3.new(2.2, 2.4, 2.4), CFrame.new(0, 8.5, 0) * CFrame.Angles(0, 0, math.rad(90)), Color3.fromRGB(30, 30, 35))
+	-- bras en branches
+	for _, side in { -1, 1 } do
+		part(model, CYL, Vector3.new(3.6, 0.35, 0.35), CFrame.new(side * 3.8, 2.6, 0) * CFrame.Angles(0, 0, math.rad(side * -25)), Color3.fromRGB(110, 70, 40), { Name = "Arm" })
+	end
 end
 
 -- Fabrique le modèle d'un monstre (avec son nom au-dessus)

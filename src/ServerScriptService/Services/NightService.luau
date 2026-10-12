@@ -191,7 +191,9 @@ local function runNight()
 		startCandy()
 	end
 
-	local monster = MonsterService.spawn("Gloutrouille", {
+	-- l'hiver, c'est le Bonhomme Grelot qui sort à la place de Gloutrouille
+	local monsterId = if GhostService.activeEvents().Winter then "BonhommeGrelot" else "Gloutrouille"
+	local monster = MonsterService.spawn(monsterId, {
 		Speed = if theme == "Fog" then Config.FogMonsterSpeed else Config.MonsterSpeed,
 		CatchRange = if theme == "Super" then Config.MonsterCatchRange + 3 else Config.MonsterCatchRange,
 		Scale = if theme == "Super" then Config.SuperMonsterScale else 1,

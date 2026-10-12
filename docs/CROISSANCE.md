@@ -44,38 +44,28 @@ Accélère une session de jeu : un seul Drap Mou au début, compteur de pièces 
 
 ## Déjà dans le jeu au lancement
 
-Pour que le jeu soit le plus complet possible dès le départ, tout ce qui était prévu pour novembre est déjà codé : le Fantômédex et les codes secrets, les fantômes Dorés et Arc-en-ciel, les 4 fantômes d'automne, les nuits à thème (Brouillard, Bonbons), la Super Nuit du samedi soir, le week-end x2, le classement des voleurs de la semaine et les 3 missions du jour.
+Pour que le jeu soit le plus complet possible dès le départ, tout ce qui était prévu pour l'automne et l'hiver est déjà codé :
 
-Ça donne aussi de quoi filmer dès la première semaine : un Arc-en-ciel annoncé à tout le serveur, une Super Nuit avec le Gloutrouille géant, ou toi en tête du classement.
+- le Fantômédex et les codes secrets, les fantômes Dorés et Arc-en-ciel, les nuits à thème (Brouillard, Bonbons) et la Super Nuit du samedi soir ;
+- le week-end x2, le classement des voleurs de la semaine, les 3 missions du jour et les 3 défis de la semaine ;
+- la batte et les armes, la Roue de la Fortune, les monstres à lâcher, les pièges (banane, toile, alarme) ;
+- la rareté Secrète (3 fantômes presque introuvables) et les badges Roblox ;
+- l'Hiver Hanté, qui se lance seul le 1er décembre : neige, 4 fantômes Givrés et le Bonhomme Grelot la nuit, avec un avant-goût dès le 23 novembre.
 
-## Plan de mises à jour après Halloween (2 au 29 novembre 2026)
+Ça donne de quoi filmer dès la première semaine : un Arc-en-ciel annoncé à tout le serveur, une Super Nuit avec le Gloutrouille géant, un voleur qui glisse sur ta peau de banane, ou la première apparition d'un Secret.
+
+## Après le lancement : un rythme d'une nouveauté par semaine
 
 Le principe ne change pas : une nouveauté visible chaque semaine, annoncée dans le titre (`[🍂 UPDATE] Steal a Ghost`) et sur TikTok. Le 3 novembre, les fantômes Halloween arrêtent d'apparaître tout seuls (c'est réglé dans `Config.luau`). Ceux qui en ont un le gardent, et ils deviennent les cibles les plus recherchées du serveur.
 
 Chaque semaine, regarde dans Creator Hub > Analytics la rétention à 1 jour (vise 20 % ou plus), la rétention à 7 jours (5 % ou plus) et la durée moyenne des sessions (12 minutes ou plus). Si la rétention à 1 jour passe sous 15 %, on retravaille d'abord les 5 premières minutes de jeu avant d'ajouter du contenu.
 
-### Semaine 1 (2-8 novembre) : bilan et défis de la semaine
+Comme tout le contenu prévu est déjà là, les semaines de novembre servent surtout à :
 
-- Équilibrage à partir des vraies données : prix, revenus, chance des variantes, fréquence des nuits, difficulté des missions du jour. Tout se règle dans `Config.luau`, `GhostData.luau` et `Missions.luau`.
-- Des défis de la semaine, plus longs que les missions du jour ("Vole 20 fantômes", "Survis à 3 Super Nuits") avec une grosse récompense, par exemple un fantôme Doré garanti.
-- Un nouveau code secret pour la fin d'Halloween.
-- TikTok : "Le dernier Squelette Disco du serveur".
+- **Équilibrer** à partir des vraies données : prix, revenus, chance des variantes et des Secrets, prix des pièges, difficulté des défis. Tout se règle dans `Config.luau`, `GhostData.luau`, `Rarities.luau`, `Missions.luau` et `Wheel.luau`.
+- **Faire vivre les codes secrets** : un nouveau code chaque semaine (fin d'Halloween, 1 000 joueurs, arrivée de l'hiver), annoncé sur TikTok.
+- **Mettre en avant une nouveauté déjà codée** chaque semaine dans le titre et les vidéos : les pièges, puis les défis de la semaine, puis la chasse aux Secrets, puis l'Hiver Hanté.
 
-### Semaine 2 (9-15 novembre) : les pièges
+Idées pour la suite, à coder ensemble quand tu veux : un événement de la Saint-Valentin (février), des fantômes à fusionner (3 identiques donnent une version améliorée), un mode « équipe » à deux bases voisines, ou des auras de base à acheter avec des pièces.
 
-- Des pièges à acheter avec des pièces (jamais avec des Robux) et à poser dans sa base : une peau de banane qui fait glisser le voleur, une alarme qui fait sonner tout le serveur, une toile d'araignée qui le ralentit encore plus. Ça ajoute de la stratégie à la défense, en plus du verrou.
-- TikTok : "J'ai piégé ma base, regardez ce qui arrive au voleur".
-
-### Semaine 3 (16-22 novembre) : la rareté Secrète
-
-- Une nouvelle rareté au-dessus de Mythique, "Secret" : 3 fantômes qui n'apparaissent presque jamais (environ 1 fois toutes les quelques heures par serveur), avec une annonce spéciale et un écran qui tremble. Personne ne connaît leur forme avant d'en voir un.
-- Des badges Roblox pour les grands moments : premier vol, premier Mythique, Fantômédex complet, premier rebirth. Ils s'affichent sur le profil des joueurs, donc leurs amis les voient.
-- TikTok : la première apparition d'un Secret, filmée en direct.
-
-### Semaine 4 (23-29 novembre) : teaser de l'Hiver Hanté
-
-- Un peu de neige sur la map, une silhouette mystère sur le chemin et l'annonce de la mise à jour de décembre : la rareté limitée "Givré" (du 1er décembre au 5 janvier) et un nouveau monstre d'hiver.
-- La Super Nuit du samedi 28 novembre devient une "Super Nuit Glacée" exceptionnelle, avec un premier fantôme Givré à gagner.
-- TikTok : compte à rebours vers l'Hiver Hanté.
-
-Chaque semaine représente du code que je peux écrire avec toi. Dis-moi par laquelle commencer, et je te livre comme d'habitude le code, les tests et un nouveau fichier `.rbxlx`.
+Chaque idée représente du code que je peux écrire avec toi, avec les tests et un nouveau fichier `.rbxlx`.

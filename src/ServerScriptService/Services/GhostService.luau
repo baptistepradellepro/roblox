@@ -235,6 +235,23 @@ function GhostService.start()
 	Remotes.get("BuyGhost").OnServerEvent:Connect(onBuy)
 	Remotes.get("SellGhost").OnServerEvent:Connect(onSell)
 
+	-- Les événements en cours, pour l'affichage chez les joueurs (neige de l'hiver...)
+	local function publishEvents()
+		local events = GhostService.activeEvents()
+		local t = os.time()
+		ReplicatedStorage:SetAttribute("EventHalloween", events.Halloween)
+		ReplicatedStorage:SetAttribute("EventWinter", events.Winter)
+		ReplicatedStorage:SetAttribute("WinterTeaser", not events.Winter and t >= Config.WinterTeaserStart and t < Config.WinterStart)
+		ReplicatedStorage:SetAttribute("WinterStartsAt", Config.WinterStart)
+	end
+	publishEvents()
+	task.spawn(function()
+		while true do
+			task.wait(30)
+			publishEvents()
+		end
+	end)
+
 	-- Boucle d'apparition
 	task.spawn(function()
 		-- quelques fantômes déjà en route au démarrage, pour ne pas avoir un chemin vide

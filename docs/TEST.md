@@ -94,6 +94,12 @@ Dans le Fantômédex, un Secret pas encore trouvé n'a même pas de silhouette :
 
 Pour en voir un sans attendre, dans la barre de commande de Studio (Affichage > Barre de commande), pendant que le jeu tourne côté serveur : `require(game.ServerScriptService.Services.GhostService).spawn("Glitchou")`.
 
+## Tester l'Hiver Hanté
+
+Du 1er décembre 2026 au 5 janvier 2027, tout se lance seul : il neige, le sol devient blanc, des fantômes Givrés (Bonhomme Bouh, Glaçon Grognon, Moufle Fantôme, Renne Frissonnant) sortent la nuit, et c'est le Bonhomme Grelot qui poursuit les joueurs à la place de Gloutrouille. Du 23 au 30 novembre, quelques flocons et un message annoncent son arrivée.
+
+Pour le tester maintenant, mets `Config.ForceWinter = true` dans `Config.luau` (et remets `false` ensuite). Les dates sont dans `Config.WinterStart`, `Config.WinterEnd` et `Config.WinterTeaserStart`.
+
 ## Tester les missions du jour
 
 Bouton 📋 à gauche. Chaque joueur a 3 missions par jour : une facile, une moyenne, une difficile (par exemple "Achète 3 fantômes", "Vends 2 fantômes", "Vole un fantôme à un autre joueur"). La barre avance toute seule, et quand une mission est finie les pièces arrivent directement avec un message "Mission réussie". Les 3 réussies donnent un bonus. Les missions changent à minuit UTC (2h du matin à Paris en été, 1h en hiver).

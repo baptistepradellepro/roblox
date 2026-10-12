@@ -224,6 +224,13 @@ local function scanKeys(dir: string)
 end
 scanKeys("src")
 
+---------------------------------------------------------------- Dates des événements
+check(Config.HalloweenStart < Config.HalloweenEnd, "dates d'Halloween dans l'ordre")
+check(Config.HalloweenEnd <= Config.WinterTeaserStart and Config.WinterTeaserStart < Config.WinterStart, "l'avant-goût de l'hiver après Halloween et avant l'hiver")
+check(Config.WinterStart < Config.WinterEnd, "dates de l'hiver dans l'ordre")
+check(os.date("!*t", Config.WinterStart).month == 12 and os.date("!*t", Config.WinterStart).day == 1, "l'hiver commence le 1er décembre")
+check(not Config.ForceHalloween and not Config.ForceWinter, "pas d'événement forcé dans la version publiée")
+
 ---------------------------------------------------------------- Défis de la semaine
 for _, id in Missions.WeeklyPool do
 	check(Missions.WeeklyDefs[id] ~= nil, "défi défini : " .. id)
