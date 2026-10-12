@@ -4,7 +4,7 @@ Jeu Roblox multijoueur (8 à 12 joueurs) sur le thème d'Halloween, version cart
 
 Tout le jeu est écrit en Luau dans le dossier `src/`. La map, les fantômes et l'interface sont générés par le code au lancement : il n'y a rien à construire à la main dans Studio.
 
-![Les 36 fantômes et quelques variantes](docs/apercu_fantomes.png)
+![Les fantômes et quelques variantes](docs/apercu_fantomes.png)
 
 *(aperçu approximatif généré hors de Roblox, le rendu en jeu est plus propre)*
 
@@ -103,5 +103,7 @@ rojo build default.project.json -o build/StealAGhost.rbxlx
 ## Les autres guides
 
 - [docs/TEST.md](docs/TEST.md) : tester dans Studio, à plusieurs joueurs et sur un écran de téléphone
+- [docs/PUBLIER_DEMAIN.md](docs/PUBLIER_DEMAIN.md) : la version courte, pour publier en une heure
 - [docs/PUBLICATION.md](docs/PUBLICATION.md) : checklist de publication, questionnaire de maturité, description, icône et miniatures, règles 2026 pour les 9-15 ans
+- [docs/publication](docs/publication) : icône, miniatures (anglais et français), images des Game Passes, produits, badges et icônes de boutique, faites avec les vrais modèles du jeu (`tools/render_publication.py`)
 - [docs/CROISSANCE.md](docs/CROISSANCE.md) : 5 vidéos TikTok/Shorts à filmer et le plan des 4 semaines après Halloween

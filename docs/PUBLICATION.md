@@ -1,6 +1,6 @@
 # Publier Steal a Ghost
 
-Checklist dans l'ordre. Compte une soirée pour tout faire, hors création des images.
+Checklist dans l'ordre. Compte une soirée pour tout faire. Les images (icône, miniatures, Game Pass, produits, badges) sont déjà prêtes dans [docs/publication](publication). Version courte pour un matin : [PUBLIER_DEMAIN.md](PUBLIER_DEMAIN.md).
 
 ## 1. Remettre les réglages normaux
 
@@ -12,6 +12,9 @@ Dans `Config.luau`, vérifie que les valeurs de test sont revenues à la normale
 - [ ] `Config.RebirthBaseCost = 10000000`
 - [ ] `Config.FloorPrice = 50000`
 - [ ] `Config.ForceHalloween = false`
+- [ ] `Config.ForceWinter = false`
+
+Les tests automatiques vérifient déjà ces valeurs (`lune run tests/run.luau`), mais un coup d'œil ne coûte rien si tu as modifié le fichier à la main.
 
 Puis un dernier test à 3 joueurs (voir [TEST.md](TEST.md)), sans ligne rouge dans la fenêtre Sortie.
 
@@ -68,8 +71,8 @@ Le jeu tourne sans. Tant qu'un ID vaut 0, l'article affiche "Bientôt" dans le v
 
 Pour créer un article : Creator Hub > Creations > Steal a Ghost > Monetization.
 
-- **Game Pass** (acheté une fois, gardé pour toujours) : Passes > Create a Pass. Image carrée 512×512 (tes rendus font très bien l'affaire), nom, description. Une fois créé, ouvre-le > Sales > mets-le en vente et choisis le prix.
-- **Developer Product** (peut être acheté plusieurs fois) : Developer Products > Create. Nom, image, prix.
+- **Game Pass** (acheté une fois, gardé pour toujours) : Passes > Create a Pass. Image carrée 512×512 : prends `docs/publication/pass_<nom>.png` (par exemple `pass_DoubleCoins.png`), puis nom et description. Une fois créé, ouvre-le > Sales > mets-le en vente et choisis le prix.
+- **Developer Product** (peut être acheté plusieurs fois) : Developer Products > Create. Nom, image (`docs/publication/produit_<nom>.png`), prix.
 - Copie ensuite l'ID de chaque article (le nombre dans l'adresse de la page) dans `Config.luau`, à la ligne qui porte le même nom, puis republie le jeu.
 
 | Article | Type | Ligne dans Config | Prix conseillé |
@@ -87,7 +90,7 @@ Pour créer un article : Creator Hub > Creations > Steal a Ghost > Monetization.
 
 Les prix conseillés sont aussi dans `Shop.luau`, avec les noms et descriptions affichés en jeu. Le prix qui compte est celui que tu mets sur le Creator Hub : la boutique le lit toute seule une fois l'ID renseigné.
 
-Pour afficher tes propres images dans la boutique (armes, monstres, roue) : importe-les sur le Creator Hub comme décalcomanies (Decals), puis colle `"rbxassetid://ID"` dans `Config.ShopIcons`.
+Pour afficher des images dans la boutique (armes, monstres, roue) à la place des emojis : importe les fichiers `docs/publication/boutique_*.png` (fond transparent) sur le Creator Hub comme décalcomanies (Decals), puis colle `"rbxassetid://ID"` dans `Config.ShopIcons`, à la ligne qui porte le même nom. C'est facultatif.
 
 Roblox garde environ 30 % de chaque vente.
 
@@ -101,7 +104,7 @@ Ce qui reste juste pour les joueurs qui ne paient pas :
 Les badges s'affichent sur le profil des joueurs, leurs amis les voient : c'est de la pub gratuite. Le jeu en prévoit 7 : Bienvenue, Premier vol, Premier Mythique, Premier Secret, Premier rebirth, Fantômédex complet et Défis de la semaine.
 
 1. Creator Hub > Creations > Steal a Ghost > Engagement > Badges > Create a Badge.
-2. Une image carrée (512×512), un nom, une description.
+2. L'image : `docs/publication/badge_<nom>.png` (par exemple `badge_FirstSteal.png`), puis un nom et une description. Roblox affiche les badges dans un rond, les images sont prévues pour.
 3. Copie l'ID du badge dans `Config.Badges`, à la ligne qui correspond.
 
 Roblox laisse créer quelques badges gratuitement chaque jour, les suivants coûtent des Robux : vérifie le prix affiché avant de valider. Tant qu'un ID vaut 0, le badge est simplement ignoré.
@@ -121,10 +124,12 @@ Pas de lien externe, c'est interdit. Les emojis sont l'usage sur Roblox et aiden
 ```
 Achète des fantômes complètement absurdes, pose-les dans ta base et ramasse les pièces qu'ils fabriquent. Mais les autres joueurs peuvent entrer chez toi et repartir avec tes fantômes !
 
-👻 36 fantômes à collectionner : Drap Mou, Caquetôme, DJ Bouh-Boum, Méga Bouh Cosmique...
+👻 Plus de 40 fantômes à collectionner : Drap Mou, Caquetôme, DJ Bouh-Boum, Méga Bouh Cosmique...
+❔ Des fantômes Secrets que presque personne n'a vus
 ✨ Fantômes Dorés (x3) et Arc-en-ciel (x5) ultra rares
 🦹 Vole les fantômes des autres et cours jusqu'à ta base
 🏏 Un voleur passe près de toi ? Un coup de batte et il lâche tout !
+🍌 Pose des pièges dans ta base : peau de banane, toile d'araignée, alarme
 🔒 Verrouille ta base au bon moment
 🏰 Achète un 2e étage pour 10 fantômes de plus
 🎡 La Roue de la Fortune au milieu de la map
@@ -136,7 +141,7 @@ Achète des fantômes complètement absurdes, pose-les dans ta base et ramasse l
 🎉 Pièces x2 tout le week-end
 ♻️ Rebirth pour gagner plus, pour toujours
 👥 +10 % de pièces par ami dans ton serveur
-🎁 Un cadeau et 3 missions chaque jour
+🎁 Un cadeau et 3 missions chaque jour, 3 défis chaque semaine
 📖 Complète le Fantômédex pour +10 % de revenus
 ```
 
@@ -145,10 +150,12 @@ Achète des fantômes complètement absurdes, pose-les dans ta base et ramasse l
 ```
 Buy totally ridiculous ghosts, put them in your base and collect the coins they make. But other players can sneak in and run away with your ghosts!
 
-👻 36 ghosts to collect: Floppy Sheet, Cluck-a-Boo, DJ Boo-Boom, Cosmic Mega Boo...
+👻 40+ ghosts to collect: Floppy Sheet, Cluck-a-Boo, DJ Boo-Boom, Cosmic Mega Boo...
+❔ Secret ghosts almost nobody has seen
 ✨ Ultra rare Golden (x3) and Rainbow (x5) ghosts
 🦹 Steal other players' ghosts and run back to your base
 🏏 Thief nearby? One swing of your bat and they drop everything!
+🍌 Set traps in your base: banana peel, spider web, alarm
 🔒 Lock your base at the right moment
 🏰 Buy a 2nd floor for 10 more ghosts
 🎡 The Wheel of Fortune in the middle of the map
@@ -160,29 +167,25 @@ Buy totally ridiculous ghosts, put them in your base and collect the coins they 
 🎉 x2 coins all weekend
 ♻️ Rebirth to earn more, forever
 👥 +10% coins for each friend in your server
-🎁 A free gift and 3 missions every day
+🎁 A free gift and 3 missions every day, 3 challenges every week
 📖 Complete the Ghostdex for +10% income
 ```
 
-## 8. Icône et miniatures à créer
+## 8. Icône et miniatures (déjà prêtes)
 
-**Icône** (carrée, 512×512 minimum) : elle s'affiche parfois en 150×150, donc une seule idée qui se lit de loin. Proposition : le Méga Bouh Cosmique en très gros plan, une main de personnage Roblox qui l'attrape, fond orange et violet. Pas de petit texte, au maximum un mot énorme ("STEAL").
+Tout est dans [docs/publication](publication), fait à partir des vrais modèles du jeu (les miniatures doivent montrer le vrai jeu, sinon Roblox les refuse).
 
-**Miniatures** (1920×1080, format 16:9, jusqu'à 10) : fais-en au moins 3. Garde le texte important loin du bas de l'image, Roblox y affiche le nombre de joueurs.
+- **Icône** : `icone.png` (512×512). Le Roi Patatôme porté par un voleur, et le nom du jeu.
+- **Miniatures** (1920×1080), en anglais (`_en`) et en français (`_fr`) :
+  1. `miniature_1_vol` : un voleur s'enfuit avec un fantôme, le propriétaire le poursuit avec sa batte
+  2. `miniature_2_nuit` : Gloutrouille poursuit un joueur pendant la Nuit Hantée
+  3. `miniature_3_collection` : une partie des fantômes à collectionner
+  4. `miniature_4_halloween` : les 4 fantômes Halloween (à retirer après le 3 novembre)
+  5. `miniature_5_defense` : un voleur glisse sur une peau de banane dans une base piégée
 
-1. Le vol : un joueur qui court, surligné en rouge, un fantôme Légendaire au-dessus de la tête, le propriétaire derrière lui. Texte : "VOLE-LE !" / "STEAL IT!"
-2. La Nuit Hantée : Gloutrouille en gros plan qui poursuit un joueur sur le chemin violet.
-3. Une base pleine de fantômes brillants avec des pièces qui volent.
-4. Bonus : la rangée des fantômes Halloween avec "ÉDITION LIMITÉE".
+Où les mettre : Creator Hub > Creations > ton jeu > Places > ta place principale > Thumbnails pour les miniatures, et Experience Information pour l'icône. Mets les versions `_en` par défaut. Si la page Localization du Creator Hub te propose des images par langue, ajoute les versions `_fr` pour le français.
 
-Comment les faire gratuitement :
-
-1. Lance le jeu dans Studio à 2 ou 3 joueurs et mets en scène le moment voulu.
-2. Pour cacher l'interface : dans la fenêtre du joueur, Explorateur > Players > ton joueur > PlayerGui, décoche "Enabled" sur SAG_HUD et SAG_Panels.
-3. Place la caméra avec la caméra libre (Maj+P en mode test, si ton compte la propose), puis fais une capture d'écran (Windows : Win+Maj+S, Mac : Cmd+Maj+4).
-4. Ajoute le texte et recadre en 1920×1080 avec un outil gratuit dans le navigateur, comme Photopea ou la version gratuite de Canva.
-
-Les miniatures doivent montrer le vrai jeu : Roblox refuse les images trompeuses.
+Pour les refaire après un changement de modèle : `lune run tools/export_scene.luau scene.json`, puis `python3 tools/render_publication.py scene.json docs/publication` (une vingtaine de minutes).
 
 ## 9. Mise en ligne
 

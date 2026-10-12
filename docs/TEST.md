@@ -192,3 +192,9 @@ Sans l'accès aux API, la fenêtre Sortie affiche "Mode test : la sauvegarde est
 ## Tester sur un écran de téléphone
 
 Onglet Test > Appareil (Device), puis choisis un téléphone (iPhone, Galaxy...) dans la liste en haut de la vue 3D. Lance le jeu : les gros boutons doivent rester lisibles et ne pas cacher le joystick ni le bouton de saut. Essaie aussi en mode portrait.
+
+L'interface se met à l'échelle de la place libre à l'écran : sur un petit téléphone en paysage, ouvre la boutique, le Fantômédex et les missions, leur bas doit rester visible. Les pastilles sous les pièces (nuit, verrou, bonus...) passent sur deux lignes quand il y en a plus de trois.
+
+## L'anti-triche du vol
+
+Le serveur refuse maintenant un vol si le voleur n'est pas dans la base volée, au même étage, près du socle. Le bouton Voler n'apparaît donc que de l'intérieur de la base. Un voleur qui se téléporte, ou qui rentre chez lui plus vite qu'à pied, perd le fantôme. Un petit gel du réseau sur téléphone ne compte pas comme de la triche.

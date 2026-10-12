@@ -78,19 +78,24 @@ class Scene:
         self.next_group += 1
         return g
 
-    def add_parts(self, parts, place=None, group=None, tint=None, skip=(), shadow=True):
-        """Ajoute les pièces exportées par export_scene.luau, déplacées par "place"."""
+    def add_parts(self, parts, place=None, group=None, tint=None, skip=(), shadow=True, scale=1.0):
+        """Ajoute les pièces exportées par export_scene.luau, déplacées par "place"
+        (et agrandies de "scale" autour de leur origine, comme Model:ScaleTo)."""
         g = group if group is not None else self.group()
         for p in parts:
             if p.get("name") in skip:
                 continue
             cf = cf_list(p["cf"])
+            size = p["size"]
+            if scale != 1.0:
+                cf = (cf[0] * scale, cf[1])
+                size = [v * scale for v in size]
             if place is not None:
                 cf = mul(place, cf)
             color = p["color"]
             if tint is not None:
                 color = [c * (1 - tint[3]) + t * tint[3] for c, t in zip(color, tint[:3])]
-            self.prims.append(Prim(p["shape"], cf, p["size"], color, 1 - p["transparency"], p.get("neon", False), g, shadow))
+            self.prims.append(Prim(p["shape"], cf, size, color, 1 - p["transparency"], p.get("neon", False), g, shadow))
         return g
 
     def box(self, cf, size, color, **kw):
@@ -743,3 +748,475 @@ def render_object(data_parts_list, size, direction=(0.35, 0.3, -1), look=None, m
         scene.add_parts(parts, place)
     cam = fit_camera(scene.prims, direction, size, size, fov=fov, margin=margin)
     return render(scene, cam, look or Look(shadows=False, outline_px=3))
+
+
+# ------------------------------------------------------------------ la carte du jeu
+
+GHOST_MIX = ["DrapMou", "Caquetome", "CrepeFrisson", "RoiPatatome", "BrocoliBouh", "Miaoufantome",
+             "DJBouhBoum", "MegaBouhCosmique", "SpatuleErrante", "CapitaineCornichon"]
+
+
+def known(data, keys):
+    return [k for k in keys if k in data["ghosts"]]
+
+
+def map_scene(data, bases_filled=(), ghost_keys=None, skip=("Spot", "WheelSpot", "ShopSpot")):
+    """La carte entière, avec des fantômes sur les socles des bases choisies."""
+    scene = Scene()
+    scene.add_parts(data["map"], skip=skip, group=0)
+    keys = known(data, ghost_keys or GHOST_MIX) or list(data["ghosts"])[:10]
+    for i, ped in enumerate(data["pedestals"]):
+        if ped["base"] in bases_filled and ped["slot"] <= 10:
+            key = keys[(ped["slot"] + ped["base"] * 3) % len(keys)]
+            at = mul(cf_list(ped["cf"]), cf_new(0, data["ghosts"][key]["bottom"] + 0.4, 0))
+            add_ghost(scene, data, key, at)
+    if "wheelAnchor" in data:
+        scene.add_parts(data["wheel"]["parts"], cf_list(data["wheelAnchor"]))
+    return scene
+
+
+def base_origin(data, index):
+    return cf_list(data["origins"]["Base_%d" % index])
+
+
+def base_index_at(data, x, z):
+    for name, o in data["origins"].items():
+        if abs(o[0] - x) < 1 and abs(o[2] - z) < 1:
+            return int(name.split("_")[1])
+    return 1
+
+# ------------------------------------------------------------------ images
+
+NOOB_SHIRT, NOOB_PANTS = (0.05, 0.41, 0.67), (0.16, 0.5, 0.28)
+RED_SHIRT, DARK_PANTS = (0.77, 0.16, 0.11), (0.2, 0.2, 0.26)
+PINK_SHIRT, BLUE_PANTS = (0.93, 0.45, 0.68), (0.2, 0.3, 0.6)
+BROWN_HAIR, BLACK_HAIR, BLOND_HAIR = (0.35, 0.2, 0.1), (0.1, 0.08, 0.1), (0.95, 0.78, 0.35)
+THIEF_HIGHLIGHT = ((1.0, 0.2, 0.24), 0.45, (1, 1, 1))
+
+TEXTS = {
+    "steal": {"en": "STEAL IT!", "fr": "VOLE-LE !"},
+    "steal_sub": {"en": "Run back to your base!", "fr": "Cours jusqu'à ta base !"},
+    "night": {"en": "HAUNTED NIGHT", "fr": "NUIT HANTÉE"},
+    "night_sub": {"en": "Don't get caught!", "fr": "Ne te fais pas attraper !"},
+    "collect": {"en": "40+ GHOSTS", "fr": "40+ FANTÔMES"},
+    "collect_sub": {"en": "Collect them all!", "fr": "Attrape-les tous !"},
+    "halloween": {"en": "HALLOWEEN", "fr": "HALLOWEEN"},
+    "halloween_sub": {"en": "LIMITED GHOSTS!", "fr": "FANTÔMES LIMITÉS !"},
+    "defend": {"en": "DEFEND YOUR BASE!", "fr": "DÉFENDS TA BASE !"},
+    "defend_sub": {"en": "Bats, traps and alarms", "fr": "Battes, pièges et alarmes"},
+}
+
+
+def carried(scene, data, key, torso, scale=0.8):
+    """Fantôme porté au-dessus de la tête (comme CarryView dans le jeu)."""
+    ghost = data["ghosts"][key]
+    head = 1.6  # centre de la tête, comme head.Position dans CarryView
+    at = mul(torso, cf_new(0, head + 1.2 + ghost["bottom"] * scale, 0))
+    return add_ghost(scene, data, key, at, scale=scale)
+
+
+def held(scene, data, weapon, torso, side, arm_angle, swing=90.0):
+    """Arme tenue en main, le gros bout vers le haut quand le bras est levé."""
+    parts = data["weapons"][weapon]["parts"]
+    scene.add_parts(parts, mul(hand(torso, side, arm_angle), (np.zeros(3), rot_x(math.radians(swing)))))
+
+
+def thumb_steal(data, lang, w, h, ss):
+    index = base_index_at(data, -32, 37)
+    scene = map_scene(data, bases_filled=(index, base_index_at(data, -76, 37), base_index_at(data, 32, 37)))
+    origin = base_origin(data, index)
+    # le voleur sort de la base en courant, un Légendaire au-dessus de la tête
+    thief = mul(origin, (np.array([7.0, 3.0, -30.0]), rot_y(math.radians(-70))))
+    g = avatar(scene, thief, NOOB_SHIRT, NOOB_PANTS, arm_l=170, arm_r=170, leg_l=35, leg_r=-35)
+    scene.highlights[g] = THIEF_HIGHLIGHT
+    carried(scene, data, "RoiPatatome", thief)
+    # le propriétaire le poursuit avec sa batte
+    owner = mul(origin, (np.array([-9.5, 3.0, -25.0]), rot_y(math.radians(-60))))
+    avatar(scene, owner, RED_SHIRT, DARK_PANTS, skin=SKIN_LIGHT, arm_r=150, arm_l=-35, leg_l=-35, leg_r=35,
+           hair=BROWN_HAIR, mouth="open")
+    held(scene, data, "Batte", owner, 1, 150)
+    focus = origin[0] + origin[1] @ np.array([-1.0, 6.0, -24.0])
+    cam_pos = origin[0] + origin[1] @ np.array([22.0, 10.0, -44.0])
+    cam = Camera(cam_pos, focus, w, h, fov=50)
+    look = Look(sky=night_sky(), fog=260, fog_start=60, fog_color=(0.45, 0.3, 0.6), outline_px=2.2,
+                light=(-0.5, 0.75, -0.45))
+    img = render(scene, cam, look, ss=ss)
+    moon(img, w * 0.86, h * 0.16, h * 0.07)
+    t = title(TEXTS["steal"][lang], int(h * 0.17), angle=4)
+    paste_center(img, t, w * 0.30, h * 0.17)
+    sub = title(TEXTS["steal_sub"][lang], int(h * 0.055), top=(255, 255, 255), bottom=(220, 220, 255), angle=4)
+    paste_center(img, sub, w * 0.30, h * 0.31)
+    return img
+
+
+def layer_render(scene, direction, w, h, ss, fov=30, margin=0.06, look=None, prims=None):
+    """Rend une scène sur fond transparent, cadrée automatiquement."""
+    cam = fit_camera(prims or scene.prims, direction, w, h, fov=fov, margin=margin)
+    return render(scene, cam, look or Look(shadows=True, outline_px=3), ss=ss)
+
+
+def thumb_night(data, lang, w, h, ss):
+    scene = map_scene(data, bases_filled=(base_index_at(data, -32, -37), base_index_at(data, -76, -37)))
+    # un joueur court sur le chemin, Gloutrouille le poursuit
+    runner = (np.array([-45.0, 3.0, -1.0]), rot_y(math.radians(-75)))
+    avatar(scene, runner, PINK_SHIRT, BLUE_PANTS, skin=SKIN_BROWN, arm_l=-45, arm_r=50, leg_l=40, leg_r=-40,
+           hair=BLACK_HAIR, mouth="open")
+    monster = data["monsters"]["Gloutrouille"]
+    scene.add_parts(monster["parts"], (np.array([-59.0, 5.5, 0.0]), rot_y(math.radians(-80))), scale=1.2)
+    cam = Camera((-29.0, 6.5, 4.0), (-52.0, 5.5, -1.0), w, h, fov=52)
+    sky = night_sky(top=(10, 6, 30), mid=(40, 18, 80), horizon=(120, 50, 130), stars=260)
+    look = Look(sky=sky, ambient=0.3, key=0.55, fill=0.12, rim=0.8, rim_color=(0.6, 0.4, 1.0), light=(0.4, 0.8, 0.3),
+                fog=180, fog_start=40, fog_color=(0.25, 0.12, 0.4), outline_px=2.2)
+    img = render(scene, cam, look, ss=ss)
+    moon(img, w * 0.14, h * 0.16, h * 0.08)
+    t = title(TEXTS["night"][lang], int(h * 0.13), top=(220, 190, 255), bottom=(150, 80, 255), angle=-3)
+    paste_center(img, t, w * 0.6, h * 0.14)
+    sub = title(TEXTS["night_sub"][lang], int(h * 0.055), top=(255, 255, 255), bottom=(230, 220, 255), angle=-3)
+    paste_center(img, sub, w * 0.6, h * 0.27)
+    return img
+
+
+def lineup(data, keys, spacing=1.15, rows=2):
+    """Fantômes en rangées (la rangée du fond un peu plus haut)."""
+    scene = Scene()
+    per_row = math.ceil(len(keys) / rows)
+    for i, key in enumerate(keys):
+        row, col = divmod(i, per_row)
+        n = min(per_row, len(keys) - row * per_row)
+        x = (col - (n - 1) / 2) * 6.2 * spacing + (3.1 * spacing if row % 2 else 0)
+        z = row * 6.5
+        y = row * 3.2
+        turn = math.radians(-12 + (col - (n - 1) / 2) * -4)
+        add_ghost(scene, data, key, mul(cf_new(x, y + data["ghosts"][key]["bottom"], z), (np.zeros(3), rot_y(turn))))
+    return scene
+
+
+def thumb_collect(data, lang, w, h, ss):
+    bg = to_image(sunburst(w, h, (120, 60, 200), (95, 40, 170), (255, 200, 120), rays=24, center=(w / 2, h * 0.62)))
+    back = known(data, ["MegaBouhCosmique", "GrandMereTurbo", "SpectroPizzaSupreme", "DJBouhBoum", "EmpereurDesChaussettes", "EcureuilFantomeStresse"])
+    front = known(data, ["DrapMou#Gold", "Caquetome", "RoiPatatome", "Miaoufantome", "CrepeFrisson", "BrocoliBouh", "CapitaineCornichon#Rainbow"])
+    scene = lineup(data, front + back, rows=2)
+    layer = layer_render(scene, (0.0, 0.32, -1), w, int(h * 0.78), ss, fov=26, margin=0.03)
+    bg.alpha_composite(drop_shadow(layer, blur=int(h * 0.012), offset=(0, int(h * 0.01))), (0, int(h * 0.22) - int(h * 0.01)))
+    t = title(TEXTS["collect"][lang], int(h * 0.16))
+    paste_center(bg, t, w * 0.5, h * 0.13)
+    sub = title(TEXTS["collect_sub"][lang], int(h * 0.055), top=(255, 255, 255), bottom=(230, 220, 255))
+    paste_center(bg, sub, w * 0.5, h * 0.265)
+    for x, y, r in ((0.08, 0.2, 0.03), (0.92, 0.25, 0.035), (0.15, 0.55, 0.02), (0.86, 0.6, 0.025)):
+        sparkle(bg, w * x, h * y, h * r)
+    return bg
+
+
+def thumb_halloween(data, lang, w, h, ss):
+    bg = to_image(sunburst(w, h, (255, 130, 30), (225, 95, 20), (255, 225, 140), rays=22, center=(w * 0.5, h * 0.7)))
+    keys = [g for g, v in data["ghosts"].items() if v["rarity"] == "Halloween" and "#" not in g]
+    scene = lineup(data, keys, rows=1, spacing=1.35)
+    for x in (-17.5, 17.5):
+        scene.ball(cf_new(x, 1.6, -2.0), 3.2, (1.0, 0.5, 0.08))
+        scene.cyl((np.array([x, 3.4, -2.0]), rot_z(math.pi / 2)), (0.8, 0.45, 0.45), (0.3, 0.55, 0.15))
+    layer = layer_render(scene, (0.0, 0.25, -1), w, int(h * 0.7), ss, fov=26, margin=0.04)
+    bg.alpha_composite(drop_shadow(layer, blur=int(h * 0.012), offset=(0, int(h * 0.01))), (0, int(h * 0.3) - int(h * 0.01)))
+    t = title(TEXTS["halloween"][lang], int(h * 0.17), top=(255, 255, 255), bottom=(255, 210, 120), stroke=(70, 20, 90))
+    paste_center(bg, t, w * 0.5, h * 0.13)
+    sub = title(TEXTS["halloween_sub"][lang], int(h * 0.07), top=(200, 140, 255), bottom=(130, 60, 230), stroke=(40, 10, 60))
+    paste_center(bg, sub, w * 0.5, h * 0.29)
+    return bg
+
+
+def thumb_defend(data, lang, w, h, ss):
+    index = base_index_at(data, 32, 37)
+    scene = map_scene(data, bases_filled=(index,))
+    origin = base_origin(data, index)
+    # les pièges achetés dans l'allée de la base
+    for trap in ("Banana", "Web", "Alarm"):
+        pos = {"Banana": (0, 0, -3), "Web": (0, 0, 5), "Alarm": (0, 0, 11.5)}[trap]
+        scene.add_parts([p for p in data["traps"][trap]["parts"] if p["name"] != "Spot"],
+                        mul(origin, cf_new(pos[0], 0.6 + pos[1], pos[2])))
+    # le voleur s'enfuit avec un fantôme et glisse sur la banane ; le propriétaire arrive avec sa batte
+    thief = mul(origin, (np.array([0.3, 3.2, -3.0]), rot_y(math.radians(-15)) @ rot_x(math.radians(32))))
+    g = avatar(scene, thief, NOOB_SHIRT, NOOB_PANTS, arm_l=150, arm_r=115, leg_l=70, leg_r=35, mouth="open")
+    scene.highlights[g] = THIEF_HIGHLIGHT
+    flying = mul(thief, (np.array([-3.0, 4.5, 0.5]), rot_z(math.radians(25))))
+    add_ghost(scene, data, "Miaoufantome", flying, scale=0.8)
+    owner = mul(origin, (np.array([4.2, 3.0, 4.0]), rot_y(math.radians(-25))))
+    avatar(scene, owner, RED_SHIRT, DARK_PANTS, skin=SKIN_LIGHT, arm_r=170, arm_l=-25, leg_l=-30, leg_r=30,
+           hair=BLOND_HAIR)
+    held(scene, data, "Batte", owner, 1, 170)
+    focus = origin[0] + origin[1] @ np.array([1.5, 3.8, 1.0])
+    cam_pos = origin[0] + origin[1] @ np.array([-5.5, 10.0, -17.0])
+    cam = Camera(cam_pos, focus, w, h, fov=60)
+    look = Look(sky=night_sky(), fog=260, fog_start=60, fog_color=(0.45, 0.3, 0.6), outline_px=2.2,
+                light=(-0.4, 0.8, -0.5))
+    img = render(scene, cam, look, ss=ss)
+    t = title(TEXTS["defend"][lang], int(h * 0.12), angle=3)
+    paste_center(img, t, w * 0.5, h * 0.13)
+    sub = title(TEXTS["defend_sub"][lang], int(h * 0.05), top=(255, 255, 255), bottom=(220, 220, 255), angle=3)
+    paste_center(img, sub, w * 0.5, h * 0.255)
+    return img
+
+
+THUMBS = {
+    "1_vol": thumb_steal,
+    "2_nuit": thumb_night,
+    "3_collection": thumb_collect,
+    "4_halloween": thumb_halloween,
+    "5_defense": thumb_defend,
+}
+
+
+# ------------------------------------------------------------------ images carrées (512 x 512)
+
+def card(size, c1, c2, glow, rays=16):
+    return to_image(sunburst(size, size, c1, c2, glow, rays=rays))
+
+
+def place_layer(img, layer, cx, cy, shadow=True):
+    if shadow:
+        layer = drop_shadow(layer, blur=max(4, img.width // 60), offset=(0, img.width // 60))
+    paste_center(img, layer, cx, cy)
+
+
+def object_layer(scene, size, ss, direction=(0.35, 0.3, -1), margin=0.08, fov=26, outline=3.0):
+    return layer_render(scene, direction, size, size, ss, fov=fov, margin=margin,
+                        look=Look(shadows=False, outline_px=outline))
+
+
+def weapon_scene(data, weapon):
+    scene = Scene()
+    # l'arme en diagonale, le gros bout en haut à droite
+    scene.add_parts(data["weapons"][weapon]["parts"], (np.zeros(3), rot_z(math.radians(-40)) @ rot_x(math.radians(-90))))
+    return scene
+
+
+def coins_scene(count=7, seed=2):
+    scene = Scene()
+    rng = np.random.default_rng(seed)
+    spots = [(0, 0, 0), (-2.1, -0.4, 0.6), (2.1, -0.3, 0.5), (-1.0, 1.7, -0.3), (1.1, 1.8, -0.2), (0.1, 3.4, 0.2),
+             (-2.9, 1.6, 0.9), (2.9, 1.7, 0.9)][:count]
+    for x, y, z in spots:
+        tilt = (np.zeros(3), rot_x(math.radians(rng.uniform(-25, 25))) @ rot_z(math.radians(rng.uniform(-20, 20))))
+        coin(scene, mul(cf_new(x, y, z), tilt), size=2.4)
+    return scene
+
+
+def wheel_scene(data):
+    scene = Scene()
+    scene.add_parts(data["wheel"]["parts"])
+    return scene
+
+
+def monster_scene(data, monster):
+    scene = Scene()
+    scene.add_parts(data["monsters"][monster]["parts"])
+    return scene
+
+
+def ghost_scene(data, key, turn=-20, tint=None):
+    scene = Scene()
+    add_ghost(scene, data, key, (np.zeros(3), rot_y(math.radians(turn))), tint=tint)
+    return scene
+
+
+def carry_scene(data, key):
+    scene = Scene()
+    torso = (np.zeros(3), rot_y(math.radians(-20)))
+    g = avatar(scene, torso, NOOB_SHIRT, NOOB_PANTS, arm_l=170, arm_r=170, leg_l=30, leg_r=-30)
+    scene.highlights[g] = THIEF_HIGHLIGHT
+    carried(scene, data, key, torso)
+    return scene
+
+
+def trophy_scene():
+    scene = Scene()
+    gold, dark = (1.0, 0.78, 0.15), (0.55, 0.32, 0.12)
+    up = (np.zeros(3), rot_z(math.pi / 2))
+    scene.cyl(mul(cf_new(0, 0, 0), up), (0.8, 4.2, 4.2), dark)
+    scene.cyl(mul(cf_new(0, 0.9, 0), up), (1.0, 3.0, 3.0), dark)
+    scene.cyl(mul(cf_new(0, 2.2, 0), up), (1.8, 0.9, 0.9), gold)
+    scene.ball(cf_new(0, 3.6, 0), 1.8, gold)
+    scene.cyl(mul(cf_new(0, 5.2, 0), up), (3.4, 4.0, 4.0), gold)
+    scene.ball(cf_new(0, 4.0, 0), 3.9, gold)
+    for side in (-1, 1):
+        scene.cyl((np.array([side * 2.3, 5.4, 0]), rot_y(math.pi / 2)), (0.5, 1.8, 1.8), gold)
+    scene.cyl(mul(cf_new(0, 6.95, 0), up), (0.25, 4.1, 4.1), (1.0, 0.9, 0.4))
+    scene.ball(cf_new(0, 5.3, -1.95), 1.0, (0.95, 0.25, 0.35))
+    return scene
+
+
+def text_badge(img, text, cx, cy, size, **kw):
+    paste_center(img, title(text, size, **kw), cx, cy)
+
+
+def circle_arrows(img, cx, cy, r, color=(120, 255, 160)):
+    layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    width = int(r * 0.16)
+    for start in (20, 200):
+        d.arc([cx - r, cy - r, cx + r, cy + r], start, start + 140, fill=(30, 10, 40, 255), width=width + 10)
+        d.arc([cx - r, cy - r, cx + r, cy + r], start, start + 140, fill=color + (255,), width=width)
+        a = math.radians(start + 140)
+        tip = (cx + r * math.cos(a), cy + r * math.sin(a))
+        tangent = (-math.sin(a), math.cos(a))
+        normal = (math.cos(a), math.sin(a))
+        k = width * 1.3
+        pts = [(tip[0] + tangent[0] * k * 1.4, tip[1] + tangent[1] * k * 1.4),
+               (tip[0] + normal[0] * k, tip[1] + normal[1] * k),
+               (tip[0] - normal[0] * k, tip[1] - normal[1] * k)]
+        d.polygon(pts, fill=color + (255,), outline=(30, 10, 40, 255))
+    img.alpha_composite(layer)
+
+
+def square_images(data, size, ss):
+    """Toutes les images carrées : nom du fichier -> fonction qui la fabrique."""
+    S = size
+
+    def weapon_card(weapon, c1, c2, glow):
+        def make():
+            img = card(S, c1, c2, glow)
+            place_layer(img, object_layer(weapon_scene(data, weapon), int(S * 0.9), ss), S / 2, S / 2)
+            return img
+        return make
+
+    def monster_card(monster, c1, c2, glow):
+        def make():
+            img = card(S, c1, c2, glow)
+            place_layer(img, object_layer(monster_scene(data, monster), int(S * 0.9), ss, direction=(0.3, 0.25, -1)), S / 2, S / 2)
+            return img
+        return make
+
+    def ghost_card(key, c1, c2, glow, turn=-20, scale=0.88, label=None):
+        def make():
+            img = card(S, c1, c2, glow)
+            place_layer(img, object_layer(ghost_scene(data, key, turn), int(S * scale), ss, direction=(0.2, 0.2, -1)), S / 2, S / 2)
+            if label:
+                text_badge(img, label, S * 0.5, S * 0.84, int(S * 0.16))
+            return img
+        return make
+
+    def double_coins():
+        img = card(S, (255, 190, 40), (240, 160, 20), (255, 245, 180))
+        place_layer(img, object_layer(coins_scene(), int(S * 0.78), ss, direction=(0.1, 0.25, -1)), S * 0.5, S * 0.42)
+        text_badge(img, "x2", S * 0.5, S * 0.8, int(S * 0.3), top=(255, 255, 255), bottom=(180, 255, 140), stroke=(30, 70, 20))
+        return img
+
+    def coin_pack():
+        img = card(S, (255, 190, 40), (240, 160, 20), (255, 245, 180))
+        place_layer(img, object_layer(coins_scene(8), int(S * 0.88), ss, direction=(0.1, 0.25, -1)), S * 0.5, S * 0.5)
+        return img
+
+    def spin(n):
+        def make():
+            img = card(S, (120, 60, 200), (95, 40, 170), (255, 220, 130))
+            place_layer(img, object_layer(wheel_scene(data), int(S * 0.86), ss, direction=(0.15, 0.1, -1)), S * 0.5, S * 0.48)
+            if n > 1:
+                text_badge(img, "x%d" % n, S * 0.76, S * 0.8, int(S * 0.24))
+            return img
+        return make
+
+    def first_steal():
+        img = card(S, (230, 60, 70), (200, 40, 55), (255, 200, 150))
+        place_layer(img, object_layer(carry_scene(data, "Caquetome"), int(S * 0.82), ss, direction=(0.25, 0.15, -1)), S / 2, S / 2)
+        return img
+
+    def first_secret():
+        img = card(S, (40, 30, 70), (25, 18, 50), (140, 220, 255))
+        key = "Glitchou" if "Glitchou" in data["ghosts"] else list(data["ghosts"])[0]
+        layer = object_layer(ghost_scene(data, key, tint=(0.05, 0.03, 0.1, 1.0)), int(S * 0.8), ss, direction=(0.2, 0.2, -1))
+        place_layer(img, layer, S / 2, S * 0.52)
+        text_badge(img, "?", S * 0.5, S * 0.47, int(S * 0.42), top=(200, 245, 255), bottom=(110, 200, 255), stroke=(20, 20, 50))
+        return img
+
+    def first_rebirth():
+        img = card(S, (60, 170, 110), (40, 140, 90), (220, 255, 210))
+        place_layer(img, object_layer(ghost_scene(data, "DrapMou#Gold"), int(S * 0.6), ss, direction=(0.2, 0.2, -1)), S / 2, S / 2)
+        circle_arrows(img, S / 2, S / 2, S * 0.36)
+        return img
+
+    def index_complete():
+        img = card(S, (255, 190, 40), (240, 160, 20), (255, 245, 180))
+        keys = known(data, ["DrapMou", "Caquetome", "CrepeFrisson", "RoiPatatome", "MegaBouhCosmique", "Miaoufantome",
+                            "BrocoliBouh", "DJBouhBoum", "SpatuleErrante"])
+        place_layer(img, object_layer(lineup(data, keys, rows=3), int(S * 0.9), ss, direction=(0.0, 0.35, -1)), S / 2, S / 2)
+        return img
+
+    def weekly():
+        img = card(S, (70, 150, 255), (50, 120, 230), (220, 240, 255))
+        place_layer(img, object_layer(trophy_scene(), int(S * 0.78), ss, direction=(0.25, 0.25, -1)), S / 2, S / 2)
+        return img
+
+    def icon():
+        img = card(S, (150, 70, 220), (120, 50, 190), (255, 220, 140), rays=18)
+        scene = carry_scene(data, "RoiPatatome")
+        size = int(S * 0.8)
+        cam = fit_camera(scene.prims, (0.3, 0.3, -1), size, size, fov=30, margin=0.02)
+        layer = render(scene, cam, Look(shadows=False, outline_px=3.5), ss=ss)
+        place_layer(img, layer, S * 0.5, S * 0.4)
+        text_badge(img, "STEAL A", S * 0.5, S * 0.8, int(S * 0.1), angle=3)
+        text_badge(img, "GHOST", S * 0.5, S * 0.91, int(S * 0.14), angle=3)
+        return img
+
+    def shop_icon(scene_fn, direction=(0.35, 0.3, -1)):
+        def make():
+            return object_layer(scene_fn(), S, ss, direction=direction, margin=0.04)
+        return make
+
+    return {
+        "icone": icon,
+        "pass_DoubleCoins": double_coins,
+        "pass_WeaponHammer": weapon_card("MarteauPouet", (255, 110, 180), (235, 80, 160), (255, 230, 245)),
+        "pass_WeaponBroom": weapon_card("BalaiSorciere", (140, 80, 220), (115, 60, 200), (235, 215, 255)),
+        "pass_WeaponVacuum": weapon_card("AspiraFantome", (60, 190, 230), (40, 160, 210), (215, 250, 255)),
+        "produit_CoinPack": coin_pack,
+        "produit_Spin1": spin(1),
+        "produit_Spin5": spin(5),
+        "produit_MonsterGloutrouille": monster_card("Gloutrouille", (255, 140, 40), (235, 110, 25), (255, 235, 170)),
+        "produit_MonsterBat": monster_card("ChauveSourisTurbo", (110, 70, 180), (85, 50, 160), (240, 200, 255)),
+        "produit_MonsterSpider": monster_card("MamieToile", (90, 90, 120), (70, 70, 100), (230, 230, 255)),
+        "badge_Welcome": ghost_card("DrapMou", (130, 90, 220), (105, 70, 200), (240, 225, 255)),
+        "badge_FirstSteal": first_steal,
+        "badge_FirstMythic": ghost_card("MegaBouhCosmique", (255, 70, 140), (230, 50, 120), (255, 220, 240)),
+        "badge_FirstSecret": first_secret,
+        "badge_FirstRebirth": first_rebirth,
+        "badge_IndexComplete": index_complete,
+        "badge_WeeklyChallenges": weekly,
+        "boutique_Batte": shop_icon(lambda: weapon_scene(data, "Batte")),
+        "boutique_MarteauPouet": shop_icon(lambda: weapon_scene(data, "MarteauPouet")),
+        "boutique_BalaiSorciere": shop_icon(lambda: weapon_scene(data, "BalaiSorciere")),
+        "boutique_AspiraFantome": shop_icon(lambda: weapon_scene(data, "AspiraFantome")),
+        "boutique_Gloutrouille": shop_icon(lambda: monster_scene(data, "Gloutrouille"), (0.3, 0.25, -1)),
+        "boutique_MamieToile": shop_icon(lambda: monster_scene(data, "MamieToile"), (0.3, 0.25, -1)),
+        "boutique_ChauveSourisTurbo": shop_icon(lambda: monster_scene(data, "ChauveSourisTurbo"), (0.3, 0.25, -1)),
+        "boutique_Wheel": shop_icon(lambda: wheel_scene(data), (0.15, 0.1, -1)),
+    }
+
+
+def main():
+    data = json.load(open(sys.argv[1]))
+    out = sys.argv[2]
+    only = sys.argv[3] if len(sys.argv) > 3 and not sys.argv[3].startswith("--") else None
+    fast = "--fast" in sys.argv
+    os.makedirs(out, exist_ok=True)
+    w, h, ss = (960, 540, 1) if fast else (1920, 1080, 2)
+    for name, fn in THUMBS.items():
+        if only and only not in name:
+            continue
+        for lang in ("en", "fr"):
+            img = fn(data, lang, w, h, ss)
+            path = os.path.join(out, "miniature_%s_%s.png" % (name, lang))
+            img.convert("RGB").save(path, optimize=True)
+            print("ok", path)
+            if fast:
+                break
+    size = 256 if fast else 512
+    for name, fn in square_images(data, size, ss).items():
+        if only and only not in name:
+            continue
+        img = fn()
+        path = os.path.join(out, name + ".png")
+        # les icônes de boutique gardent leur fond transparent
+        (img if name.startswith("boutique_") else img.convert("RGB")).save(path, optimize=True)
+        print("ok", path)
+
+
+if __name__ == "__main__":
+    main()
