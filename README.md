@@ -60,11 +60,14 @@ src/
       EconomyService             pièces, bonus amis, hors ligne, cadeau du jour
       GhostService               chemin hanté, achat, vente
       StealService               vol, porteur, Marteau Pouet
+      NightService               Nuit Hantée et Gloutrouille
+      RebirthService             rebirth
+      MonetizationService        Game Passes et pack de pièces
       AnnounceService            messages et annonces
       Guard                      vérifications anti-triche
   StarterPlayer/StarterPlayerScripts/
     Client.client.luau           démarre l'affichage côté joueur
-    Controllers/                 HUD, affichage des bases, du chemin, des voleurs, effets
+    Controllers/                 HUD, panneaux, tutoriel, nuit, bases, chemin, voleurs, effets
 ```
 
 Le serveur décide de tout (argent, achats, vols). Les joueurs envoient seulement des demandes, que le serveur vérifie une par une.
@@ -74,10 +77,18 @@ Le serveur décide de tout (argent, achats, vols). Les joueurs envoient seulemen
 Le projet se vérifie hors de Roblox avec [Lune](https://github.com/lune-org/lune) et [Selene](https://github.com/Kampfkarren/selene) :
 
 ```
-lune run tests/compile.luau   # compile chaque fichier
-lune run tests/run.luau       # tests : données, textes FR/EN, construction des fantômes et de la map
-selene src tests              # analyse du code
+lune run tests/compile.luau      # compile chaque fichier
+lune run tests/run.luau          # données, textes FR/EN, construction des fantômes et de la map
+lune run tests/sim.luau          # parties complètes jouées par le vrai code serveur
+lune run tests/client_sim.luau   # pareil avec le vrai code client (HUD, tutoriel, panneaux...)
+selene src tests tools           # analyse du code
 rojo build default.project.json -o build/StealAGhost.rbxlx
 ```
 
-Le guide de test dans Studio, à plusieurs joueurs, est dans [docs/TEST.md](docs/TEST.md).
+`tests/fakeroblox.luau` est un mini Roblox simulé (joueurs, sauvegarde en mémoire, temps accéléré). Il fait tourner le vrai code du jeu et vérifie chaque propriété Roblox utilisée avec la base officielle des classes. Il ne remplace pas un test dans Studio, mais il attrape la plupart des erreurs avant.
+
+## Les autres guides
+
+- [docs/TEST.md](docs/TEST.md) : tester dans Studio, à plusieurs joueurs et sur un écran de téléphone
+- [docs/PUBLICATION.md](docs/PUBLICATION.md) : checklist de publication, questionnaire de maturité, description, icône et miniatures, règles 2026 pour les 9-15 ans
+- [docs/CROISSANCE.md](docs/CROISSANCE.md) : 5 vidéos TikTok/Shorts à filmer et le plan des 4 semaines après Halloween
