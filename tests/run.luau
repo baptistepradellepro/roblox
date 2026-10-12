@@ -92,6 +92,14 @@ for day, reward in Config.DailyRewards do
 	end
 end
 check(Config.HalloweenStart < Config.HalloweenEnd, "dates Halloween dans l'ordre")
+for code, def in Config.Codes do
+	check(string.match(code, "^[A-Z0-9]+$") ~= nil, "code en MAJUSCULES sans espace : " .. code)
+	check(def.Coins or def.Minutes or def.Ghost, "le code donne quelque chose : " .. code)
+	check(def.Ghost == nil or GhostData.get(def.Ghost) ~= nil, "fantôme du code existant : " .. code)
+end
+for _, rarity in Rarities.Order do
+	check(type(Config.IndexRewards[rarity]) == "number", "récompense du Fantômédex pour " .. rarity)
+end
 check(Config.StartPedestals <= Config.MaxPedestals and Config.MaxPedestals == 12, "nombre de socles")
 
 ---------------------------------------------------------------- Textes FR / EN

@@ -125,6 +125,32 @@ Strings.fr = {
 	Tuto2 = "Ta base",
 	Tuto3 = "Vole !",
 
+
+	-- Fantômédex
+	Index = "Fantômédex",
+	IndexTitle = "FANTÔMÉDEX",
+	IndexNew = "Nouveau dans le Fantômédex : {ghost} !",
+	IndexRarityDone = "Série {rarity} complète ! +{coins} pièces",
+	IndexCompleteDone = "Fantômédex complet ! +{percent} % de revenus pour toujours",
+	IndexBonus = "Trouve-les tous : +{percent} % de revenus pour toujours",
+	IndexBonusDone = "Fantômédex complet : +{percent} % de revenus",
+	IndexHint = "Touche un fantôme pour lire sa fiche",
+	IndexUnknown = "???",
+	IndexUnknownHint = "Pas encore trouvé. Guette le chemin... ou les bases des autres !",
+	IndexCard = "{ghost} : {gag}",
+	AnnIndexComplete = "{player} a complété le Fantômédex !",
+
+	-- Codes promo
+	Codes = "Codes secrets",
+	CodesDesc = "Tape un code secret",
+	CodePlaceholder = "CODE",
+	CodeRedeem = "OK",
+	CodeOk = "Code accepté : +{coins} pièces !",
+	CodeOkGhost = "Code accepté : {ghost} est à toi !",
+	CodeUsed = "Tu as déjà utilisé ce code",
+	CodeInvalid = "Code invalide",
+	CodeExpired = "Ce code a expiré",
+
 	Close = "Fermer",
 }
 
@@ -235,6 +261,30 @@ Strings.en = {
 	Tuto1 = "Buy!",
 	Tuto2 = "Your base",
 	Tuto3 = "Steal!",
+
+
+	Index = "Ghostdex",
+	IndexTitle = "GHOSTDEX",
+	IndexNew = "New in the Ghostdex: {ghost}!",
+	IndexRarityDone = "{rarity} set complete! +{coins} coins",
+	IndexCompleteDone = "Ghostdex complete! +{percent}% income forever",
+	IndexBonus = "Find them all: +{percent}% income forever",
+	IndexBonusDone = "Ghostdex complete: +{percent}% income",
+	IndexHint = "Tap a ghost to read its card",
+	IndexUnknown = "???",
+	IndexUnknownHint = "Not found yet. Watch the path... or other players' bases!",
+	IndexCard = "{ghost}: {gag}",
+	AnnIndexComplete = "{player} completed the Ghostdex!",
+
+	Codes = "Secret codes",
+	CodesDesc = "Enter a secret code",
+	CodePlaceholder = "CODE",
+	CodeRedeem = "OK",
+	CodeOk = "Code redeemed: +{coins} coins!",
+	CodeOkGhost = "Code redeemed: {ghost} is yours!",
+	CodeUsed = "You already used this code",
+	CodeInvalid = "Invalid code",
+	CodeExpired = "This code has expired",
 
 	Close = "Close",
 }

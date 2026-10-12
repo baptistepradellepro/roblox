@@ -42,6 +42,9 @@ function EconomyService.multiplier(player: Player): number
 		m *= 2
 	end
 	m *= 1 + (friendBonus[player] or 0)
+	if data.IndexComplete then
+		m *= 1 + Config.IndexCompleteBonus
+	end
 	return m
 end
 
@@ -185,6 +188,9 @@ function EconomyService.grantOffline(player: Player, lastOnline: number)
 	local perSecond = EconomyService.baseIncome(player) * EconomyService.rebirthMultiplier(rebirths)
 	if player:GetAttribute("DoubleCoins") then
 		perSecond *= 2
+	end
+	if data and data.IndexComplete then
+		perSecond *= 1 + Config.IndexCompleteBonus
 	end
 	local amount = math.floor(perSecond * away * Config.OfflineRate)
 	if amount > 0 then

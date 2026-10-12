@@ -84,6 +84,30 @@ Config.DailyRewards = {
 	{ Minutes = 10, Min = 8000, RandomGhostRarity = "Epic" },
 }
 
+-- ===== Fantômédex (collection) =====
+-- Pièces gagnées quand on a trouvé TOUS les fantômes d'une rareté
+Config.IndexRewards = {
+	Common = 500,
+	Rare = 5000,
+	Epic = 50000,
+	Legendary = 400000,
+	Mythic = 5000000,
+	Halloween = 2000000,
+}
+-- Bonus permanent quand tous les fantômes (hors Halloween) sont trouvés : +10 % de revenus
+Config.IndexCompleteBonus = 0.10
+
+-- ===== Codes promo =====
+-- Publie-les sur TikTok / Shorts. Le joueur les tape dans la Boutique.
+-- Coins = pièces fixes, Minutes/Min = minutes de revenus (minimum Min), Ghost = un fantôme offert.
+-- Expires = date de fin en temps Unix (0 = jamais). Un code ne marche qu'une fois par joueur.
+-- Astuce : https://www.epochconverter.com transforme une date en temps Unix.
+Config.Codes = {
+	BOUH2026 = { Coins = 5000, Expires = 0 },
+	GLOUTROUILLE = { Minutes = 10, Min = 2000, Expires = 0 },
+	POUET = { Ghost = "Caquetome", Expires = 0 },
+}
+
 -- ===== Événement Halloween =====
 -- Dates en "temps Unix" (UTC). 1790812800 = 1er oct. 2026, 1793664000 = 3 nov. 2026
 Config.HalloweenStart = 1790812800

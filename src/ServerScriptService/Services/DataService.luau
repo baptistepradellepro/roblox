@@ -57,6 +57,10 @@ local function template()
 		StarterGiven = false,
 		TutorialDone = false,
 		Receipts = {}, -- achats Robux déjà traités (anti double crédit)
+		Discovered = {}, -- Fantômédex : ["DrapMou"] = true
+		IndexRewards = {}, -- séries déjà récompensées : ["Common"] = true
+		IndexComplete = false, -- bonus permanent du Fantômédex complet
+		RedeemedCodes = {}, -- codes promo déjà utilisés : ["BOUH2026"] = true
 	}
 end
 

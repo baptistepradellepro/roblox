@@ -135,6 +135,9 @@ function BaseService.findFreeSlot(player: Player): number?
 	return nil
 end
 
+-- Appelé à chaque fois qu'un joueur reçoit un fantôme (branché sur le Fantômédex dans Main)
+BaseService.onGhostPlaced = nil :: ((Player, string) -> ())?
+
 -- Pose un fantôme sur un socle libre (ou sur le socle donné). Renvoie le numéro du socle.
 function BaseService.placeGhost(player: Player, ghostId: string, slot: number?): number?
 	local base = byPlayer[player]
@@ -151,6 +154,9 @@ function BaseService.placeGhost(player: Player, ghostId: string, slot: number?):
 	local ped = base.Pedestals[target]
 	ped:SetAttribute("GhostId", ghostId)
 	ped:SetAttribute("Stolen", false)
+	if BaseService.onGhostPlaced then
+		BaseService.onGhostPlaced(player, ghostId)
+	end
 	return target
 end
 

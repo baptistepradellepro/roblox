@@ -57,6 +57,12 @@ Pour ne pas attendre 8 minutes, mets `Config.DayDuration = 30` pendant les tests
 - **Boutique** : bouton 🛒. Les articles affichent "Bientôt" tant que leurs IDs valent 0 dans `Config.luau`. Les achats Robux ne se testent vraiment qu'une fois le jeu publié (dans Studio, Roblox simule l'achat sans débiter de Robux).
 - **Fantômes Halloween** : ils n'apparaissent que la nuit, entre le 1er octobre et le 3 novembre 2026. Pour les voir hors période, mets `Config.ForceHalloween = true`.
 
+## Tester le Fantômédex et les codes
+
+- **Fantômédex** : bouton 📖 à gauche. Les 32 fantômes sont rangés par rareté. Ceux que tu n'as jamais eus sont des silhouettes noires avec "???". Touche une case pour lire la blague du fantôme. Achète un nouveau fantôme : un message "Nouveau dans le Fantômédex" apparaît et un point rouge s'allume sur le bouton.
+- **Série complète** : trouve les 8 Communs (ils coûtent peu) pour recevoir 500 pièces. Quand toutes les raretés sauf Halloween sont complètes, tu gagnes +10 % de revenus pour toujours et tout le serveur reçoit une annonce.
+- **Codes** : boutique 🛒, dernière ligne. Tape `BOUH2026` puis OK : +5 000 pièces. Le même code une deuxième fois est refusé. Les codes de départ sont `BOUH2026` (5 000 pièces), `GLOUTROUILLE` (10 minutes de revenus) et `POUET` (un Caquetôme offert). Les majuscules et les espaces ne comptent pas.
+
 ## Tester la sauvegarde
 
 Il faut avoir publié le jeu et activé l'accès aux API (voir le README).

@@ -19,11 +19,13 @@ Remotes.Names = {
 	"ClaimDaily", -- () récupérer le cadeau du jour
 	"Rebirth", -- () faire un rebirth
 	"TutorialDone", -- () le tutoriel est terminé
+	"RedeemCode", -- (code) utiliser un code promo
 	-- Serveur -> Client
 	"Notify", -- (key, params, kind) petit message pour un joueur
 	"Announce", -- (key, params, kind) grande annonce pour tout le serveur
 	"Effect", -- (kind, data) effet visuel / sonore
 	"DailyInfo", -- (info) état du cadeau du jour
+	"IndexInfo", -- (info) fantômes découverts dans le Fantômédex
 }
 
 local FOLDER_NAME = "Remotes"

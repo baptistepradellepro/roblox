@@ -12,6 +12,9 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Format = require(Shared:WaitForChild("Format"))
+local GhostData = require(Shared:WaitForChild("GhostData"))
+local GhostFactory = require(Shared:WaitForChild("GhostFactory"))
+local Rarities = require(Shared:WaitForChild("Rarities"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Effects = require(script.Parent.Effects)
@@ -25,6 +28,7 @@ local player = Players.LocalPlayer
 local gui: ScreenGui
 local openPanel: Frame? = nil
 local dailyInfo = nil
+local indexInfo = nil
 local refreshers: { () -> () } = {}
 
 local function rebirthCost(rebirths: number): number
@@ -276,18 +280,18 @@ local function buildShop(): Frame
 	local updaters = {}
 	for order, item in items do
 		local card = UI.new("Frame", {
-			Size = UDim2.new(1, 0, 0, 96),
+			Size = UDim2.new(1, 0, 0, 72),
 			BackgroundColor3 = UI.Colors.PanelLight,
 			LayoutOrder = order,
 			Parent = list,
 		}, { UI.corner(16), UI.stroke(nil, 3) })
-		UI.label({ Size = UDim2.fromOffset(70, 70), Position = UDim2.fromOffset(10, 13), Text = item.Icon, MaxTextSize = 54, Parent = card })
-		UI.label({ Size = UDim2.new(1, -280, 0, 38), Position = UDim2.fromOffset(90, 10), Text = Lang.t(item.Title), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 30, Parent = card })
-		local desc = UI.label({ Size = UDim2.new(1, -280, 0, 34), Position = UDim2.fromOffset(90, 50), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = card })
+		UI.label({ Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(8, 8), Text = item.Icon, MaxTextSize = 44, Parent = card })
+		UI.label({ Size = UDim2.new(1, -250, 0, 30), Position = UDim2.fromOffset(72, 6), Text = Lang.t(item.Title), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 28, Parent = card })
+		local desc = UI.label({ Size = UDim2.new(1, -250, 0, 26), Position = UDim2.fromOffset(72, 38), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = card })
 		local buy = UI.new("TextButton", {
 			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -12, 0.5, 0),
-			Size = UDim2.fromOffset(170, 70),
+			Position = UDim2.new(1, -10, 0.5, 0),
+			Size = UDim2.fromOffset(160, 56),
 			BackgroundColor3 = UI.Colors.Good,
 			Text = "",
 			Parent = card,
@@ -339,11 +343,216 @@ local function buildShop(): Frame
 		end)
 	end
 
+	-- Codes secrets : le joueur tape le code, le serveur vérifie tout
+	local codeCard = UI.new("Frame", {
+		Size = UDim2.new(1, 0, 0, 72),
+		BackgroundColor3 = UI.Colors.PanelLight,
+		LayoutOrder = #items + 1,
+		Parent = list,
+	}, { UI.corner(16), UI.stroke(UI.Colors.Purple, 3) })
+	UI.label({ Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(8, 8), Text = "🎟️", MaxTextSize = 44, Parent = codeCard })
+	UI.label({ Size = UDim2.new(1, -330, 0, 30), Position = UDim2.fromOffset(72, 6), Text = Lang.t("Codes"), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 26, Parent = codeCard })
+	UI.label({ Size = UDim2.new(1, -330, 0, 26), Position = UDim2.fromOffset(72, 38), Text = Lang.t("CodesDesc"), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = codeCard })
+	local codeBox = UI.new("TextBox", {
+		Name = "CodeBox",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -96, 0.5, 0),
+		Size = UDim2.fromOffset(160, 50),
+		BackgroundColor3 = UI.Colors.Panel,
+		PlaceholderText = Lang.t("CodePlaceholder"),
+		PlaceholderColor3 = UI.Colors.Gray,
+		Text = "",
+		ClearTextOnFocus = false,
+		Font = UI.Font,
+		TextColor3 = UI.Colors.Text,
+		TextScaled = true,
+		Parent = codeCard,
+	}, { UI.corner(12), UI.stroke(nil, 2) })
+	local codeButton = UI.new("TextButton", {
+		Name = "CodeButton",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -10, 0.5, 0),
+		Size = UDim2.fromOffset(78, 50),
+		BackgroundColor3 = UI.Colors.Purple,
+		Text = "",
+		Parent = codeCard,
+	}, { UI.corner(12), UI.stroke(nil, 3) })
+	UI.label({ Size = UDim2.new(1, -10, 1, -10), Position = UDim2.fromOffset(5, 5), Text = Lang.t("CodeRedeem"), MaxTextSize = 28, Parent = codeButton })
+	codeButton.Activated:Connect(function()
+		local code = codeBox.Text
+		if #code > 0 and #code <= 30 then
+			Effects.sound("Click")
+			Remotes.get("RedeemCode"):FireServer(code)
+			codeBox.Text = ""
+		end
+	end)
+
 	table.insert(refreshers, function()
 		for _, update in updaters do
 			update()
 		end
 	end)
+	return panel
+end
+
+---------------------------------------------------------------- Fantômédex
+
+local function buildIndex(): Frame
+	local panel, body = makePanel("Index", "📖 " .. Lang.t("IndexTitle"), UI.Colors.Purple)
+
+	-- Progression par rareté en haut
+	local chips = UI.new("Frame", {
+		Size = UDim2.new(1, 0, 0, 30),
+		BackgroundTransparency = 1,
+		Parent = body,
+	}, {
+		UI.new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 4),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	local chipLabels = {}
+	for order, rarity in Rarities.Order do
+		local chip = UI.new("Frame", {
+			Size = UDim2.fromOffset(88, 30),
+			BackgroundColor3 = UI.Colors.Panel,
+			LayoutOrder = order,
+			Parent = chips,
+		}, { UI.corner(10), UI.stroke(Rarities.color(rarity), 2) })
+		chipLabels[rarity] = UI.label({
+			Size = UDim2.new(1, -8, 1, -6),
+			Position = UDim2.fromOffset(4, 3),
+			TextColor3 = Rarities.color(rarity),
+			MaxTextSize = 16,
+			Parent = chip,
+		})
+	end
+
+	-- Grille des 32 fantômes (construite à la première ouverture)
+	local grid = UI.new("ScrollingFrame", {
+		Name = "Grid",
+		Position = UDim2.fromOffset(0, 36),
+		Size = UDim2.new(1, 0, 1, -84),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 8,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		Parent = body,
+	}, {
+		UI.new("UIGridLayout", {
+			CellSize = UDim2.fromOffset(100, 112),
+			CellPadding = UDim2.fromOffset(8, 8),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	local info = UI.label({
+		Name = "Info",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 0, 1, 0),
+		Size = UDim2.new(1, 0, 0, 42),
+		TextColor3 = UI.Colors.Gold,
+		MaxTextSize = 22,
+		TextWrapped = true,
+		Parent = body,
+	})
+
+	local tiles = {}
+	local selected: string? = nil
+
+	local function isFound(ghostId: string): boolean
+		return indexInfo ~= nil and table.find(indexInfo.Discovered, ghostId) ~= nil
+	end
+
+	local function buildTiles()
+		for _, ghost in GhostData.List do
+			local tile = UI.new("TextButton", {
+				Name = ghost.Id,
+				BackgroundColor3 = UI.Colors.PanelLight,
+				Text = "",
+				AutoButtonColor = true,
+				LayoutOrder = ghost.Order,
+				Parent = grid,
+			}, { UI.corner(14), UI.stroke(Rarities.color(ghost.Rarity), 3) })
+			local viewport = UI.new("ViewportFrame", {
+				Size = UDim2.new(1, -8, 0, 80),
+				Position = UDim2.fromOffset(4, 4),
+				BackgroundTransparency = 1,
+				Ambient = Color3.fromRGB(190, 190, 200),
+				LightColor = Color3.fromRGB(255, 255, 255),
+				LightDirection = Vector3.new(-1, -1, 1),
+				Parent = tile,
+			})
+			local model = GhostFactory.build(ghost.Id)
+			model.Parent = viewport
+			local cf, size = model:GetBoundingBox()
+			local distance = math.max(size.X, size.Y) * 1.5 + 2
+			local camera = Instance.new("Camera")
+			camera.FieldOfView = 40
+			camera.CFrame = CFrame.lookAt(cf.Position + Vector3.new(distance * 0.3, size.Y * 0.1, -distance), cf.Position)
+			camera.Parent = viewport
+			viewport.CurrentCamera = camera
+			local name = UI.label({
+				Size = UDim2.new(1, -6, 0, 24),
+				Position = UDim2.new(0, 3, 1, -27),
+				MaxTextSize = 16,
+				Parent = tile,
+			})
+			tile.Activated:Connect(function()
+				Effects.sound("Click")
+				selected = ghost.Id
+				for _, refresh in refreshers do
+					refresh()
+				end
+			end)
+			tiles[ghost.Id] = { Viewport = viewport, Name = name }
+		end
+	end
+
+	local function refresh()
+		if not panel.Visible then
+			return
+		end
+		if next(tiles) == nil then
+			buildTiles()
+		end
+		for _, rarity in Rarities.Order do
+			local list = GhostData.ByRarity[rarity] or {}
+			local found = 0
+			for _, ghost in list do
+				if isFound(ghost.Id) then
+					found += 1
+				end
+			end
+			local done = indexInfo and indexInfo.Rewarded and indexInfo.Rewarded[rarity]
+			chipLabels[rarity].Text = Lang.rarityName(rarity) .. " " .. found .. "/" .. #list .. (if done then " ✅" else "")
+		end
+		for ghostId, tile in tiles do
+			local found = isFound(ghostId)
+			-- pas encore trouvé : silhouette noire et "???"
+			tile.Viewport.ImageColor3 = if found then Color3.new(1, 1, 1) else Color3.new(0, 0, 0)
+			tile.Name.Text = if found then Lang.ghostName(ghostId) else Lang.t("IndexUnknown")
+		end
+		local percent = math.floor(Config.IndexCompleteBonus * 100)
+		if selected then
+			local ghost = GhostData.get(selected)
+			if isFound(selected) then
+				info.Text = Lang.t("IndexCard", { ghost = selected, gag = Lang.ghostGag(selected) })
+					.. "  (+" .. Format.short(ghost.Income) .. "/s)"
+			else
+				info.Text = Lang.rarityName(ghost.Rarity) .. " : " .. Lang.t("IndexUnknownHint")
+			end
+		elseif indexInfo and indexInfo.Complete then
+			info.Text = "🏆 " .. Lang.t("IndexBonusDone", { percent = percent })
+		else
+			info.Text = Lang.t("IndexBonus", { percent = percent }) .. "  •  " .. Lang.t("IndexHint")
+		end
+	end
+	table.insert(refreshers, refresh)
 	return panel
 end
 
@@ -359,31 +568,54 @@ end
 function Panels.start()
 	gui = UI.screen("SAG_Panels", 3)
 	local daily = buildDaily()
+	local index = buildIndex()
 	local rebirth = buildRebirth()
 	local shop = buildShop()
 
 	local column = HUD.leftColumn
-	local giftButton = UI.bigButton({ Name = "Gift", Icon = "🎁", Text = Lang.t("Daily"), Color = UI.Colors.Gold, Size = 92, LayoutOrder = 1, Parent = column })
-	local rebirthButton = UI.bigButton({ Name = "Rebirth", Icon = "♻️", Text = Lang.t("Rebirth"), Color = Color3.fromRGB(60, 190, 150), Size = 92, LayoutOrder = 2, Parent = column })
-	local shopButton = UI.bigButton({ Name = "Shop", Icon = "🛒", Text = Lang.t("Shop"), Color = UI.Colors.Orange, Size = 92, LayoutOrder = 3, Parent = column })
+	local giftButton = UI.bigButton({ Name = "Gift", Icon = "🎁", Text = Lang.t("Daily"), Color = UI.Colors.Gold, Size = 84, LayoutOrder = 1, Parent = column })
+	local indexButton = UI.bigButton({ Name = "Index", Icon = "📖", Text = Lang.t("Index"), Color = UI.Colors.Purple, Size = 84, LayoutOrder = 2, Parent = column })
+	local rebirthButton = UI.bigButton({ Name = "Rebirth", Icon = "♻️", Text = Lang.t("Rebirth"), Color = Color3.fromRGB(60, 190, 150), Size = 84, LayoutOrder = 3, Parent = column })
+	local shopButton = UI.bigButton({ Name = "Shop", Icon = "🛒", Text = Lang.t("Shop"), Color = UI.Colors.Orange, Size = 84, LayoutOrder = 4, Parent = column })
 
-	-- Pastille "!" sur le cadeau quand il est prêt
-	local dot = UI.label({
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(1, -6, 0, 6),
-		Size = UDim2.fromOffset(34, 34),
-		BackgroundTransparency = 0,
-		BackgroundColor3 = UI.Colors.Bad,
-		Text = "!",
-		MaxTextSize = 28,
-		Visible = false,
-		Parent = giftButton,
-	})
-	UI.corner(17).Parent = dot
+	-- Pastille rouge sur un bouton (cadeau prêt, nouveau fantôme...)
+	local function makeDot(parent: Instance, text: string): TextLabel
+		local dot = UI.label({
+			Name = "Dot",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(1, -6, 0, 6),
+			Size = UDim2.fromOffset(34, 34),
+			BackgroundTransparency = 0,
+			BackgroundColor3 = UI.Colors.Bad,
+			Text = text,
+			MaxTextSize = 28,
+			Visible = false,
+			Parent = parent,
+		})
+		UI.corner(17).Parent = dot
+		return dot
+	end
+	local dot = makeDot(giftButton, "!")
+	local indexDot = makeDot(indexButton, "!")
 
 	giftButton.Activated:Connect(function()
 		Effects.sound("Click")
 		open(daily)
+	end)
+	indexButton.Activated:Connect(function()
+		Effects.sound("Click")
+		indexDot.Visible = false
+		open(index)
+	end)
+	Remotes.get("IndexInfo").OnClientEvent:Connect(function(info)
+		local previous = if indexInfo then #indexInfo.Discovered else nil
+		indexInfo = info
+		if previous and #info.Discovered > previous and openPanel ~= index then
+			indexDot.Visible = true
+		end
+		for _, refresh in refreshers do
+			refresh()
+		end
 	end)
 	rebirthButton.Activated:Connect(function()
 		Effects.sound("Click")

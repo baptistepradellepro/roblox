@@ -235,8 +235,8 @@ local function buildColumns()
 	HUD.leftColumn = UI.new("Frame", {
 		Name = "Left",
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 12, 0.4, 0),
-		Size = UDim2.fromOffset(100, 340),
+		Position = UDim2.new(0, 12, 0.45, 0),
+		Size = UDim2.fromOffset(100, 380),
 		BackgroundTransparency = 1,
 		Parent = gui,
 	}, {

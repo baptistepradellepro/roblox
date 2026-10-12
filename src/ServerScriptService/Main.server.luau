@@ -18,10 +18,12 @@ Remotes.setup()
 local Services = script.Parent:WaitForChild("Services")
 local AnnounceService = require(Services:WaitForChild("AnnounceService"))
 local BaseService = require(Services:WaitForChild("BaseService"))
+local CodeService = require(Services:WaitForChild("CodeService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local GhostService = require(Services:WaitForChild("GhostService"))
 local Guard = require(Services:WaitForChild("Guard"))
+local IndexService = require(Services:WaitForChild("IndexService"))
 local MapBuilder = require(Services:WaitForChild("MapBuilder"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local NightService = require(Services:WaitForChild("NightService"))
@@ -41,7 +43,9 @@ StealService.start()
 NightService.start()
 RebirthService.start()
 MonetizationService.start()
+CodeService.start()
 EconomyService.giveGhostCallback = GhostService.giveGhost
+BaseService.onGhostPlaced = IndexService.discover -- chaque nouveau fantôme entre dans le Fantômédex
 
 -- 3. Les joueurs
 local function onPlayerAdded(player: Player)
@@ -66,6 +70,7 @@ local function onPlayerAdded(player: Player)
 	MonetizationService.setup(player) -- Game Passes (x2 pièces, verrou+)
 	RebirthService.setup(player) -- aura des rebirths
 	EconomyService.setup(player)
+	IndexService.setup(player) -- collection (avant le cadeau, pour ne pas afficher 2 messages)
 
 	-- Premier lancement : un fantôme offert tout de suite
 	if not data.StarterGiven then

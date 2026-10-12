@@ -39,7 +39,7 @@ Ces règles sont récentes et changent souvent : vérifie la page officielle ava
 
 Dans Studio : Accueil > Paramètres du jeu (Game Settings). Certains réglages sont aussi sur le Creator Hub (create.roblox.com > Creations > ton jeu).
 
-- [ ] **Infos de base** : nom `Steal a Ghost` (pendant l'événement tu peux mettre `[🎃] Steal a Ghost`, c'est l'usage sur Roblox, à retirer après le 3 novembre). Description : voir la section 6.
+- [ ] **Infos de base** : nom `Steal a Ghost` (pendant l'événement tu peux mettre `[🎃] Steal a Ghost`, c'est l'usage sur Roblox, à retirer après le 3 novembre). Description : voir la section 7.
 - [ ] **Genre** : le plus proche de "Simulation" / "Tycoon" dans la liste proposée.
 - [ ] **Appareils** : Ordinateur, Téléphone, Tablette. Laisse Console et VR décochés pour l'instant (l'interface n'est pas pensée pour la manette).
 - [ ] **Places** : 12 joueurs maximum (une base par joueur). Pour le remplissage des serveurs, choisis "Personnaliser" et réserve 2 places : un ami pourra toujours te rejoindre, et le bonus amis +10 % prend tout son sens.
@@ -74,7 +74,13 @@ Le jeu tourne sans. Si tu veux l'activer :
 
 Roblox garde environ 30 % de chaque vente. Rien de ce qu'on vend n'aide à voler.
 
-## 6. Description du jeu (prête à copier)
+## 6. Codes promo
+
+Les codes sont dans `Config.Codes` (fichier `Config.luau`). Avant de publier, remplace les codes d'exemple par les tiens : si ton dépôt GitHub est public, n'importe qui peut les lire dans le fichier.
+
+Tu peux annoncer les codes sur TikTok, mais le jeu lui-même ne doit pas parler de TikTok ni d'aucun autre site : Roblox interdit de renvoyer les joueurs hors de la plateforme, surtout les plus jeunes. C'est pour ça que la boutique dit seulement "Codes secrets". Pour qu'un code arrête de marcher à une date précise, renseigne `Expires` (temps Unix).
+
+## 7. Description du jeu (prête à copier)
 
 Pas de lien externe, c'est interdit. Les emojis sont l'usage sur Roblox et aident les jeunes joueurs à lire vite.
 
@@ -92,6 +98,7 @@ Achète des fantômes complètement absurdes, pose-les dans ta base et regarde l
 ♻️ Rebirth pour gagner plus, pour toujours
 👥 +10 % de pièces par ami dans ton serveur
 🎁 Un cadeau chaque jour
+📖 Complète le Fantômédex pour +10 % de revenus
 ```
 
 **English**
@@ -108,9 +115,10 @@ Buy totally ridiculous ghosts, put them in your base and watch the coins roll in
 ♻️ Rebirth to earn more, forever
 👥 +10% coins for each friend in your server
 🎁 A free gift every day
+📖 Complete the Ghostdex for +10% income
 ```
 
-## 7. Icône et miniatures à créer
+## 8. Icône et miniatures à créer
 
 **Icône** (carrée, 512×512 minimum) : elle s'affiche parfois en 150×150, donc une seule idée qui se lit de loin. Proposition : le Méga Bouh Cosmique en très gros plan, une main de personnage Roblox qui l'attrape, fond orange et violet. Pas de petit texte, au maximum un mot énorme ("STEAL").
 
@@ -130,7 +138,7 @@ Comment les faire gratuitement :
 
 Les miniatures doivent montrer le vrai jeu : Roblox refuse les images trompeuses.
 
-## 8. Mise en ligne
+## 9. Mise en ligne
 
 - [ ] Fichier > Publier sur Roblox
 - [ ] Creator Hub > ton jeu > rends-le Public

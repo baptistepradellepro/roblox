@@ -6,6 +6,7 @@
 
 local process = require("@lune/process")
 local roblox = require("@lune/roblox")
+local serde = require("@lune/serde")
 
 local Fake = require("./fakeroblox")
 local Sched = Fake.Sched
@@ -373,6 +374,76 @@ local mult = alice:GetAttribute("Multiplier")
 MarketplaceService.PromptGamePassPurchaseFinished:Fire(alice, 555, true)
 check(alice:GetAttribute("DoubleCoins") == true and alice:GetAttribute("Multiplier") == mult * 2, "Game Pass x2 actif")
 
+section("Fantômédex")
+local IndexService = Fake.require("ServerScriptService.Services.IndexService")
+local Rarities = Fake.require("ReplicatedStorage.Shared.Rarities")
+check(aData.Discovered[Config.StarterGhost] == true, "le fantôme de départ est dans la collection")
+check(aData.Discovered["Caquetome"] == true, "un fantôme reçu entre dans la collection")
+local sentIndex = false
+for _, entry in Fake.sentToClients do
+	if entry.remote == "IndexInfo" and entry.to == alice then
+		sentIndex = true
+	end
+end
+check(sentIndex, "la collection est envoyée au joueur")
+m = mark()
+local c0 = aData.Coins
+for _, ghost in GhostData.ByRarity.Common do
+	IndexService.discover(alice, ghost.Id)
+end
+check(aData.IndexRewards.Common == true, "série Commun complète")
+check(notified(alice, "IndexRarityDone", m) and aData.Coins >= c0 + Config.IndexRewards.Common, "récompense de la série Commun")
+check(not aData.IndexComplete, "pas encore complet")
+local multBefore = alice:GetAttribute("Multiplier")
+m = mark()
+for _, rarity in Rarities.Order do
+	if not Rarities.Info[rarity].EventOnly then
+		for _, ghost in GhostData.ByRarity[rarity] do
+			IndexService.discover(alice, ghost.Id)
+		end
+	end
+end
+check(aData.IndexComplete == true, "Fantômédex complet (hors Halloween)")
+check(announced("AnnIndexComplete", m), "annonce du Fantômédex complet")
+check(math.abs(alice:GetAttribute("Multiplier") - multBefore * (1 + Config.IndexCompleteBonus)) < 0.02, "+10 % de revenus")
+local rewardsBefore = aData.Coins
+IndexService.discover(alice, GhostData.ByRarity.Common[1].Id)
+check(aData.Coins - rewardsBefore < Config.IndexRewards.Common, "une série n'est récompensée qu'une fois")
+
+section("Codes promo")
+Sched.advance(1.1)
+c0 = aData.Coins
+m = mark()
+Fake.fire(alice, "RedeemCode", "  bouh 2026 ")
+check(notified(alice, "CodeOk", m) and aData.Coins >= c0 + 5000, "code BOUH2026 accepté (minuscules et espaces tolérés)")
+Sched.advance(1.1)
+m = mark()
+Fake.fire(alice, "RedeemCode", "BOUH2026")
+check(notified(alice, "CodeUsed", m), "un code ne marche qu'une fois")
+Sched.advance(1.1)
+m = mark()
+Fake.fire(alice, "RedeemCode", "NIMPORTEQUOI")
+check(notified(alice, "CodeInvalid", m), "code invalide refusé")
+Sched.advance(1.1)
+Config.Codes.VIEUXCODE = { Coins = 10, Expires = 1 }
+m = mark()
+Fake.fire(alice, "RedeemCode", "VIEUXCODE")
+check(notified(alice, "CodeExpired", m), "code expiré refusé")
+Sched.advance(1.1)
+m = mark()
+Fake.fire(alice, "RedeemCode", 123)
+Fake.fire(alice, "RedeemCode", string.rep("A", 200))
+check(not notified(alice, "CodeOk", m), "codes mal formés ignorés")
+-- Bob tente de deviner des codes : bloqué après 20 essais
+for _ = 1, 20 do
+	Sched.advance(1.1)
+	Fake.fire(bob, "RedeemCode", "DEVINE")
+end
+Sched.advance(1.1)
+m = mark()
+Fake.fire(bob, "RedeemCode", "GLOUTROUILLE")
+check(notified(bob, "CodeInvalid", m) and not bData.RedeemedCodes.GLOUTROUILLE, "trop d'essais ratés : codes bloqués")
+
 section("Le propriétaire quitte pendant un vol")
 GhostService.giveGhost(chloe, "WifiFantome")
 local chloeSlot
@@ -396,7 +467,15 @@ for _, id in bData.Slots do
 end
 check(bobGotIt and notified(bob, "OwnerLeftGift", m), "Bob reçoit le fantôme")
 local raw = Fake.dataStores[Config.DataStoreName]["Player_103"]
-check(raw ~= nil and not string.find(raw, "WifiFantome"), "la sauvegarde de Chloé ne l'a plus")
+local chloeSaved = serde.decode("json", raw)
+local stillOnPedestal = false
+for _, id in chloeSaved.Slots do
+	if id == "WifiFantome" then
+		stillOnPedestal = true
+	end
+end
+check(not stillOnPedestal, "la sauvegarde de Chloé ne l'a plus sur ses socles")
+check(chloeSaved.Discovered.WifiFantome == true, "mais il reste dans sa collection")
 check(raw ~= nil and not string.find(raw, '"Lock"'), "le verrou de session de Chloé est libéré")
 
 section("Sauvegarde et retour d'Alice")
@@ -438,6 +517,8 @@ end
 Sched.advance(5)
 local savedBob = store["Player_102"]
 check(savedBob ~= nil and string.find(savedBob, "WifiFantome") ~= nil, "Bob est sauvegardé à l'arrêt")
+local savedAlice = store["Player_101"]
+check(savedAlice ~= nil and string.find(savedAlice, '"IndexComplete":true') ~= nil and string.find(savedAlice, "BOUH2026") ~= nil, "Fantômédex et codes sauvegardés")
 
 -- Bilan
 local _ = EconomyService

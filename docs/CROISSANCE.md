@@ -48,10 +48,10 @@ L'idée : une nouveauté visible chaque semaine, annoncée dans le titre (`[🍂
 
 À surveiller chaque semaine dans Creator Hub > Analytics : la rétention à 1 jour (vise 20 % ou plus), la rétention à 7 jours (5 % ou plus) et la durée moyenne des sessions (12 minutes ou plus). Si la rétention à 1 jour passe sous 15 %, on retravaille d'abord les 5 premières minutes avant d'ajouter du contenu.
 
-### Semaine 1 (2-8 novembre) : collection et codes
+### Semaine 1 (2-8 novembre) : collection et codes (codé, prêt à publier)
 
 - Un "Fantômédex" : un panneau avec les 32 fantômes, en silhouette tant qu'on ne les a pas eus. Récompense en pièces quand on complète une rareté. C'est un objectif de long terme qui fait revenir.
-- Des codes promo à taper dans le jeu ("BOUH2026" = 5 000 pièces), publiés uniquement sur TikTok. Ça fait venir des abonnés.
+- Des codes promo à taper dans la boutique ("BOUH2026" = 5 000 pièces), publiés uniquement sur TikTok. Ça fait venir des abonnés. Dans le jeu, on ne parle pas de TikTok (règle Roblox), juste de "codes secrets".
 - Corrections des bugs remontés par les joueurs.
 - TikTok : "Le dernier Squelette Disco du serveur".
 

@@ -108,6 +108,30 @@ Config.DailyRewards = {
 	{ Minutes = 10, Min = 8000, RandomGhostRarity = "Epic" },
 }
 
+-- ===== Fantômédex (collection) =====
+-- Pièces gagnées quand on a trouvé TOUS les fantômes d'une rareté
+Config.IndexRewards = {
+	Common = 500,
+	Rare = 5000,
+	Epic = 50000,
+	Legendary = 400000,
+	Mythic = 5000000,
+	Halloween = 2000000,
+}
+-- Bonus permanent quand tous les fantômes (hors Halloween) sont trouvés : +10 % de revenus
+Config.IndexCompleteBonus = 0.10
+
+-- ===== Codes promo =====
+-- Publie-les sur TikTok / Shorts. Le joueur les tape dans la Boutique.
+-- Coins = pièces fixes, Minutes/Min = minutes de revenus (minimum Min), Ghost = un fantôme offert.
+-- Expires = date de fin en temps Unix (0 = jamais). Un code ne marche qu'une fois par joueur.
+-- Astuce : https://www.epochconverter.com transforme une date en temps Unix.
+Config.Codes = {
+	BOUH2026 = { Coins = 5000, Expires = 0 },
+	GLOUTROUILLE = { Minutes = 10, Min = 2000, Expires = 0 },
+	POUET = { Ghost = "Caquetome", Expires = 0 },
+}
+
 -- ===== Événement Halloween =====
 -- Dates en "temps Unix" (UTC). 1790812800 = 1er oct. 2026, 1793664000 = 3 nov. 2026
 Config.HalloweenStart = 1790812800
@@ -1352,11 +1376,13 @@ Remotes.Names = {
 	"ClaimDaily", -- () récupérer le cadeau du jour
 	"Rebirth", -- () faire un rebirth
 	"TutorialDone", -- () le tutoriel est terminé
+	"RedeemCode", -- (code) utiliser un code promo
 	-- Serveur -> Client
 	"Notify", -- (key, params, kind) petit message pour un joueur
 	"Announce", -- (key, params, kind) grande annonce pour tout le serveur
 	"Effect", -- (kind, data) effet visuel / sonore
 	"DailyInfo", -- (info) état du cadeau du jour
+	"IndexInfo", -- (info) fantômes découverts dans le Fantômédex
 }
 
 local FOLDER_NAME = "Remotes"
@@ -1569,6 +1595,32 @@ Strings.fr = {
 	Tuto2 = "Ta base",
 	Tuto3 = "Vole !",
 
+
+	-- Fantômédex
+	Index = "Fantômédex",
+	IndexTitle = "FANTÔMÉDEX",
+	IndexNew = "Nouveau dans le Fantômédex : {ghost} !",
+	IndexRarityDone = "Série {rarity} complète ! +{coins} pièces",
+	IndexCompleteDone = "Fantômédex complet ! +{percent} % de revenus pour toujours",
+	IndexBonus = "Trouve-les tous : +{percent} % de revenus pour toujours",
+	IndexBonusDone = "Fantômédex complet : +{percent} % de revenus",
+	IndexHint = "Touche un fantôme pour lire sa fiche",
+	IndexUnknown = "???",
+	IndexUnknownHint = "Pas encore trouvé. Guette le chemin... ou les bases des autres !",
+	IndexCard = "{ghost} : {gag}",
+	AnnIndexComplete = "{player} a complété le Fantômédex !",
+
+	-- Codes promo
+	Codes = "Codes secrets",
+	CodesDesc = "Tape un code secret",
+	CodePlaceholder = "CODE",
+	CodeRedeem = "OK",
+	CodeOk = "Code accepté : +{coins} pièces !",
+	CodeOkGhost = "Code accepté : {ghost} est à toi !",
+	CodeUsed = "Tu as déjà utilisé ce code",
+	CodeInvalid = "Code invalide",
+	CodeExpired = "Ce code a expiré",
+
 	Close = "Fermer",
 }
 
@@ -1680,6 +1732,30 @@ Strings.en = {
 	Tuto2 = "Your base",
 	Tuto3 = "Steal!",
 
+
+	Index = "Ghostdex",
+	IndexTitle = "GHOSTDEX",
+	IndexNew = "New in the Ghostdex: {ghost}!",
+	IndexRarityDone = "{rarity} set complete! +{coins} coins",
+	IndexCompleteDone = "Ghostdex complete! +{percent}% income forever",
+	IndexBonus = "Find them all: +{percent}% income forever",
+	IndexBonusDone = "Ghostdex complete: +{percent}% income",
+	IndexHint = "Tap a ghost to read its card",
+	IndexUnknown = "???",
+	IndexUnknownHint = "Not found yet. Watch the path... or other players' bases!",
+	IndexCard = "{ghost}: {gag}",
+	AnnIndexComplete = "{player} completed the Ghostdex!",
+
+	Codes = "Secret codes",
+	CodesDesc = "Enter a secret code",
+	CodePlaceholder = "CODE",
+	CodeRedeem = "OK",
+	CodeOk = "Code redeemed: +{coins} coins!",
+	CodeOkGhost = "Code redeemed: {ghost} is yours!",
+	CodeUsed = "You already used this code",
+	CodeInvalid = "Invalid code",
+	CodeExpired = "This code has expired",
+
 	Close = "Close",
 }
 
@@ -1733,10 +1809,12 @@ Remotes.setup()
 local Services = script.Parent:WaitForChild("Services")
 local AnnounceService = require(Services:WaitForChild("AnnounceService"))
 local BaseService = require(Services:WaitForChild("BaseService"))
+local CodeService = require(Services:WaitForChild("CodeService"))
 local DataService = require(Services:WaitForChild("DataService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
 local GhostService = require(Services:WaitForChild("GhostService"))
 local Guard = require(Services:WaitForChild("Guard"))
+local IndexService = require(Services:WaitForChild("IndexService"))
 local MapBuilder = require(Services:WaitForChild("MapBuilder"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local NightService = require(Services:WaitForChild("NightService"))
@@ -1756,7 +1834,9 @@ StealService.start()
 NightService.start()
 RebirthService.start()
 MonetizationService.start()
+CodeService.start()
 EconomyService.giveGhostCallback = GhostService.giveGhost
+BaseService.onGhostPlaced = IndexService.discover -- chaque nouveau fantôme entre dans le Fantômédex
 
 -- 3. Les joueurs
 local function onPlayerAdded(player: Player)
@@ -1781,6 +1861,7 @@ local function onPlayerAdded(player: Player)
 	MonetizationService.setup(player) -- Game Passes (x2 pièces, verrou+)
 	RebirthService.setup(player) -- aura des rebirths
 	EconomyService.setup(player)
+	IndexService.setup(player) -- collection (avant le cadeau, pour ne pas afficher 2 messages)
 
 	-- Premier lancement : un fantôme offert tout de suite
 	if not data.StarterGiven then
@@ -2016,6 +2097,9 @@ function BaseService.findFreeSlot(player: Player): number?
 	return nil
 end
 
+-- Appelé à chaque fois qu'un joueur reçoit un fantôme (branché sur le Fantômédex dans Main)
+BaseService.onGhostPlaced = nil :: ((Player, string) -> ())?
+
 -- Pose un fantôme sur un socle libre (ou sur le socle donné). Renvoie le numéro du socle.
 function BaseService.placeGhost(player: Player, ghostId: string, slot: number?): number?
 	local base = byPlayer[player]
@@ -2032,6 +2116,9 @@ function BaseService.placeGhost(player: Player, ghostId: string, slot: number?):
 	local ped = base.Pedestals[target]
 	ped:SetAttribute("GhostId", ghostId)
 	ped:SetAttribute("Stolen", false)
+	if BaseService.onGhostPlaced then
+		BaseService.onGhostPlaced(player, ghostId)
+	end
 	return target
 end
 
@@ -2344,6 +2431,110 @@ return BaseService
       </Item>
       <Item class="ModuleScript" referent="17">
         <Properties>
+          <string name="Name">CodeService</string>
+          <string name="Source"><![CDATA[--[[
+	CodeService : les codes promo (liste dans Config.Codes).
+	Le joueur tape un code dans la Boutique, le serveur vérifie :
+	  - que le code existe et n'a pas expiré
+	  - que ce joueur ne l'a pas déjà utilisé (noté dans sa sauvegarde)
+	Anti-triche : une tentative par seconde, et 20 essais ratés maximum par partie.
+]]
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Format = require(Shared:WaitForChild("Format"))
+local GhostData = require(Shared:WaitForChild("GhostData"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+
+local AnnounceService = require(script.Parent.AnnounceService)
+local DataService = require(script.Parent.DataService)
+local EconomyService = require(script.Parent.EconomyService)
+local GhostService = require(script.Parent.GhostService)
+local Guard = require(script.Parent.Guard)
+
+local CodeService = {}
+
+local MAX_FAILURES = 20
+local failures: { [Player]: number } = {}
+
+-- "  bouh 2026 " -> "BOUH2026"
+function CodeService.normalize(code: string): string
+	local cleaned = string.gsub(string.upper(code), "%s", "")
+	return cleaned
+end
+
+local function redeem(player: Player, raw: any)
+	if typeof(raw) ~= "string" or #raw == 0 or #raw > 30 then
+		return
+	end
+	if not Guard.rate(player, "Code", 1) then
+		return
+	end
+	if (failures[player] or 0) >= MAX_FAILURES then
+		AnnounceService.notify(player, "CodeInvalid", nil, "bad")
+		return
+	end
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	local key = CodeService.normalize(raw)
+	local def = Config.Codes[key]
+	if not def then
+		failures[player] = (failures[player] or 0) + 1
+		AnnounceService.notify(player, "CodeInvalid", nil, "bad")
+		return
+	end
+	if def.Expires and def.Expires > 0 and os.time() > def.Expires then
+		AnnounceService.notify(player, "CodeExpired", nil, "bad")
+		return
+	end
+	if data.RedeemedCodes[key] then
+		AnnounceService.notify(player, "CodeUsed", nil, "bad")
+		return
+	end
+	data.RedeemedCodes[key] = true
+
+	local coins = def.Coins or 0
+	if def.Minutes then
+		coins += math.max(def.Min or 0, math.floor(EconomyService.incomePerSecond(player) * 60 * def.Minutes))
+	end
+	local ghostId = nil
+	if def.Ghost and GhostData.get(def.Ghost) then
+		if GhostService.giveGhost(player, def.Ghost) then
+			ghostId = def.Ghost
+		else
+			coins += GhostData.get(def.Ghost).Price -- base pleine : on donne sa valeur
+		end
+	end
+	if coins > 0 then
+		EconomyService.add(player, coins, true)
+	end
+
+	if ghostId then
+		AnnounceService.notify(player, "CodeOkGhost", { ghost = ghostId }, "good")
+	else
+		AnnounceService.notify(player, "CodeOk", { coins = Format.short(coins) }, "good")
+	end
+	AnnounceService.effect("Gift", {}, player)
+end
+
+function CodeService.start()
+	Remotes.get("RedeemCode").OnServerEvent:Connect(redeem)
+	Players.PlayerRemoving:Connect(function(player)
+		failures[player] = nil
+	end)
+end
+
+return CodeService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="18">
+        <Properties>
           <string name="Name">DataService</string>
           <string name="Source"><![CDATA[--[[
 	DataService : charge et sauvegarde les données des joueurs (DataStoreService).
@@ -2404,6 +2595,10 @@ local function template()
 		StarterGiven = false,
 		TutorialDone = false,
 		Receipts = {}, -- achats Robux déjà traités (anti double crédit)
+		Discovered = {}, -- Fantômédex : ["DrapMou"] = true
+		IndexRewards = {}, -- séries déjà récompensées : ["Common"] = true
+		IndexComplete = false, -- bonus permanent du Fantômédex complet
+		RedeemedCodes = {}, -- codes promo déjà utilisés : ["BOUH2026"] = true
 	}
 end
 
@@ -2614,7 +2809,7 @@ return DataService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="18">
+      <Item class="ModuleScript" referent="19">
         <Properties>
           <string name="Name">EconomyService</string>
           <string name="Source"><![CDATA[--[[
@@ -2661,6 +2856,9 @@ function EconomyService.multiplier(player: Player): number
 		m *= 2
 	end
 	m *= 1 + (friendBonus[player] or 0)
+	if data.IndexComplete then
+		m *= 1 + Config.IndexCompleteBonus
+	end
 	return m
 end
 
@@ -2805,6 +3003,9 @@ function EconomyService.grantOffline(player: Player, lastOnline: number)
 	if player:GetAttribute("DoubleCoins") then
 		perSecond *= 2
 	end
+	if data and data.IndexComplete then
+		perSecond *= 1 + Config.IndexCompleteBonus
+	end
 	local amount = math.floor(perSecond * away * Config.OfflineRate)
 	if amount > 0 then
 		EconomyService.add(player, amount, true)
@@ -2919,7 +3120,7 @@ return EconomyService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="19">
+      <Item class="ModuleScript" referent="20">
         <Properties>
           <string name="Name">GhostService</string>
           <string name="Source"><![CDATA[--[[
@@ -3154,7 +3355,7 @@ return GhostService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="20">
+      <Item class="ModuleScript" referent="21">
         <Properties>
           <string name="Name">Guard</string>
           <string name="Source"><![CDATA[--[[
@@ -3213,7 +3414,117 @@ return Guard
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="21">
+      <Item class="ModuleScript" referent="22">
+        <Properties>
+          <string name="Name">IndexService</string>
+          <string name="Source"><![CDATA[--[[
+	IndexService : le Fantômédex, la collection des 32 fantômes.
+	  - un fantôme est "découvert" dès qu'il arrive dans ta base (achat, vol, cadeau, code)
+	  - série complète (tous les fantômes d'une rareté) : des pièces en récompense
+	  - tous les fantômes permanents trouvés : +10 % de revenus pour toujours
+	La collection n'est jamais effacée, même par un rebirth.
+]]
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Format = require(Shared:WaitForChild("Format"))
+local GhostData = require(Shared:WaitForChild("GhostData"))
+local Rarities = require(Shared:WaitForChild("Rarities"))
+local Remotes = require(Shared:WaitForChild("Remotes"))
+
+local AnnounceService = require(script.Parent.AnnounceService)
+local DataService = require(script.Parent.DataService)
+local EconomyService = require(script.Parent.EconomyService)
+
+local IndexService = {}
+
+-- Envoie au joueur l'état de sa collection
+function IndexService.sync(player: Player)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	local found = {}
+	for ghostId in data.Discovered do
+		table.insert(found, ghostId)
+	end
+	Remotes.get("IndexInfo"):FireClient(player, {
+		Discovered = found,
+		Rewarded = data.IndexRewards,
+		Complete = data.IndexComplete == true,
+	})
+end
+
+local function isRarityComplete(data, rarity: string): boolean
+	for _, ghost in GhostData.ByRarity[rarity] or {} do
+		if not data.Discovered[ghost.Id] then
+			return false
+		end
+	end
+	return true
+end
+
+-- Vérifie les séries complètes et le Fantômédex complet
+local function checkRewards(player: Player, data)
+	for _, rarity in Rarities.Order do
+		if not data.IndexRewards[rarity] and isRarityComplete(data, rarity) then
+			data.IndexRewards[rarity] = true
+			local coins = Config.IndexRewards[rarity] or 0
+			EconomyService.add(player, coins, true)
+			AnnounceService.notify(player, "IndexRarityDone", { rarity = rarity, coins = Format.short(coins) }, "good")
+			AnnounceService.effect("Gift", {}, player)
+		end
+	end
+	if not data.IndexComplete then
+		for _, rarity in Rarities.Order do
+			if not Rarities.Info[rarity].EventOnly and not data.IndexRewards[rarity] then
+				return
+			end
+		end
+		data.IndexComplete = true
+		EconomyService.refresh(player)
+		AnnounceService.notify(player, "IndexCompleteDone", { percent = math.floor(Config.IndexCompleteBonus * 100) }, "good")
+		AnnounceService.announce("AnnIndexComplete", { player = player.DisplayName }, "legendary")
+	end
+end
+
+-- Un fantôme arrive dans la base du joueur
+function IndexService.discover(player: Player, ghostId: string, silent: boolean?)
+	local data = DataService.get(player)
+	if not data or not GhostData.get(ghostId) or data.Discovered[ghostId] then
+		return
+	end
+	data.Discovered[ghostId] = true
+	if not silent then
+		AnnounceService.notify(player, "IndexNew", { ghost = ghostId }, "info")
+	end
+	checkRewards(player, data)
+	IndexService.sync(player)
+end
+
+-- À l'arrivée du joueur : on ajoute à la collection ce qu'il possède déjà (sans message)
+function IndexService.setup(player: Player)
+	local data = DataService.get(player)
+	if not data then
+		return
+	end
+	data.Discovered[Config.StarterGhost] = true
+	for _, ghostId in data.Slots do
+		if GhostData.get(ghostId) then
+			data.Discovered[ghostId] = true
+		end
+	end
+	checkRewards(player, data)
+	IndexService.sync(player)
+end
+
+return IndexService
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="23">
         <Properties>
           <string name="Name">MapBuilder</string>
           <string name="Source"><![CDATA[--[[
@@ -3765,7 +4076,7 @@ return MapBuilder
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="22">
+      <Item class="ModuleScript" referent="24">
         <Properties>
           <string name="Name">MonetizationService</string>
           <string name="Source"><![CDATA[--[[
@@ -3876,7 +4187,7 @@ return MonetizationService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="23">
+      <Item class="ModuleScript" referent="25">
         <Properties>
           <string name="Name">NightService</string>
           <string name="Source"><![CDATA[--[[
@@ -4114,7 +4425,7 @@ return NightService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="24">
+      <Item class="ModuleScript" referent="26">
         <Properties>
           <string name="Name">RebirthService</string>
           <string name="Source"><![CDATA[--[[
@@ -4233,7 +4544,7 @@ return RebirthService
 ]]></string>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="25">
+      <Item class="ModuleScript" referent="27">
         <Properties>
           <string name="Name">StealService</string>
           <string name="Source"><![CDATA[--[[
@@ -4623,15 +4934,15 @@ return StealService
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="26">
+  <Item class="StarterPlayer" referent="28">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="27">
+    <Item class="StarterPlayerScripts" referent="29">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="28">
+      <Item class="LocalScript" referent="30">
         <Properties>
           <string name="Name">Client</string>
           <string name="Source"><![CDATA[--[[
@@ -4675,11 +4986,11 @@ end
 ]]></string>
         </Properties>
       </Item>
-      <Item class="Folder" referent="29">
+      <Item class="Folder" referent="31">
         <Properties>
           <string name="Name">Controllers</string>
         </Properties>
-        <Item class="ModuleScript" referent="30">
+        <Item class="ModuleScript" referent="32">
           <Properties>
             <string name="Name">Announce</string>
             <string name="Source"><![CDATA[--[[
@@ -4809,7 +5120,7 @@ return Announce
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="31">
+        <Item class="ModuleScript" referent="33">
           <Properties>
             <string name="Name">BaseView</string>
             <string name="Source"><![CDATA[--[[
@@ -5164,7 +5475,7 @@ return BaseView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="32">
+        <Item class="ModuleScript" referent="34">
           <Properties>
             <string name="Name">CarryView</string>
             <string name="Source"><![CDATA[--[[
@@ -5355,7 +5666,7 @@ return CarryView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="33">
+        <Item class="ModuleScript" referent="35">
           <Properties>
             <string name="Name">Effects</string>
             <string name="Source"><![CDATA[--[[
@@ -5626,7 +5937,7 @@ return Effects
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="34">
+        <Item class="ModuleScript" referent="36">
           <Properties>
             <string name="Name">HUD</string>
             <string name="Source"><![CDATA[--[[
@@ -5866,8 +6177,8 @@ local function buildColumns()
 	HUD.leftColumn = UI.new("Frame", {
 		Name = "Left",
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 12, 0.4, 0),
-		Size = UDim2.fromOffset(100, 340),
+		Position = UDim2.new(0, 12, 0.45, 0),
+		Size = UDim2.fromOffset(100, 380),
 		BackgroundTransparency = 1,
 		Parent = gui,
 	}, {
@@ -6043,7 +6354,7 @@ return HUD
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="35">
+        <Item class="ModuleScript" referent="37">
           <Properties>
             <string name="Name">Labels</string>
             <string name="Source"><![CDATA[--[[
@@ -6135,7 +6446,7 @@ return Labels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="36">
+        <Item class="ModuleScript" referent="38">
           <Properties>
             <string name="Name">Lang</string>
             <string name="Source"><![CDATA[--[[
@@ -6214,7 +6525,7 @@ return Lang
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="37">
+        <Item class="ModuleScript" referent="39">
           <Properties>
             <string name="Name">NightView</string>
             <string name="Source"><![CDATA[--[[
@@ -6512,7 +6823,7 @@ return NightView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="38">
+        <Item class="ModuleScript" referent="40">
           <Properties>
             <string name="Name">Panels</string>
             <string name="Source"><![CDATA[--[[
@@ -6529,6 +6840,9 @@ local RunService = game:GetService("RunService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Format = require(Shared:WaitForChild("Format"))
+local GhostData = require(Shared:WaitForChild("GhostData"))
+local GhostFactory = require(Shared:WaitForChild("GhostFactory"))
+local Rarities = require(Shared:WaitForChild("Rarities"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local Effects = require(script.Parent.Effects)
@@ -6542,6 +6856,7 @@ local player = Players.LocalPlayer
 local gui: ScreenGui
 local openPanel: Frame? = nil
 local dailyInfo = nil
+local indexInfo = nil
 local refreshers: { () -> () } = {}
 
 local function rebirthCost(rebirths: number): number
@@ -6793,18 +7108,18 @@ local function buildShop(): Frame
 	local updaters = {}
 	for order, item in items do
 		local card = UI.new("Frame", {
-			Size = UDim2.new(1, 0, 0, 96),
+			Size = UDim2.new(1, 0, 0, 72),
 			BackgroundColor3 = UI.Colors.PanelLight,
 			LayoutOrder = order,
 			Parent = list,
 		}, { UI.corner(16), UI.stroke(nil, 3) })
-		UI.label({ Size = UDim2.fromOffset(70, 70), Position = UDim2.fromOffset(10, 13), Text = item.Icon, MaxTextSize = 54, Parent = card })
-		UI.label({ Size = UDim2.new(1, -280, 0, 38), Position = UDim2.fromOffset(90, 10), Text = Lang.t(item.Title), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 30, Parent = card })
-		local desc = UI.label({ Size = UDim2.new(1, -280, 0, 34), Position = UDim2.fromOffset(90, 50), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = card })
+		UI.label({ Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(8, 8), Text = item.Icon, MaxTextSize = 44, Parent = card })
+		UI.label({ Size = UDim2.new(1, -250, 0, 30), Position = UDim2.fromOffset(72, 6), Text = Lang.t(item.Title), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 28, Parent = card })
+		local desc = UI.label({ Size = UDim2.new(1, -250, 0, 26), Position = UDim2.fromOffset(72, 38), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = card })
 		local buy = UI.new("TextButton", {
 			AnchorPoint = Vector2.new(1, 0.5),
-			Position = UDim2.new(1, -12, 0.5, 0),
-			Size = UDim2.fromOffset(170, 70),
+			Position = UDim2.new(1, -10, 0.5, 0),
+			Size = UDim2.fromOffset(160, 56),
 			BackgroundColor3 = UI.Colors.Good,
 			Text = "",
 			Parent = card,
@@ -6856,11 +7171,216 @@ local function buildShop(): Frame
 		end)
 	end
 
+	-- Codes secrets : le joueur tape le code, le serveur vérifie tout
+	local codeCard = UI.new("Frame", {
+		Size = UDim2.new(1, 0, 0, 72),
+		BackgroundColor3 = UI.Colors.PanelLight,
+		LayoutOrder = #items + 1,
+		Parent = list,
+	}, { UI.corner(16), UI.stroke(UI.Colors.Purple, 3) })
+	UI.label({ Size = UDim2.fromOffset(56, 56), Position = UDim2.fromOffset(8, 8), Text = "🎟️", MaxTextSize = 44, Parent = codeCard })
+	UI.label({ Size = UDim2.new(1, -330, 0, 30), Position = UDim2.fromOffset(72, 6), Text = Lang.t("Codes"), TextXAlignment = Enum.TextXAlignment.Left, MaxTextSize = 26, Parent = codeCard })
+	UI.label({ Size = UDim2.new(1, -330, 0, 26), Position = UDim2.fromOffset(72, 38), Text = Lang.t("CodesDesc"), TextXAlignment = Enum.TextXAlignment.Left, TextColor3 = UI.Colors.Info, MaxTextSize = 20, Parent = codeCard })
+	local codeBox = UI.new("TextBox", {
+		Name = "CodeBox",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -96, 0.5, 0),
+		Size = UDim2.fromOffset(160, 50),
+		BackgroundColor3 = UI.Colors.Panel,
+		PlaceholderText = Lang.t("CodePlaceholder"),
+		PlaceholderColor3 = UI.Colors.Gray,
+		Text = "",
+		ClearTextOnFocus = false,
+		Font = UI.Font,
+		TextColor3 = UI.Colors.Text,
+		TextScaled = true,
+		Parent = codeCard,
+	}, { UI.corner(12), UI.stroke(nil, 2) })
+	local codeButton = UI.new("TextButton", {
+		Name = "CodeButton",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -10, 0.5, 0),
+		Size = UDim2.fromOffset(78, 50),
+		BackgroundColor3 = UI.Colors.Purple,
+		Text = "",
+		Parent = codeCard,
+	}, { UI.corner(12), UI.stroke(nil, 3) })
+	UI.label({ Size = UDim2.new(1, -10, 1, -10), Position = UDim2.fromOffset(5, 5), Text = Lang.t("CodeRedeem"), MaxTextSize = 28, Parent = codeButton })
+	codeButton.Activated:Connect(function()
+		local code = codeBox.Text
+		if #code > 0 and #code <= 30 then
+			Effects.sound("Click")
+			Remotes.get("RedeemCode"):FireServer(code)
+			codeBox.Text = ""
+		end
+	end)
+
 	table.insert(refreshers, function()
 		for _, update in updaters do
 			update()
 		end
 	end)
+	return panel
+end
+
+---------------------------------------------------------------- Fantômédex
+
+local function buildIndex(): Frame
+	local panel, body = makePanel("Index", "📖 " .. Lang.t("IndexTitle"), UI.Colors.Purple)
+
+	-- Progression par rareté en haut
+	local chips = UI.new("Frame", {
+		Size = UDim2.new(1, 0, 0, 30),
+		BackgroundTransparency = 1,
+		Parent = body,
+	}, {
+		UI.new("UIListLayout", {
+			FillDirection = Enum.FillDirection.Horizontal,
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			Padding = UDim.new(0, 4),
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	local chipLabels = {}
+	for order, rarity in Rarities.Order do
+		local chip = UI.new("Frame", {
+			Size = UDim2.fromOffset(88, 30),
+			BackgroundColor3 = UI.Colors.Panel,
+			LayoutOrder = order,
+			Parent = chips,
+		}, { UI.corner(10), UI.stroke(Rarities.color(rarity), 2) })
+		chipLabels[rarity] = UI.label({
+			Size = UDim2.new(1, -8, 1, -6),
+			Position = UDim2.fromOffset(4, 3),
+			TextColor3 = Rarities.color(rarity),
+			MaxTextSize = 16,
+			Parent = chip,
+		})
+	end
+
+	-- Grille des 32 fantômes (construite à la première ouverture)
+	local grid = UI.new("ScrollingFrame", {
+		Name = "Grid",
+		Position = UDim2.fromOffset(0, 36),
+		Size = UDim2.new(1, 0, 1, -84),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ScrollBarThickness = 8,
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		CanvasSize = UDim2.new(),
+		ScrollingDirection = Enum.ScrollingDirection.Y,
+		Parent = body,
+	}, {
+		UI.new("UIGridLayout", {
+			CellSize = UDim2.fromOffset(100, 112),
+			CellPadding = UDim2.fromOffset(8, 8),
+			HorizontalAlignment = Enum.HorizontalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder,
+		}),
+	})
+	local info = UI.label({
+		Name = "Info",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 0, 1, 0),
+		Size = UDim2.new(1, 0, 0, 42),
+		TextColor3 = UI.Colors.Gold,
+		MaxTextSize = 22,
+		TextWrapped = true,
+		Parent = body,
+	})
+
+	local tiles = {}
+	local selected: string? = nil
+
+	local function isFound(ghostId: string): boolean
+		return indexInfo ~= nil and table.find(indexInfo.Discovered, ghostId) ~= nil
+	end
+
+	local function buildTiles()
+		for _, ghost in GhostData.List do
+			local tile = UI.new("TextButton", {
+				Name = ghost.Id,
+				BackgroundColor3 = UI.Colors.PanelLight,
+				Text = "",
+				AutoButtonColor = true,
+				LayoutOrder = ghost.Order,
+				Parent = grid,
+			}, { UI.corner(14), UI.stroke(Rarities.color(ghost.Rarity), 3) })
+			local viewport = UI.new("ViewportFrame", {
+				Size = UDim2.new(1, -8, 0, 80),
+				Position = UDim2.fromOffset(4, 4),
+				BackgroundTransparency = 1,
+				Ambient = Color3.fromRGB(190, 190, 200),
+				LightColor = Color3.fromRGB(255, 255, 255),
+				LightDirection = Vector3.new(-1, -1, 1),
+				Parent = tile,
+			})
+			local model = GhostFactory.build(ghost.Id)
+			model.Parent = viewport
+			local cf, size = model:GetBoundingBox()
+			local distance = math.max(size.X, size.Y) * 1.5 + 2
+			local camera = Instance.new("Camera")
+			camera.FieldOfView = 40
+			camera.CFrame = CFrame.lookAt(cf.Position + Vector3.new(distance * 0.3, size.Y * 0.1, -distance), cf.Position)
+			camera.Parent = viewport
+			viewport.CurrentCamera = camera
+			local name = UI.label({
+				Size = UDim2.new(1, -6, 0, 24),
+				Position = UDim2.new(0, 3, 1, -27),
+				MaxTextSize = 16,
+				Parent = tile,
+			})
+			tile.Activated:Connect(function()
+				Effects.sound("Click")
+				selected = ghost.Id
+				for _, refresh in refreshers do
+					refresh()
+				end
+			end)
+			tiles[ghost.Id] = { Viewport = viewport, Name = name }
+		end
+	end
+
+	local function refresh()
+		if not panel.Visible then
+			return
+		end
+		if next(tiles) == nil then
+			buildTiles()
+		end
+		for _, rarity in Rarities.Order do
+			local list = GhostData.ByRarity[rarity] or {}
+			local found = 0
+			for _, ghost in list do
+				if isFound(ghost.Id) then
+					found += 1
+				end
+			end
+			local done = indexInfo and indexInfo.Rewarded and indexInfo.Rewarded[rarity]
+			chipLabels[rarity].Text = Lang.rarityName(rarity) .. " " .. found .. "/" .. #list .. (if done then " ✅" else "")
+		end
+		for ghostId, tile in tiles do
+			local found = isFound(ghostId)
+			-- pas encore trouvé : silhouette noire et "???"
+			tile.Viewport.ImageColor3 = if found then Color3.new(1, 1, 1) else Color3.new(0, 0, 0)
+			tile.Name.Text = if found then Lang.ghostName(ghostId) else Lang.t("IndexUnknown")
+		end
+		local percent = math.floor(Config.IndexCompleteBonus * 100)
+		if selected then
+			local ghost = GhostData.get(selected)
+			if isFound(selected) then
+				info.Text = Lang.t("IndexCard", { ghost = selected, gag = Lang.ghostGag(selected) })
+					.. "  (+" .. Format.short(ghost.Income) .. "/s)"
+			else
+				info.Text = Lang.rarityName(ghost.Rarity) .. " : " .. Lang.t("IndexUnknownHint")
+			end
+		elseif indexInfo and indexInfo.Complete then
+			info.Text = "🏆 " .. Lang.t("IndexBonusDone", { percent = percent })
+		else
+			info.Text = Lang.t("IndexBonus", { percent = percent }) .. "  •  " .. Lang.t("IndexHint")
+		end
+	end
+	table.insert(refreshers, refresh)
 	return panel
 end
 
@@ -6876,31 +7396,54 @@ end
 function Panels.start()
 	gui = UI.screen("SAG_Panels", 3)
 	local daily = buildDaily()
+	local index = buildIndex()
 	local rebirth = buildRebirth()
 	local shop = buildShop()
 
 	local column = HUD.leftColumn
-	local giftButton = UI.bigButton({ Name = "Gift", Icon = "🎁", Text = Lang.t("Daily"), Color = UI.Colors.Gold, Size = 92, LayoutOrder = 1, Parent = column })
-	local rebirthButton = UI.bigButton({ Name = "Rebirth", Icon = "♻️", Text = Lang.t("Rebirth"), Color = Color3.fromRGB(60, 190, 150), Size = 92, LayoutOrder = 2, Parent = column })
-	local shopButton = UI.bigButton({ Name = "Shop", Icon = "🛒", Text = Lang.t("Shop"), Color = UI.Colors.Orange, Size = 92, LayoutOrder = 3, Parent = column })
+	local giftButton = UI.bigButton({ Name = "Gift", Icon = "🎁", Text = Lang.t("Daily"), Color = UI.Colors.Gold, Size = 84, LayoutOrder = 1, Parent = column })
+	local indexButton = UI.bigButton({ Name = "Index", Icon = "📖", Text = Lang.t("Index"), Color = UI.Colors.Purple, Size = 84, LayoutOrder = 2, Parent = column })
+	local rebirthButton = UI.bigButton({ Name = "Rebirth", Icon = "♻️", Text = Lang.t("Rebirth"), Color = Color3.fromRGB(60, 190, 150), Size = 84, LayoutOrder = 3, Parent = column })
+	local shopButton = UI.bigButton({ Name = "Shop", Icon = "🛒", Text = Lang.t("Shop"), Color = UI.Colors.Orange, Size = 84, LayoutOrder = 4, Parent = column })
 
-	-- Pastille "!" sur le cadeau quand il est prêt
-	local dot = UI.label({
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(1, -6, 0, 6),
-		Size = UDim2.fromOffset(34, 34),
-		BackgroundTransparency = 0,
-		BackgroundColor3 = UI.Colors.Bad,
-		Text = "!",
-		MaxTextSize = 28,
-		Visible = false,
-		Parent = giftButton,
-	})
-	UI.corner(17).Parent = dot
+	-- Pastille rouge sur un bouton (cadeau prêt, nouveau fantôme...)
+	local function makeDot(parent: Instance, text: string): TextLabel
+		local dot = UI.label({
+			Name = "Dot",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(1, -6, 0, 6),
+			Size = UDim2.fromOffset(34, 34),
+			BackgroundTransparency = 0,
+			BackgroundColor3 = UI.Colors.Bad,
+			Text = text,
+			MaxTextSize = 28,
+			Visible = false,
+			Parent = parent,
+		})
+		UI.corner(17).Parent = dot
+		return dot
+	end
+	local dot = makeDot(giftButton, "!")
+	local indexDot = makeDot(indexButton, "!")
 
 	giftButton.Activated:Connect(function()
 		Effects.sound("Click")
 		open(daily)
+	end)
+	indexButton.Activated:Connect(function()
+		Effects.sound("Click")
+		indexDot.Visible = false
+		open(index)
+	end)
+	Remotes.get("IndexInfo").OnClientEvent:Connect(function(info)
+		local previous = if indexInfo then #indexInfo.Discovered else nil
+		indexInfo = info
+		if previous and #info.Discovered > previous and openPanel ~= index then
+			indexDot.Visible = true
+		end
+		for _, refresh in refreshers do
+			refresh()
+		end
 	end)
 	rebirthButton.Activated:Connect(function()
 		Effects.sound("Click")
@@ -6946,7 +7489,7 @@ return Panels
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="39">
+        <Item class="ModuleScript" referent="41">
           <Properties>
             <string name="Name">PathView</string>
             <string name="Source"><![CDATA[--[[
@@ -7112,7 +7655,7 @@ return PathView
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="40">
+        <Item class="ModuleScript" referent="42">
           <Properties>
             <string name="Name">Tutorial</string>
             <string name="Source"><![CDATA[--[[
@@ -7351,7 +7894,7 @@ return Tutorial
 ]]></string>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="41">
+        <Item class="ModuleScript" referent="43">
           <Properties>
             <string name="Name">UI</string>
             <string name="Source"><![CDATA[--[[
@@ -7543,13 +8086,13 @@ return UI
       </Item>
     </Item>
   </Item>
-  <Item class="TextChatService" referent="42">
+  <Item class="TextChatService" referent="44">
     <Properties>
       <string name="Name">TextChatService</string>
       <token name="ChatVersion">1</token>
     </Properties>
   </Item>
-  <Item class="Workspace" referent="43">
+  <Item class="Workspace" referent="45">
     <Properties>
       <string name="Name">Workspace</string>
       <bool name="NeedsPivotMigration">false</bool>

@@ -472,6 +472,21 @@ function Methods:PivotTo(cf)
 		self.__props.CFrame = cf
 	end
 end
+function Methods:GetBoundingBox()
+	local minV, maxV = nil, nil
+	for _, d in self:GetDescendants() do
+		local cf, size = d.__props.CFrame, d.__props.Size
+		if cf and size then
+			local lo, hi = cf.Position - size / 2, cf.Position + size / 2
+			minV = if minV then minV:Min(lo) else lo
+			maxV = if maxV then maxV:Max(hi) else hi
+		end
+	end
+	if not minV then
+		return roblox.CFrame.identity, roblox.Vector3.one
+	end
+	return roblox.CFrame.new((minV + maxV) / 2), maxV - minV
+end
 function Methods:Emit() end
 function Methods:Play() end
 function Methods:ScaleTo() end

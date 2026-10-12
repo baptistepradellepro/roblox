@@ -231,6 +231,57 @@ check(shop.Visible == true, "boutique ouverte")
 Sched.advance(0.6)
 check(findText(shop, "Bientôt") ~= nil, "articles 'Bientôt' tant que les IDs sont à 0")
 
+section("Fantômédex (panneau)")
+local indexButton = find(gui.SAG_HUD, function(d)
+	return d.Name == "Index"
+end)
+check(indexButton ~= nil, "bouton Fantômédex")
+indexButton.Activated:Fire()
+local indexPanel = gui.SAG_Panels:FindFirstChild("Index")
+check(indexPanel and indexPanel.Visible == true, "panneau Fantômédex ouvert")
+Sched.advance(0.6)
+local grid = find(indexPanel, function(d)
+	return d.Name == "Grid"
+end)
+local tileCount = 0
+for _, child in grid:GetChildren() do
+	if child.ClassName == "TextButton" then
+		tileCount += 1
+	end
+end
+check(tileCount == 32, "32 cases (" .. tileCount .. ")")
+local starterTile = grid:FindFirstChild(Config.StarterGhost)
+local starterViewport = starterTile and starterTile:FindFirstChildOfClass("ViewportFrame")
+check(starterViewport and starterViewport.ImageColor3 == roblox.Color3.new(1, 1, 1), "le Drap Mou est visible en couleur")
+check(starterViewport and starterViewport.CurrentCamera ~= nil and #starterViewport:GetChildren() >= 2, "mini-aperçu 3D du fantôme")
+local mythicTile = grid:FindFirstChild("SpectroPizzaSupreme")
+check(mythicTile and mythicTile:FindFirstChildOfClass("ViewportFrame").ImageColor3 == roblox.Color3.new(0, 0, 0), "un fantôme pas trouvé est une silhouette noire")
+check(mythicTile and findText(mythicTile, "???") ~= nil, "nom caché : ???")
+check(findText(indexPanel, "Commun") ~= nil, "progression par rareté")
+starterTile.Activated:Fire()
+Sched.advance(0.1)
+check(findText(indexPanel, "flotter") ~= nil, "toucher une case affiche la blague du fantôme")
+indexPanel.Close.Activated:Fire()
+
+section("Codes secrets (boutique)")
+shopButton.Activated:Fire()
+Sched.advance(0.3)
+local codeBox = find(shop, function(d)
+	return d.Name == "CodeBox"
+end)
+local codeButton = find(shop, function(d)
+	return d.Name == "CodeButton"
+end)
+check(codeBox ~= nil and codeButton ~= nil, "case et bouton des codes")
+local coinsBeforeCode = aData.Coins
+codeBox.Text = "bouh2026"
+codeButton.Activated:Fire()
+Sched.advance(0.3)
+check(aData.Coins >= coinsBeforeCode + 5000, "code tapé dans la boutique : +5000 pièces")
+check(codeBox.Text == "", "la case se vide après l'envoi")
+check(findText(gui.SAG_HUD, "Code accepté") ~= nil, "message 'Code accepté'")
+shop.Close.Activated:Fire()
+
 section("Nuit Hantée côté joueur")
 local nextNight = RS:GetAttribute("NextNightAt")
 Sched.advance(nextNight - workspace:GetServerTimeNow() + 1)

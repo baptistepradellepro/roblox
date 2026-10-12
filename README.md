@@ -63,6 +63,8 @@ src/
       NightService               Nuit Hantée et Gloutrouille
       RebirthService             rebirth
       MonetizationService        Game Passes et pack de pièces
+      IndexService               Fantômédex (collection et récompenses)
+      CodeService                codes promo
       AnnounceService            messages et annonces
       Guard                      vérifications anti-triche
   StarterPlayer/StarterPlayerScripts/
