@@ -117,32 +117,25 @@ Tu peux annoncer les codes sur TikTok, mais le jeu lui-même ne doit pas parler 
 
 ## 7. Description du jeu (prête à copier)
 
-Pas de lien externe, c'est interdit. Les emojis sont l'usage sur Roblox et aident les jeunes joueurs à lire vite.
+Pas de lien externe, c'est interdit. Les emojis sont l'usage sur Roblox et aident les jeunes joueurs à lire vite. Roblox limite la description à 1 000 caractères : ces versions en font environ 840 (français) et 770 (anglais). Après le 3 novembre, supprime la ligne 🎃.
 
 **Français**
 
 ```
 Achète des fantômes complètement absurdes, pose-les dans ta base et ramasse les pièces qu'ils fabriquent. Mais les autres joueurs peuvent entrer chez toi et repartir avec tes fantômes !
 
-👻 Plus de 40 fantômes à collectionner : Drap Mou, Caquetôme, DJ Bouh-Boum, Méga Bouh Cosmique...
-❔ Des fantômes Secrets que presque personne n'a vus
-✨ Fantômes Dorés (x3) et Arc-en-ciel (x5) ultra rares
-🦹 Vole les fantômes des autres et cours jusqu'à ta base
-🏏 Un voleur passe près de toi ? Un coup de batte et il lâche tout !
-🍌 Pose des pièges dans ta base : peau de banane, toile d'araignée, alarme
+👻 Plus de 40 fantômes à collectionner, dont des Dorés, des Arc-en-ciel et des Secrets
+🦹 Vole ceux des autres et cours jusqu'à ta base
+🏏 Un voleur chez toi ? Un coup de batte et il lâche tout
+🍌 Piège ta base : peau de banane, toile d'araignée, alarme
 🔒 Verrouille ta base au bon moment
-🏰 Achète un 2e étage pour 10 fantômes de plus
+🌙 Toutes les 10 minutes, la Nuit Hantée... et Gloutrouille qui te poursuit
 🎡 La Roue de la Fortune au milieu de la map
-👹 Lâche un monstre sur tout le serveur
-🌙 Toutes les 10 minutes, la Nuit Hantée : Brouillard, Bonbons... et Gloutrouille qui te poursuit
-🔥 Super Nuit chaque samedi soir : Gloutrouille GÉANT et Mythique garanti
 🎃 Fantômes Halloween en édition limitée jusqu'au 3 novembre
-🏆 Deviens le plus grand voleur de la semaine
+🎁 Un cadeau et 3 missions par jour, 3 défis par semaine
 🎉 Pièces x2 tout le week-end
-♻️ Rebirth pour gagner plus, pour toujours
-👥 +10 % de pièces par ami dans ton serveur
-🎁 Un cadeau et 3 missions chaque jour, 3 défis chaque semaine
-📖 Complète le Fantômédex pour +10 % de revenus
+👥 +10 % de pièces pour chaque ami dans ton serveur
+🏆 Deviens le plus grand voleur de la semaine
 ```
 
 **English**
@@ -150,25 +143,18 @@ Achète des fantômes complètement absurdes, pose-les dans ta base et ramasse l
 ```
 Buy totally ridiculous ghosts, put them in your base and collect the coins they make. But other players can sneak in and run away with your ghosts!
 
-👻 40+ ghosts to collect: Floppy Sheet, Cluck-a-Boo, DJ Boo-Boom, Cosmic Mega Boo...
-❔ Secret ghosts almost nobody has seen
-✨ Ultra rare Golden (x3) and Rainbow (x5) ghosts
+👻 40+ ghosts to collect, including Golden, Rainbow and Secret ones
 🦹 Steal other players' ghosts and run back to your base
-🏏 Thief nearby? One swing of your bat and they drop everything!
-🍌 Set traps in your base: banana peel, spider web, alarm
+🏏 Thief in your base? One swing of your bat and they drop everything
+🍌 Trap your base: banana peel, spider web, alarm
 🔒 Lock your base at the right moment
-🏰 Buy a 2nd floor for 10 more ghosts
+🌙 Every 10 minutes, the Haunted Night... and Gloutrouille chasing you
 🎡 The Wheel of Fortune in the middle of the map
-👹 Release a monster on the whole server
-🌙 Every 10 minutes, the Haunted Night: Fog, Candy... and Gloutrouille chasing you
-🔥 Super Night every Saturday evening: GIANT Gloutrouille and a guaranteed Mythic
 🎃 Limited Halloween ghosts until November 3
-🏆 Become the top thief of the week
-🎉 x2 coins all weekend
-♻️ Rebirth to earn more, forever
-👥 +10% coins for each friend in your server
 🎁 A free gift and 3 missions every day, 3 challenges every week
-📖 Complete the Ghostdex for +10% income
+🎉 x2 coins all weekend
+👥 +10% coins for each friend in your server
+🏆 Become the top thief of the week
 ```
 
 ## 8. Icône et miniatures (déjà prêtes)
