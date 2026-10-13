@@ -59,6 +59,13 @@ Config.Products.CoinPack = 999
 Config.Products.Spin1 = 1001
 Config.GamePasses.DoubleCoins = 555
 Config.GamePasses.WeaponBroom = 556
+-- ces articles restent "sans ID" pour tester le mode gratuit de Studio et "Bientôt"
+Config.Products.Spin5 = 0
+Config.Products.MonsterGloutrouille = 0
+Config.Products.MonsterBat = 0
+Config.Products.MonsterSpider = 0
+Config.GamePasses.WeaponHammer = 0
+Config.GamePasses.WeaponVacuum = 0
 Config.Badges.Welcome = 9000
 Config.Badges.FirstSteal = 9001
 Config.Badges.FirstMythic = 9002

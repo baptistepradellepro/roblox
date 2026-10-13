@@ -163,12 +163,12 @@ Config.GamePasses = {
 	WeaponVacuum = 2033588417, -- ID du Game Pass "Aspira-Fantôme"
 }
 Config.Products = {
-	CoinPack = 0, -- ID du Developer Product "Pack de pièces"
-	Spin1 = 0, -- ID du Developer Product "1 tour de roue"
-	Spin5 = 0, -- ID du Developer Product "5 tours de roue"
-	MonsterGloutrouille = 0, -- ID du Developer Product "Lâcher Gloutrouille"
-	MonsterBat = 0, -- ID du Developer Product "Lâcher la Chauve-Souris Turbo"
-	MonsterSpider = 0, -- ID du Developer Product "Lâcher Mamie Toile"
+	CoinPack = 3718374706, -- ID du Developer Product "Pack de pièces"
+	Spin1 = 3718374446, -- ID du Developer Product "1 tour de roue"
+	Spin5 = 3718374379, -- ID du Developer Product "5 tours de roue"
+	MonsterGloutrouille = 3718374560, -- ID du Developer Product "Lâcher Gloutrouille"
+	MonsterBat = 3718374606, -- ID du Developer Product "Lâcher la Chauve-Souris Turbo"
+	MonsterSpider = 3718374496, -- ID du Developer Product "Lâcher Mamie Toile"
 }
 -- Badges Roblox (Creator Hub > ton jeu > Engagement > Badges). 0 = pas encore créé.
 Config.Badges = {

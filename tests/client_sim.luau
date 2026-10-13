@@ -52,6 +52,8 @@ local BaseService = Fake.require("ServerScriptService.Services.BaseService")
 local RS = Fake.service("ReplicatedStorage")
 local workspace = Fake.workspace
 
+-- un article encore "sans ID" côté joueur, pour tester "Bientôt"
+Fake.requireClient(Fake.service("ReplicatedStorage").Shared.Config).Products.MonsterSpider = 0
 local alice = Fake.addPlayer("Alice", 201)
 Fake.startClient(alice) -- comme dans Roblox : le script client démarre dès l'arrivée
 local bob = Fake.addPlayer("Bob", 202)
@@ -335,7 +337,7 @@ shopButton.Activated:Fire()
 local shop = gui.SAG_Panels:FindFirstChild("Shop")
 check(shop.Visible == true, "boutique ouverte")
 Sched.advance(0.6)
-check(findText(shop, "Bientôt") ~= nil, "articles 'Bientôt' tant que les IDs sont à 0")
+check(findText(shop, "R$ ") ~= nil, "les articles avec un ID affichent leur prix en Robux")
 local function tab(id: string)
 	local button = find(shop, function(d)
 		return d.Name == "Tab_" .. id
@@ -354,6 +356,7 @@ check(weaponsPage.Visible and findText(weaponsPage, "Offerte") ~= nil, "onglet A
 check(findText(weaponsPage, "Marteau Pouet Géant") ~= nil and findText(weaponsPage, "Portée") ~= nil, "armes payantes avec leur portée")
 local monstersPage = tab("Monsters")
 check(monstersPage.Visible and findText(monstersPage, "Mamie Toile") ~= nil, "onglet Monstres")
+check(findText(monstersPage, "Bientôt") ~= nil, "article 'Bientôt' tant que son ID est à 0")
 local wheelPage = tab("Wheel")
 check(wheelPage.Visible and not weaponsPage.Visible, "un seul onglet affiché à la fois")
 local odds = 0
