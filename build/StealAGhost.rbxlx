@@ -181,10 +181,10 @@ Config.WinterTeaserStart = 1795392000
 -- Dans Studio, un article dont l'ID vaut 0 est donné gratuitement quand on clique dessus
 -- (pour tester). Dans le vrai jeu, il affiche "Bientôt".
 Config.GamePasses = {
-	DoubleCoins = 0, -- ID du Game Pass "x2 Pièces"
-	WeaponHammer = 0, -- ID du Game Pass "Marteau Pouet Géant"
-	WeaponBroom = 0, -- ID du Game Pass "Balai de Sorcière"
-	WeaponVacuum = 0, -- ID du Game Pass "Aspira-Fantôme"
+	DoubleCoins = 2034404394, -- ID du Game Pass "x2 Pièces"
+	WeaponHammer = 2033072389, -- ID du Game Pass "Marteau Pouet Géant"
+	WeaponBroom = 2033390390, -- ID du Game Pass "Balai de Sorcière"
+	WeaponVacuum = 2033588417, -- ID du Game Pass "Aspira-Fantôme"
 }
 Config.Products = {
 	CoinPack = 0, -- ID du Developer Product "Pack de pièces"
