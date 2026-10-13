@@ -197,11 +197,11 @@ Config.Products = {
 -- Badges Roblox (Creator Hub > ton jeu > Engagement > Badges). 0 = pas encore créé.
 Config.Badges = {
 	Welcome = 0, -- "Bienvenue dans Steal a Ghost" (première partie)
-	FirstSteal = 0, -- premier vol réussi
-	FirstMythic = 0, -- premier fantôme Mythique
-	FirstSecret = 0, -- premier fantôme Secret
-	FirstRebirth = 0, -- premier rebirth
-	IndexComplete = 0, -- Fantômédex complet
+	FirstSteal = 2522750026811308, -- premier vol réussi
+	FirstMythic = 1015634598219895, -- premier fantôme Mythique
+	FirstSecret = 556412960887733, -- premier fantôme Secret
+	FirstRebirth = 3528922553295111, -- premier rebirth
+	IndexComplete = 405746905308904, -- Fantômédex complet
 	WeeklyChallenges = 0, -- les 3 défis d'une semaine
 }
 
