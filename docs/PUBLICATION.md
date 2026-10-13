@@ -88,6 +88,30 @@ Pour créer un article : Creator Hub > Creations > Steal a Ghost > Monetization.
 | Lâcher Mamie Toile | Developer Product | `Products.MonsterSpider` | 79 R$ |
 | Pack de pièces | Developer Product | `Products.CoinPack` | 25 R$ |
 
+### Noms et descriptions à copier
+
+Mets l'anglais dans les champs principaux. Si la page Localization du Creator Hub propose les Passes et les Developer Products, ajoute le français.
+
+**Game Passes**
+
+| Pass | Nom (EN) | Description (EN) | Nom (FR) | Description (FR) |
+|---|---|---|---|---|
+| DoubleCoins | x2 Coins | Your ghosts make twice as many coins, forever. | x2 Pièces | Tes fantômes fabriquent deux fois plus de pièces, pour toujours. |
+| WeaponHammer | Giant Squeaky Hammer | Longer reach than the bat, knocks thieves back harder and goes SQUEAK! The thief drops your ghost. | Marteau Pouet Géant | Plus long que la batte, il repousse les voleurs plus fort et fait POUET ! Le voleur lâche ton fantôme. |
+| WeaponBroom | Witch Broom | One big sweep hits every thief around you at once. Perfect when your base gets crowded. | Balai de Sorcière | Un grand coup de balai qui touche tous les voleurs autour de toi d'un coup. Idéal quand ta base est envahie. |
+| WeaponVacuum | Ghost Vacuum | The longest reach in the game: suck your stolen ghost back from far away before the thief gets home. | Aspira-Fantôme | La plus longue portée du jeu : aspire ton fantôme volé de très loin, avant que le voleur arrive chez lui. |
+
+**Developer Products**
+
+| Produit | Nom (EN) | Description (EN) | Nom (FR) | Description (FR) |
+|---|---|---|---|---|
+| Spin1 | 1 Wheel Spin | Spin the Wheel of Fortune once. Every slot wins something: coins, ghosts or a x2 boost. | 1 tour de roue | Fais tourner la Roue de la Fortune une fois. Chaque case fait gagner quelque chose : pièces, fantômes ou bonus x2. |
+| Spin5 | 5 Wheel Spins | 5 spins of the Wheel of Fortune for the price of 4. | 5 tours de roue | 5 tours de la Roue de la Fortune pour le prix de 4. |
+| MonsterGloutrouille | Release Gloutrouille | The hungry jelly pumpkin chases everyone in the server for 40 seconds. Except you! | Lâcher Gloutrouille | La citrouille en gelée affamée poursuit tout le serveur pendant 40 secondes. Sauf toi ! |
+| MonsterBat | Release the Turbo Bat | Small, but way too fast. It chases everyone in the server for 30 seconds. Except you! | Lâcher la Chauve-Souris Turbo | Petite, mais beaucoup trop rapide. Elle poursuit tout le serveur pendant 30 secondes. Sauf toi ! |
+| MonsterSpider | Release Granny Web | A giant spider with glasses who throws her web from far away, for 45 seconds. Everyone runs, except you! | Lâcher Mamie Toile | Une araignée géante à lunettes qui lance sa toile de loin, pendant 45 secondes. Tout le monde court, sauf toi ! |
+| CoinPack | Coin Pack | 10 minutes of your income right now (at least 5,000 coins). | Pack de pièces | 10 minutes de tes revenus tout de suite (5 000 pièces minimum). |
+
 Les prix conseillés sont aussi dans `Shop.luau`, avec les noms et descriptions affichés en jeu. Le prix qui compte est celui que tu mets sur le Creator Hub : la boutique le lit toute seule une fois l'ID renseigné.
 
 Pour afficher des images dans la boutique (armes, monstres, roue) à la place des emojis : importe les fichiers `docs/publication/boutique_*.png` (fond transparent) sur le Creator Hub comme décalcomanies (Decals), puis colle `"rbxassetid://ID"` dans `Config.ShopIcons`, à la ligne qui porte le même nom. C'est facultatif.
