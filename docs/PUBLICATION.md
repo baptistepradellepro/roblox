@@ -131,6 +131,16 @@ Les badges s'affichent sur le profil des joueurs, leurs amis les voient : c'est 
 2. L'image : `docs/publication/badge_<nom>.png` (par exemple `badge_FirstSteal.png`), puis un nom et une description. Roblox affiche les badges dans un rond, les images sont prévues pour.
 3. Copie l'ID du badge dans `Config.Badges`, à la ligne qui correspond.
 
+| Badge | Image | Nom (EN) | Description (EN) | Nom (FR) | Description (FR) |
+|---|---|---|---|---|---|
+| Welcome | `badge_Welcome.png` | Welcome, Ghost Hunter! | You played Steal a Ghost for the first time. Now go fill your base! | Bienvenue, chasseur de fantômes ! | Tu as joué à Steal a Ghost pour la première fois. Maintenant, remplis ta base ! |
+| FirstSteal | `badge_FirstSteal.png` | First Heist | You stole a ghost and made it back to your base. Sneaky! | Premier vol | Tu as volé un fantôme et tu l'as ramené jusqu'à ta base. Bien joué, petit malin ! |
+| FirstMythic | `badge_FirstMythic.png` | Mythic Collector | You got your first Mythic ghost. Very few players have one! | Collectionneur Mythique | Tu as eu ton premier fantôme Mythique. Très peu de joueurs en ont un ! |
+| FirstSecret | `badge_FirstSecret.png` | Secret Found | You found a Secret ghost. Shhh, don't tell anyone where! | Secret découvert | Tu as trouvé un fantôme Secret. Chut, ne dis à personne où ! |
+| FirstRebirth | `badge_FirstRebirth.png` | Reborn | You did your first rebirth. Your ghosts will make more coins, forever. | Renaissance | Tu as fait ton premier rebirth. Tes fantômes rapporteront plus de pièces, pour toujours. |
+| IndexComplete | `badge_IndexComplete.png` | Ghostdex Master | You completed the Ghostdex. You have met every ghost in town! | Maître du Fantômédex | Tu as complété le Fantômédex. Tu as rencontré tous les fantômes de la ville ! |
+| WeeklyChallenges | `badge_WeeklyChallenges.png` | Weekly Champion | You completed all 3 challenges of the week. | Champion de la semaine | Tu as réussi les 3 défis de la semaine. |
+
 Roblox laisse créer quelques badges gratuitement chaque jour, les suivants coûtent des Robux : vérifie le prix affiché avant de valider. Tant qu'un ID vaut 0, le badge est simplement ignoré.
 
 ## 6. Codes promo
